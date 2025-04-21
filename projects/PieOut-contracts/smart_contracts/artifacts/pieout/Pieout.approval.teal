@@ -1,0 +1,432 @@
+#pragma version 10
+#pragma typetrack false
+
+// smart_contracts.pieout.contract.Pieout.__algopy_entrypoint_with_init() -> uint64:
+main:
+    intcblock 1 0 TMPL_GEN_UNIX TMPL_DELETABLE
+    bytecblock "total_players" "total_stake" 0x151f7c75 0x705f
+    // smart_contracts/pieout/contract.py:24
+    // class Pieout(ARC4Contract):
+    txn NumAppArgs
+    bz main_after_if_else@10
+    pushbytess 0x137d1094 0x5be219f0 0xd6233e1b 0x4ece0cfd 0x5ff16da4 // method "calc_single_box_fee(uint8,uint16)uint64", method "generate()void", method "stake(pay,pay)void", method "get_gen_unix()uint64", method "terminate()void"
+    txna ApplicationArgs 0
+    match main_calc_single_box_fee_route@5 main_generate_route@6 main_stake_route@7 main_get_gen_unix_route@8 main_terminate_route@9
+
+main_after_if_else@10:
+    // smart_contracts/pieout/contract.py:24
+    // class Pieout(ARC4Contract):
+    intc_1 // 0
+    return
+
+main_terminate_route@9:
+    // smart_contracts/pieout/contract.py:110-111
+    // # Allow application creator to delete the smart contract client
+    // @arc4.abimethod(allow_actions=["DeleteApplication"])
+    txn OnCompletion
+    pushint 5 // DeleteApplication
+    ==
+    assert // OnCompletion is not DeleteApplication
+    txn ApplicationID
+    assert // can only call when not creating
+    callsub terminate
+    intc_0 // 1
+    return
+
+main_get_gen_unix_route@8:
+    // smart_contracts/pieout/contract.py:105-106
+    // # Retrieve the genesis (creation) timestamp of the contract in Unix format
+    // @arc4.abimethod(readonly=True)
+    txn OnCompletion
+    !
+    assert // OnCompletion is not NoOp
+    txn ApplicationID
+    assert // can only call when not creating
+    // smart_contracts/pieout/contract.py:108
+    // return TemplateVar[UInt64]("GEN_UNIX")
+    intc_2 // TMPL_GEN_UNIX
+    // smart_contracts/pieout/contract.py:105-106
+    // # Retrieve the genesis (creation) timestamp of the contract in Unix format
+    // @arc4.abimethod(readonly=True)
+    itob
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+main_stake_route@7:
+    // smart_contracts/pieout/contract.py:60
+    // @arc4.abimethod
+    txn OnCompletion
+    !
+    assert // OnCompletion is not NoOp
+    txn ApplicationID
+    assert // can only call when not creating
+    // smart_contracts/pieout/contract.py:24
+    // class Pieout(ARC4Contract):
+    txn GroupIndex
+    pushint 2 // 2
+    -
+    dup
+    gtxns TypeEnum
+    intc_0 // pay
+    ==
+    assert // transaction type is pay
+    txn GroupIndex
+    intc_0 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_0 // pay
+    ==
+    assert // transaction type is pay
+    // smart_contracts/pieout/contract.py:60
+    // @arc4.abimethod
+    callsub stake
+    intc_0 // 1
+    return
+
+main_generate_route@6:
+    // smart_contracts/pieout/contract.py:49-50
+    // # Generate the smart contract application client with default values
+    // @arc4.abimethod(create="require")
+    txn OnCompletion
+    !
+    assert // OnCompletion is not NoOp
+    txn ApplicationID
+    !
+    assert // can only call when creating
+    callsub generate
+    intc_0 // 1
+    return
+
+main_calc_single_box_fee_route@5:
+    // smart_contracts/pieout/contract.py:34-35
+    // # Calculate the minimum balance requirement (MBR) fee for data storage in a single box unit
+    // @arc4.abimethod(readonly=True)
+    txn OnCompletion
+    !
+    assert // OnCompletion is not NoOp
+    txn ApplicationID
+    assert // can only call when not creating
+    // smart_contracts/pieout/contract.py:24
+    // class Pieout(ARC4Contract):
+    txna ApplicationArgs 1
+    txna ApplicationArgs 2
+    // smart_contracts/pieout/contract.py:34-35
+    // # Calculate the minimum balance requirement (MBR) fee for data storage in a single box unit
+    // @arc4.abimethod(readonly=True)
+    callsub calc_single_box_fee
+    itob
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_0 // 1
+    return
+
+
+// smart_contracts.pieout.contract.Pieout.calc_single_box_fee(key_size: bytes, value_size: bytes) -> uint64:
+calc_single_box_fee:
+    // smart_contracts/pieout/contract.py:34-38
+    // # Calculate the minimum balance requirement (MBR) fee for data storage in a single box unit
+    // @arc4.abimethod(readonly=True)
+    // def calc_single_box_fee(
+    //     self, key_size: arc4.UInt8, value_size: arc4.UInt16
+    // ) -> UInt64:
+    proto 2 1
+    // smart_contracts/pieout/contract.py:43
+    // key_size.native + value_size.native
+    frame_dig -2
+    btoi
+    frame_dig -1
+    btoi
+    +
+    // smart_contracts/pieout/contract.py:42
+    // size_fee = arc4.UInt16(400).native * (
+    pushint 400 // 400
+    // smart_contracts/pieout/contract.py:42-44
+    // size_fee = arc4.UInt16(400).native * (
+    //     key_size.native + value_size.native
+    // )  # Size fee (400 per byte * (len(key)+len(value)))
+    *
+    // smart_contracts/pieout/contract.py:46-47
+    // # Return single box fee
+    // return base_fee.native + size_fee
+    pushint 2500 // 2500
+    +
+    retsub
+
+
+// smart_contracts.pieout.contract.Pieout.generate() -> void:
+generate:
+    // smart_contracts/pieout/contract.py:54
+    // Txn.sender == Global.creator_address
+    txn Sender
+    global CreatorAddress
+    ==
+    // smart_contracts/pieout/contract.py:52-55
+    // # Fail transaction unless the assertion/s below evaluate/s True
+    // assert (
+    //     Txn.sender == Global.creator_address
+    // ), "Transaction sender address must match application creator address."
+    assert // Transaction sender address must match application creator address.
+    // smart_contracts/pieout/contract.py:57
+    // self.total_stake = UInt64(0)
+    bytec_1 // "total_stake"
+    intc_1 // 0
+    app_global_put
+    // smart_contracts/pieout/contract.py:58
+    // self.total_players = UInt64(1)
+    bytec_0 // "total_players"
+    intc_0 // 1
+    app_global_put
+    retsub
+
+
+// smart_contracts.pieout.contract.Pieout.stake(box_pay: uint64, stake_pay: uint64) -> void:
+stake:
+    // smart_contracts/pieout/contract.py:60-63
+    // @arc4.abimethod
+    // def stake(
+    //     self, box_pay: gtxn.PaymentTransaction, stake_pay: gtxn.PaymentTransaction
+    // ) -> None:
+    proto 2 0
+    // smart_contracts/pieout/contract.py:66
+    // box_pay.sender == Txn.sender and stake_pay.sender == Txn.sender
+    frame_dig -2
+    gtxns Sender
+    txn Sender
+    ==
+    bz stake_bool_false@3
+    frame_dig -1
+    gtxns Sender
+    txn Sender
+    ==
+    bz stake_bool_false@3
+    intc_0 // 1
+
+stake_bool_merge@4:
+    // smart_contracts/pieout/contract.py:64-67
+    // # Fail transaction unless the assertion/s below evaluate/s True
+    // assert (
+    //     box_pay.sender == Txn.sender and stake_pay.sender == Txn.sender
+    // ), "stake(): Box and Stake payment sender address must match transaction sender address."
+    assert // stake(): Box and Stake payment sender address must match transaction sender address.
+    // smart_contracts/pieout/contract.py:70
+    // box_pay.receiver == Global.current_application_address
+    frame_dig -2
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    // smart_contracts/pieout/contract.py:70-71
+    // box_pay.receiver == Global.current_application_address
+    // and stake_pay.receiver == Global.current_application_address
+    bz stake_bool_false@7
+    // smart_contracts/pieout/contract.py:71
+    // and stake_pay.receiver == Global.current_application_address
+    frame_dig -1
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    // smart_contracts/pieout/contract.py:70-71
+    // box_pay.receiver == Global.current_application_address
+    // and stake_pay.receiver == Global.current_application_address
+    bz stake_bool_false@7
+    intc_0 // 1
+
+stake_bool_merge@8:
+    // smart_contracts/pieout/contract.py:69-72
+    // assert (
+    //     box_pay.receiver == Global.current_application_address
+    //     and stake_pay.receiver == Global.current_application_address
+    // ), "stake(): Box and Stake payment reciever address must match transaction sender address."
+    assert // stake(): Box and Stake payment reciever address must match transaction sender address.
+    // smart_contracts/pieout/contract.py:74
+    // assert box_pay.amount >= self.calc_single_box_fee(
+    frame_dig -2
+    gtxns Amount
+    // smart_contracts/pieout/contract.py:75
+    // key_size=arc4.UInt8(34), value_size=arc4.UInt16(7)
+    pushbytess 0x22 0x0007 // 0x22, 0x0007
+    // smart_contracts/pieout/contract.py:74-76
+    // assert box_pay.amount >= self.calc_single_box_fee(
+    //     key_size=arc4.UInt8(34), value_size=arc4.UInt16(7)
+    // ), "stake(): Insufficient amount. Box pay amount does not cover application MBR."
+    callsub calc_single_box_fee
+    >=
+    assert // stake(): Insufficient amount. Box pay amount does not cover application MBR.
+    // smart_contracts/pieout/contract.py:79
+    // stake_pay.amount == 200_000
+    frame_dig -1
+    gtxns Amount
+    dup
+    pushint 200000 // 200000
+    ==
+    // smart_contracts/pieout/contract.py:78-80
+    // assert (
+    //     stake_pay.amount == 200_000
+    // ), "stake(): Insufficient amount. Stake pay amount does not cover minimum entry fee."
+    assert // stake(): Insufficient amount. Stake pay amount does not cover minimum entry fee.
+    // smart_contracts/pieout/contract.py:83
+    // Txn.sender not in self.player
+    bytec_3 // 0x705f
+    txn Sender
+    concat
+    box_len
+    bury 1
+    !
+    // smart_contracts/pieout/contract.py:82-84
+    // assert (
+    //     Txn.sender not in self.player
+    // ), "stake(): Transaction sender address already recognized as active player."
+    assert // stake(): Transaction sender address already recognized as active player.
+    // smart_contracts/pieout/contract.py:86
+    // assert self.total_players <= 10, "stake(): Max player limit exceeded."
+    intc_1 // 0
+    bytec_0 // "total_players"
+    app_global_get_ex
+    assert // check self.total_players exists
+    pushint 10 // 10
+    <=
+    assert // stake(): Max player limit exceeded.
+    // smart_contracts/pieout/contract.py:91
+    // id=arc4.UInt8(self.total_players),
+    intc_1 // 0
+    bytec_0 // "total_players"
+    app_global_get_ex
+    assert // check self.total_players exists
+    itob
+    dup
+    bitlen
+    pushint 8 // 8
+    <=
+    assert // overflow
+    extract 7 1
+    // smart_contracts/pieout/contract.py:92
+    // round=arc4.UInt8(0),
+    pushbytes 0x00
+    // smart_contracts/pieout/contract.py:88-97
+    // # Assign a Player box to transaction sender
+    // # Store sender address as box key and PlayerBoxVal struct as box value
+    // self.player[Txn.sender] = PlayerBoxVal(
+    //     id=arc4.UInt8(self.total_players),
+    //     round=arc4.UInt8(0),
+    //     nxnce=arc4.UInt16(0),
+    //     staked=arc4.Bool(True),  # noqa: FBT003
+    //     eliminated=arc4.Bool(False),  # noqa: FBT003
+    //     winner=arc4.Bool(False),  # noqa: FBT003
+    // )
+    concat
+    // smart_contracts/pieout/contract.py:93
+    // nxnce=arc4.UInt16(0),
+    pushbytes 0x0000
+    // smart_contracts/pieout/contract.py:88-97
+    // # Assign a Player box to transaction sender
+    // # Store sender address as box key and PlayerBoxVal struct as box value
+    // self.player[Txn.sender] = PlayerBoxVal(
+    //     id=arc4.UInt8(self.total_players),
+    //     round=arc4.UInt8(0),
+    //     nxnce=arc4.UInt16(0),
+    //     staked=arc4.Bool(True),  # noqa: FBT003
+    //     eliminated=arc4.Bool(False),  # noqa: FBT003
+    //     winner=arc4.Bool(False),  # noqa: FBT003
+    // )
+    concat
+    // smart_contracts/pieout/contract.py:94
+    // staked=arc4.Bool(True),  # noqa: FBT003
+    pushbytes 0x80
+    // smart_contracts/pieout/contract.py:88-97
+    // # Assign a Player box to transaction sender
+    // # Store sender address as box key and PlayerBoxVal struct as box value
+    // self.player[Txn.sender] = PlayerBoxVal(
+    //     id=arc4.UInt8(self.total_players),
+    //     round=arc4.UInt8(0),
+    //     nxnce=arc4.UInt16(0),
+    //     staked=arc4.Bool(True),  # noqa: FBT003
+    //     eliminated=arc4.Bool(False),  # noqa: FBT003
+    //     winner=arc4.Bool(False),  # noqa: FBT003
+    // )
+    concat
+    pushint 33 // 33
+    intc_1 // 0
+    setbit
+    pushint 34 // 34
+    intc_1 // 0
+    setbit
+    // smart_contracts/pieout/contract.py:88-90
+    // # Assign a Player box to transaction sender
+    // # Store sender address as box key and PlayerBoxVal struct as box value
+    // self.player[Txn.sender] = PlayerBoxVal(
+    bytec_3 // 0x705f
+    txn Sender
+    concat
+    // smart_contracts/pieout/contract.py:88-97
+    // # Assign a Player box to transaction sender
+    // # Store sender address as box key and PlayerBoxVal struct as box value
+    // self.player[Txn.sender] = PlayerBoxVal(
+    //     id=arc4.UInt8(self.total_players),
+    //     round=arc4.UInt8(0),
+    //     nxnce=arc4.UInt16(0),
+    //     staked=arc4.Bool(True),  # noqa: FBT003
+    //     eliminated=arc4.Bool(False),  # noqa: FBT003
+    //     winner=arc4.Bool(False),  # noqa: FBT003
+    // )
+    swap
+    box_put
+    // smart_contracts/pieout/contract.py:99-100
+    // # Increment total stake count by the stake pay amount
+    // self.total_stake += stake_pay.amount
+    intc_1 // 0
+    bytec_1 // "total_stake"
+    app_global_get_ex
+    assert // check self.total_stake exists
+    +
+    bytec_1 // "total_stake"
+    swap
+    app_global_put
+    // smart_contracts/pieout/contract.py:102-103
+    // # Increment total players count by 1 for every new player
+    // self.total_players += 1
+    intc_1 // 0
+    bytec_0 // "total_players"
+    app_global_get_ex
+    assert // check self.total_players exists
+    intc_0 // 1
+    +
+    bytec_0 // "total_players"
+    swap
+    app_global_put
+    retsub
+
+stake_bool_false@7:
+    intc_1 // 0
+    b stake_bool_merge@8
+
+stake_bool_false@3:
+    intc_1 // 0
+    b stake_bool_merge@4
+
+
+// smart_contracts.pieout.contract.Pieout.terminate() -> void:
+terminate:
+    // smart_contracts/pieout/contract.py:115
+    // Txn.sender == Global.creator_address
+    txn Sender
+    global CreatorAddress
+    ==
+    // smart_contracts/pieout/contract.py:113-116
+    // # Fail transaction unless the assertion/s below evaluate/s True
+    // assert (
+    //     Txn.sender == Global.creator_address
+    // ), "Transaction sender address must match application creator address."
+    assert // Transaction sender address must match application creator address.
+    // smart_contracts/pieout/contract.py:118-120
+    // assert TemplateVar[bool](
+    //     "DELETABLE"
+    // ), "Template variable 'DELETABLE' needs to be 'True' at deploy-time."
+    intc_3 // TMPL_DELETABLE
+    assert // Template variable 'DELETABLE' needs to be 'True' at deploy-time.
+    retsub
