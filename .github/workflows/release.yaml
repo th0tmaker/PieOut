@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.vscode/**'
+      - '.idea/**'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  PieOut-contracts-validate:
+    name: Run PieOut-contracts release
+    secrets: inherit
+    uses: ./.github/workflows/PieOut-contracts-ci.yaml
+
+  PieOut-contracts-release:
+    name: Run PieOut-contracts release
+    secrets: inherit
+    uses: ./.github/workflows/PieOut-contracts-cd.yaml
+    needs: PieOut-contracts-validate
+
+  PieOut-frontend-validate:
+    name: Run PieOut-frontend release
+    secrets: inherit
+    uses: ./.github/workflows/PieOut-frontend-ci.yaml
+
+  PieOut-frontend-release:
+    name: Run PieOut-frontend release
+    secrets: inherit
+    uses: ./.github/workflows/PieOut-frontend-cd.yaml
+    needs: PieOut-frontend-validate

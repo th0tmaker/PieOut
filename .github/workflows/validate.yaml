@@ -1,0 +1,14 @@
+name: Pull Request validation
+
+on: [pull_request]
+
+
+jobs:
+  PieOut-contracts-ci:
+    name: Run PieOut-contracts validation
+    uses: ./.github/workflows/PieOut-contracts-ci.yaml
+
+  PieOut-frontend-ci:
+    name: Run PieOut-frontend validation
+    uses: ./.github/workflows/PieOut-frontend-ci.yaml
+
