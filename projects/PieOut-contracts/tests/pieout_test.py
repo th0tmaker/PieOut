@@ -190,8 +190,11 @@ def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
         fund_app_txn.confirmation
     ), "fund_app_txn.confirmation transaction failed confirmation."
 
+
 # Fund smart contract app account (app creator is account doing the funding, implied by use of their client instance)
-def test_create_players_addrs_box(creator: SigningAccount, apps: dict[str, PieoutClient]) -> None:
+def test_create_players_addrs_box(
+    creator: SigningAccount, apps: dict[str, PieoutClient]
+) -> None:
 
     box_fee = apps["pieout_client_1"].send.calc_single_box_fee((3, 320)).abi_return
 
@@ -206,12 +209,12 @@ def test_create_players_addrs_box(creator: SigningAccount, apps: dict[str, Pieou
     )
 
     create_player_addrs_box_txn = apps["pieout_client_1"].send.create_player_addrs_box(
-        args=(box_pay, ),
+        args=(box_pay,),
         params=CommonAppCallParams(
-        sender=creator.address,
-        signer=creator.signer,
-        validity_window=100,
-        lease=b"testing-lease"
+            sender=creator.address,
+            signer=creator.signer,
+            validity_window=100,
+            lease=b"testing-lease",
         ),
         send_params=SendParams(
             populate_app_call_resources=True,
@@ -220,22 +223,29 @@ def test_create_players_addrs_box(creator: SigningAccount, apps: dict[str, Pieou
 
     # Verify transaction was confirmed by the network
     wait_for_confirmation(
-        apps["pieout_client_1"].algorand.client.algod, create_player_addrs_box_txn.tx_id, 3
+        apps["pieout_client_1"].algorand.client.algod,
+        create_player_addrs_box_txn.tx_id,
+        3,
     )
     assert (
         create_player_addrs_box_txn.confirmation
     ), "create_player_addrs_box_txn.confirmation transaction failed confirmation."
 
-    box = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(apps["pieout_client_1"].app_id, b"pa_")
+    box = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
+        apps["pieout_client_1"].app_id, b"pa_"
+    )
     logger.info(list(base64.b64decode(box["value"])))
+
 
 def test_stake(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
-    apps: dict[str, PieoutClient]
+    apps: dict[str, PieoutClient],
 ) -> None:
 
-    def stake_call_params(account: SigningAccount) -> tuple[BoxReference, Transaction, Transaction]:
+    def stake_call_params(
+        account: SigningAccount,
+    ) -> tuple[BoxReference, Transaction, Transaction]:
         stake_amount = 200_000
         box_fee = apps["pieout_client_1"].send.calc_single_box_fee((34, 5)).abi_return
 
@@ -283,7 +293,9 @@ def test_stake(
             )
 
             # Verify transaction was confirmed by the network
-            wait_for_confirmation(apps["pieout_client_1"].algorand.client.algod, stake_txn.tx_id, 3)
+            wait_for_confirmation(
+                apps["pieout_client_1"].algorand.client.algod, stake_txn.tx_id, 3
+            )
             assert (
                 stake_txn.confirmation
             ), "stake_txn.confirmation transaction failed confirmation."
@@ -292,10 +304,14 @@ def test_stake(
             return True
 
         except Exception as e:
-            logger.error(f"Individual stake transaction failed for {account.address}: {e}")
+            logger.error(
+                f"Individual stake transaction failed for {account.address}: {e}"
+            )
             return False
 
-    participants = [creator] + [randy_factory[f"randy_{i}"] for i in range(1, len(randy_factory) + 1)]
+    participants = [creator] + [
+        randy_factory[f"randy_{i}"] for i in range(1, len(randy_factory) + 1)
+    ]
 
     # Atomic stake transaction
     def try_stake_atxn() -> None:
@@ -336,10 +352,11 @@ def test_stake(
     # Run atomic stake in same round
     # attempt_atomic_stake()
 
+
 def test_gamba(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
-    apps: dict[str, PieoutClient]
+    apps: dict[str, PieoutClient],
 ) -> None:
 
     def get_active_players() -> list[SigningAccount]:
@@ -349,14 +366,18 @@ def test_gamba(
 
         # Fetch all boxes
         current_turn = apps["pieout_client_1"].state.global_state.current_turn
-        boxes = apps["pieout_client_1"].algorand.client.algod.application_boxes(
-            apps["pieout_client_1"].app_id).get("boxes", [])
+        boxes = (
+            apps["pieout_client_1"]
+            .algorand.client.algod.application_boxes(apps["pieout_client_1"].app_id)
+            .get("boxes", [])
+        )
 
         for box in boxes:
             box_name_bytes = base64.b64decode(box["name"])
-            box_val = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
-                apps["pieout_client_1"].app_id,
-                box_name_bytes
+            box_val = apps[
+                "pieout_client_1"
+            ].algorand.client.algod.application_box_by_name(
+                apps["pieout_client_1"].app_id, box_name_bytes
             )
 
             # The value is base64 encoded in the response
@@ -367,13 +388,16 @@ def test_gamba(
                 active_addresses.add(encode_address(box_name_bytes[-32:]))
 
         # Match players with active addresses
-        active_players = [player for player in all_players if player.address in active_addresses]
+        active_players = [
+            player for player in all_players if player.address in active_addresses
+        ]
         return active_players
 
     def create_box_refs(accounts: list[SigningAccount]) -> list[BoxReference]:
         app_id = apps["pieout_client_1"].app_id
         return [
-            BoxReference(app_id, b"p_" + decode_address(acc.address)) for acc in accounts
+            BoxReference(app_id, b"p_" + decode_address(acc.address))
+            for acc in accounts
         ]
 
     def try_gamba_txn(account: SigningAccount) -> bool:
@@ -391,7 +415,9 @@ def test_gamba(
             )
 
             # Verify transaction was confirmed by the network
-            wait_for_confirmation(apps["pieout_client_1"].algorand.client.algod, gamba_txn.tx_id, 3)
+            wait_for_confirmation(
+                apps["pieout_client_1"].algorand.client.algod, gamba_txn.tx_id, 3
+            )
             assert (
                 gamba_txn.confirmation
             ), "gamba_txn.confirmation transaction failed confirmation."
@@ -412,9 +438,9 @@ def test_gamba(
 
     # Atomic gamba transaction
     def try_gamba_atxn(
-            # account: SigningAccount,
-            accounts: list[SigningAccount],
-        ) -> bool:
+        # account: SigningAccount,
+        accounts: list[SigningAccount],
+    ) -> bool:
         try:
             composer = apps["pieout_client_1"].new_group().composer()
 
@@ -424,7 +450,10 @@ def test_gamba(
                     AppCallMethodCallParams(
                         sender=acc.address,
                         signer=acc.signer,
-                        note=int(datetime.now().timestamp()).to_bytes(length=8, byteorder="big"),
+                        note=int(datetime.now().timestamp()).to_bytes(
+                            length=8, byteorder="big"
+                        ),
+                        max_fee=micro_algo(3000),
                         validity_window=100,
                         app_id=apps["pieout_client_1"].app_id,
                         method=Method.from_signature("gamba()uint64"),
@@ -447,16 +476,31 @@ def test_gamba(
             # logger.info(len(box_refs))
             logger.info(f"Gamba atomic group size: {composer.count()}")
 
-            result = composer.send()
+            result = composer.send(
+                params=SendParams(
+                    cover_app_call_inner_transaction_fees=True,
+                )
+            )
+
             logger.info(f"Gamba atomic group sent. Group ID: {result.group_id}")
             for i, r in enumerate(result.returns):
-                logger.info(f"TXN {i}: abi return value={r.value}, round={r.tx_info['confirmed-round']}")
+                logger.info(
+                    f"TXN {i}: abi return value={r.value}, round={r.tx_info['confirmed-round']}"
+                )
 
             return True
 
         except Exception as e:
             logger.error(f"Atomic gamba group transaction failed: {e}")
             return False
+
+    active_players = get_active_players()
+    logger.info(len(active_players))
+    try_gamba_atxn(active_players)
+
+    active_players = get_active_players()
+    logger.info(len(active_players))
+    try_gamba_atxn(active_players)
 
     active_players = get_active_players()
     logger.info(len(active_players))
@@ -558,9 +602,13 @@ def test_gamba(
     # logger.info(f"result tuple: {res_tuple}")
 
     # Log
-    logger.info(f"App Client 1 Global State: {apps['pieout_client_1'].state.global_state.get_all()}")
+    logger.info(
+        f"App Client 1 Global State: {apps['pieout_client_1'].state.global_state.get_all()}"
+    )
 
-    all_boxes = apps["pieout_client_1"].algorand.client.algod.application_boxes(apps["pieout_client_1"].app_id)
+    all_boxes = apps["pieout_client_1"].algorand.client.algod.application_boxes(
+        apps["pieout_client_1"].app_id
+    )
 
     # Extract all addresses from the app boxes
     box_p_dict = {}  # Dictionary to store box values
@@ -571,9 +619,10 @@ def test_gamba(
             box_key_addr = encode_address(box_name_bytes[-32:])
 
             # Get the value of this specific box
-            box_val = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
-                apps["pieout_client_1"].app_id,
-                box_name_bytes
+            box_val = apps[
+                "pieout_client_1"
+            ].algorand.client.algod.application_box_by_name(
+                apps["pieout_client_1"].app_id, box_name_bytes
             )
             # The value is base64 encoded in the response
             box_val_bytes = base64.b64decode(box_val["value"])

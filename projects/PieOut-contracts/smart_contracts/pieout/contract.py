@@ -1,17 +1,18 @@
-
 from algopy import (
     Account,
     ARC4Contract,
     BoxMap,
     Bytes,
     Global,
+    OpUpFeeSource,
     TemplateVar,
-    TransactionType,
     Txn,
     UInt64,
     arc4,
+    ensure_budget,
     gtxn,
     op,
+    urange,
 )
 
 # Define constants at module level
@@ -19,14 +20,18 @@ STAKE_AMOUNT = 200_000
 MAX_PLAYERS = 10
 ELIM_THRESHOLD = 10992
 
+
 # State struct for player box value
 class PlayerBoxVal(arc4.Struct):
     id: arc4.UInt8  # Player unique game ID
     turn: arc4.UInt8  # Current game turn player has reached
     staked: arc4.Bool  # Whether the player has staked (if True, they are valid player)
-    pending: arc4.Bool # Whether the player is in pending mode (if True, they already use gamba this turn)
+    pending: (
+        arc4.Bool
+    )  # Whether the player is in pending mode (if True, they already use gamba this turn)
     eliminated: arc4.Bool  # Whether the player is eliminated (if True, game over)
     winner: arc4.Bool  # Whether the player has won (if True, eligable for prize)
+
 
 class Pieout(ARC4Contract):
     # Global State type declarations
@@ -40,7 +45,6 @@ class Pieout(ARC4Contract):
 
     pa_box_offset: UInt64
     current_turn: UInt64
-    # Create another flag to prevent users from re-joining once game has began
 
     # Application init method
     def __init__(self) -> None:
@@ -129,8 +133,8 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion/s below evaluate/s True
         if self.creator_stake_status == 0:
             assert (
-            txn_sender == creator_address
-        ), "stake(): Rejected. Application creator account must stake first before any other account."
+                txn_sender == creator_address
+            ), "stake(): Rejected. Application creator account must stake first before any other account."
 
             self.creator_stake_status = UInt64(1)
 
@@ -146,8 +150,9 @@ class Pieout(ARC4Contract):
             app_address == box_pay.receiver and app_address == stake_pay.receiver
         ), "stake(): Box and Stake payment reciever address must match transaction sender address."
 
-        assert box_pay.amount >= self.calc_single_box_fee(
-            key_size=arc4.UInt8(34), value_size=arc4.UInt16(3)
+        assert (
+            box_pay.amount
+            >= 17_300  #  self.calc_single_box_fee(key_size=arc4.UInt8(34), value_size=arc4.UInt16(3)
         ), "stake(): Insufficient amount. Box pay amount does not cover application MBR."
 
         assert (
@@ -192,90 +197,70 @@ class Pieout(ARC4Contract):
     # def advance_turn(self) -> UInt64:
     #     if self.total_pending == MAX_PLAYERS or # Turn time has expired
 
-    # NOTE: This method has to be called atomically in a group to prevent unfair advantages
     @arc4.abimethod
     def gamba(self) -> UInt64:
+        # Ensure transaction has sufficient opcode budget
+        ensure_budget(required_budget=1400, fee_source=OpUpFeeSource.GroupCredit)
+
         # Get and store commonly used addresses
         txn_sender = Txn.sender
+        method_selector = Txn.application_args(0)
+
+        current_app_id = Global.current_application_id.id
+        atxn_group_size = Global.group_size
 
         player = self.box_player[txn_sender].copy()
         current_player_turn = player.turn.native
-        # So if Global.group_size > Txn.group_index + 1
-        # Check Gtxn[Txn.group_index + 1].app_id == Txn.app_id
-        # And Gtxn[Txn.group_index + 1].app_args[0] == Txn.app_args[0]
 
-        # ASSERT 1: GROUP SIZE MUST BE WITHIN BOUNDS
-        atxn_group_size = Global.group_size
         assert (
             atxn_group_size >= 2 and atxn_group_size <= MAX_PLAYERS
         ), "gamba(): Rejected. Atomic transaction group size is out of bounds."
 
-        # Get the current transaction's app ID and method selector
-        app_id = Txn.application_id
-        method_selector = Txn.application_args(0)
+        for i in urange(0, atxn_group_size):
+            txn_i = gtxn.Transaction(i)
 
-        i = UInt64(1)
+            for j in urange(0, i):
+                txn_j = gtxn.Transaction(j)
 
-        while i < atxn_group_size:
-            assert op.GTxn.type_enum(i) == TransactionType.ApplicationCall
-            assert op.GTxn.application_args(i) == app_id
-            assert op.GTxn.application_args(0) == method_selector
+                assert (
+                    txn_i.sender.bytes != txn_j.sender.bytes
+                ), "gamba(): Rejected. Every transaction in group must have unique sender address."
 
-        # for i in urange(0, atxn_group_size):
-        #     gtxn[i]
-        #     Gtxn[i].application_id()
+            assert (
+                txn_i.app_args(0) == method_selector
+            ), "gamba(): Rejected. Method selector mismatch not allowed."
+
+            assert (
+                txn_i.app_id.id == current_app_id
+            ), "gamba(): Rejected. Application ID mismatch not allowed."
 
         assert (
             self.staking_finalized == 1
         ), "gamba(): Rejected. Gamba not available until staking is finalized."
 
         assert (
-            self.total_players > 1
-        ), "gamba(): Rejected. Total number of players must be greater than 1."
+            self.total_players >= 2 and self.total_players <= MAX_PLAYERS
+        ), "gamba(): Rejected. Total number of players must not be out of bounds."
 
         assert (
             current_player_turn == self.current_turn
         ), "gamba(): Rejected. Transaction sender turn is not aligned with current turn."
 
-
         temp_seed = op.sha256(op.itob(Global.round) + Txn.tx_id)
         roll = op.extract_uint16(temp_seed, 16)
 
-        if roll >= 50333:
+        if roll >= ELIM_THRESHOLD:
             current_player_turn += 1
             player.turn = arc4.UInt8(current_player_turn)
             self.box_player[txn_sender] = player.copy()
         else:
             self.players_elim += 1
 
-
-        # # Handle player elimination based on RNG roll
-        # if roll < 33333:
-        #     # NOTE: Consider deleting box at this point
-        #     # NOTE: Return box mbr to player ???
-        #     # del self.box_player[txn_sender]
-        #     # player.eliminated = is_true
-
-        #     self.players_elim += 1
-
-        # else:
-        #     current_player_turn += 1
-        #     player.turn = arc4.UInt8(current_player_turn)
-        #     player.pending = is_true
-        #     self.box_player[txn_sender] = player.copy()
-
-        # TOTAL = 4, ELIM = 2, ADVANCE = 2
-        # if self.players_elim != self.total_players:
-
         self.players_pending += 1
 
         if self.players_pending == self.total_players:
             if self.players_elim != self.total_players:
                 self.total_players -= self.players_elim
-                if self.total_players == 1:
-                    if player.turn == current_player_turn:
-                        player.id = arc4.UInt8(250)
-                        self.box_player[txn_sender] = player.copy()
                 self.current_turn += 1
 
             # RESET LOGIC
