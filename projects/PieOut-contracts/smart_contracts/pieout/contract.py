@@ -1,3 +1,5 @@
+from typing import Literal
+
 from algopy import (
     Account,
     ARC4Contract,
@@ -11,26 +13,26 @@ from algopy import (
     arc4,
     ensure_budget,
     gtxn,
+    itxn,
     op,
     urange,
 )
 
+from lib_pcg import pcg16_init, pcg16_random
+
 # Define constants at module level
-STAKE_AMOUNT = 200_000
+STAKE_AMOUNT_CREATOR = 272_000
+STAKE_AMOUNT_OTHER = 500_000
 MAX_PLAYERS = 10
 ELIM_THRESHOLD = 10992
 
 
 # State struct for player box value
 class PlayerBoxVal(arc4.Struct):
-    id: arc4.UInt8  # Player unique game ID
-    turn: arc4.UInt8  # Current game turn player has reached
-    staked: arc4.Bool  # Whether the player has staked (if True, they are valid player)
-    pending: (
-        arc4.Bool
-    )  # Whether the player is in pending mode (if True, they already use gamba this turn)
-    eliminated: arc4.Bool  # Whether the player is eliminated (if True, game over)
-    winner: arc4.Bool  # Whether the player has won (if True, eligable for prize)
+    turn: arc4.UInt16
+
+    spread: arc4.DynamicArray[arc4.UInt16]
+
 
 
 class Pieout(ARC4Contract):
@@ -39,19 +41,21 @@ class Pieout(ARC4Contract):
     players_pending: UInt64
     players_elim: UInt64
 
-    total_stake: UInt64
     creator_stake_status: UInt64
     staking_finalized: UInt64
 
-    pa_box_offset: UInt64
     current_turn: UInt64
+
+    prize_pool: UInt64
+    prize_pool_claimed: UInt64
+
+    vrf_commit_id: UInt64
 
     # Application init method
     def __init__(self) -> None:
         super().__init__()
         # Box Storage type declarations
         self.box_player = BoxMap(Account, PlayerBoxVal, key_prefix=b"p_")
-        self.box_player_addrs = BoxMap(Bytes, Bytes, key_prefix=b"")
 
     # Calculate the minimum balance requirement (MBR) fee for data storage in a single box unit
     @arc4.abimethod(readonly=True)
@@ -81,137 +85,176 @@ class Pieout(ARC4Contract):
             Txn.sender == Global.creator_address
         ), "Transaction sender address must match application creator address."
 
+        # Initialize Global storage with desired value assignments
         self.total_players = UInt64(0)
         self.players_pending = UInt64(0)
         self.players_elim = UInt64(0)
 
-        self.total_stake = UInt64(0)
         self.creator_stake_status = UInt64(0)
         self.staking_finalized = UInt64(0)
 
-        self.pa_box_offset = UInt64(0)
         self.current_turn = UInt64(0)
 
-    @arc4.abimethod
-    def create_player_addrs_box(self, box_pay: gtxn.PaymentTransaction) -> None:
-        # Get and store commonly used addresses
-        txn_sender = Txn.sender
+        self.prize_pool = UInt64(0)
+        self.prize_pool_claimed = UInt64(0)
 
-        # Fail transaction unless the assertion/s below evaluate/s True
-        assert (
-            txn_sender == Global.creator_address
-        ), "Transaction sender address must match application creator address."
+        self.vrf_commit_id = UInt64(0)
 
-        assert (
-            txn_sender == box_pay.sender
-        ), "stake(): Box payment sender address must match transaction sender address."
-
-        assert (
-            Global.current_application_address == box_pay.receiver
-        ), "stake(): Box payment reciever address must match transaction sender address."
-
-        assert box_pay.amount >= self.calc_single_box_fee(
-            key_size=arc4.UInt8(3), value_size=arc4.UInt16(320)
-        ), "stake(): Insufficient amount. Box pay amount does not cover application MBR."
-
-        # Create new box that will store every player address that staked
-        self.box_player_addrs[Bytes(b"pa_")] = op.bzero(320)
 
     @arc4.abimethod
     def stake(
-        self, box_pay: gtxn.PaymentTransaction, stake_pay: gtxn.PaymentTransaction
+        self,
+        box_pay: gtxn.PaymentTransaction,
+        stake_pay: gtxn.PaymentTransaction,
     ) -> None:
-        # Get and store commonly used addresses
-        txn_sender = Txn.sender
+        # Ensure transaction has sufficient opcode budget
+        ensure_budget(required_budget=6300, fee_source=OpUpFeeSource.GroupCredit)
+
+        # Local scope cache commonly used values
+        txn_id = Txn.tx_id
+        txn_sender_address = Txn.sender
         app_address = Global.current_application_address
         creator_address = Global.creator_address
+        current_round = Global.round
 
+        # Fail transaction unless the assertion/s below evaluate/s True
         assert (
             self.staking_finalized == 0
         ), "stake(): Rejected. Can only stake when staking is not finalized."
 
-        # Fail transaction unless the assertion/s below evaluate/s True
+        assert (
+            txn_sender_address not in self.box_player
+        ), "stake(): Transaction sender address already staked."
+
         if self.creator_stake_status == 0:
             assert (
-                txn_sender == creator_address
+                txn_sender_address == creator_address
             ), "stake(): Rejected. Application creator account must stake first before any other account."
 
             self.creator_stake_status = UInt64(1)
 
+        # NOTE: Below applies only if no intention of deleting box and app, otherwise keep one stake amount
         assert (
-            txn_sender not in self.box_player
-        ), "stake(): Transaction sender address already staked."
+            stake_pay.amount == (STAKE_AMOUNT_CREATOR if txn_sender_address == creator_address else STAKE_AMOUNT_OTHER)
+        ), "stake(): Insufficient amount. Payment transaction does not meet the required stake amount."
 
         assert (
-            txn_sender == box_pay.sender and txn_sender == stake_pay.sender
+            box_pay.amount
+            >= 97_700  #  self.calc_single_box_fee(key_size=arc4.UInt8(34), value_size=arc4.UInt16(204)
+        ), "stake(): Insufficient amount. Box pay amount does not cover application MBR."
+
+        assert (
+            txn_sender_address == box_pay.sender and txn_sender_address == stake_pay.sender
         ), "stake(): Box and Stake payment sender address must match transaction sender address."
 
         assert (
             app_address == box_pay.receiver and app_address == stake_pay.receiver
         ), "stake(): Box and Stake payment reciever address must match transaction sender address."
 
-        assert (
-            box_pay.amount
-            >= 17_300  #  self.calc_single_box_fee(key_size=arc4.UInt8(34), value_size=arc4.UInt16(3)
-        ), "stake(): Insufficient amount. Box pay amount does not cover application MBR."
-
-        assert (
-            stake_pay.amount == STAKE_AMOUNT
-        ), "stake(): Insufficient amount. Stake pay amount does not cover minimum entry fee."
 
         assert self.total_players < MAX_PLAYERS, "stake(): Max player limit exceeded."
 
-        # Assign a Player box to transaction sender
-        # Store sender address as box key and PlayerBoxVal struct as box value
-        is_true = arc4.Bool(True)  # noqa: FBT003
-        is_false = arc4.Bool(False)  # noqa: FBT003
-        self.box_player[txn_sender] = PlayerBoxVal(
-            id=arc4.UInt8(self.total_players),
-            turn=arc4.UInt8(self.current_turn),
-            staked=is_true,
-            pending=is_false,
-            eliminated=is_false,
-            winner=is_false,
+        # Pseudo-randomly select a round offset of 2, 3, or 4
+        round_offset = op.btoi(op.extract(op.sha256(txn_id + op.itob(current_round)), 0, 2)) % 3 + 2
+
+        # Define VRF commit round by adding round offset to current round
+        commit_round = current_round + round_offset
+
+        # Define VRF salt data to influence output seed
+        commit_salt = op.sha256(
+              txn_id
+            + box_pay.txn_id
+            + stake_pay.txn_id
+            + op.itob(self.vrf_commit_id)
         )
 
-        # Increment total stake count by the stake pay amount
-        self.total_stake += stake_pay.amount
+        # Fail transaction unless the assertion below evaluates True
+        assert (
+            current_round >= commit_round  # The commit round is intentionally a future round for security reasons
+        ), "Randomness commit round not reached yet."
+
+        # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        seed = arc4.abi_call[Bytes](
+            "must_get(uint64,byte[])byte[]",
+            commit_round,
+            commit_salt,
+            app_id=600011887,  # TestNet VRF Beacon Application ID
+        )[0]
+
+        # Take a portion of the seed to generate a sequence of random unsigned 16-bit integers
+        state = pcg16_init(seed=op.extract(seed, 16, 8))
+        sequence = pcg16_random(state=state, lower_bound=UInt64(1), upper_bound=UInt64(0), length=UInt64(100))[1]
+
+        # Assign player box to transaction sender
+        self.box_player[txn_sender_address] = PlayerBoxVal(
+            turn=arc4.UInt16(self.current_turn),
+            spread=sequence,
+        )
+
+        # Increment VRF commit ID by 1
+        self.vrf_commit_id += 1
 
         # Increment total players count by 1 for every new player
         self.total_players += 1
 
+        # Increment prize pool by the stake pay amount
+        self.prize_pool += stake_pay.amount
+
         # When max number of players is reached, finalize staking and open gamba
         if self.total_players == MAX_PLAYERS:
             self.staking_finalized = UInt64(1)
-
-        # Replace 32 bytes of zeroes in player addresses box with the transaction sender address
-        if self.pa_box_offset <= 288:
-            op.Box.replace(b"pa_", self.pa_box_offset, txn_sender.bytes)
-            self.pa_box_offset += 32  # Increment offset by address length
-
-    # @arc4.abimethod
-    # def up_ref_budget(self) -> UInt64:
-    #     return UInt64(1337)
-
-    # subroutine
-    # def advance_turn(self) -> UInt64:
-    #     if self.total_pending == MAX_PLAYERS or # Turn time has expired
 
     @arc4.abimethod
     def gamba(self) -> UInt64:
         # Ensure transaction has sufficient opcode budget
         ensure_budget(required_budget=1400, fee_source=OpUpFeeSource.GroupCredit)
 
-        # Get and store commonly used addresses
+        # Local scope cache commonly used values
+        txn_id = Txn.tx_id
         txn_sender = Txn.sender
+        txn_first_valid = Txn.first_valid
         method_selector = Txn.application_args(0)
-
         current_app_id = Global.current_application_id.id
         atxn_group_size = Global.group_size
+        atxn_group_id = Global.group_id
+        current_round = Global.round
 
+        # # NOTE: LOAD COMMIT RAND BOX HERE
+
+        # rand_commit = self.box_rand_commit[txn_sender].copy()
+
+        # # Define VRF salt data to influence output
+        # salt = op.sha256(
+        #     rand_commit.salt.bytes
+        #     + atxn_group_id
+        #     + txn_id
+        #     + op.itob(txn_first_valid)
+        #     + op.itob(self.commit_rand_id)
+        # )
+
+        # # Fail transaction unless the assertion below evaluates True
+        # assert (
+        #     current_round >= rand_commit.round
+        # ), "Randomnes commit round not reached yet."
+
+
+        # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        # seed, rand_itxn = arc4.abi_call[Bytes](
+        #     "must_get(uint64,byte[])byte[]",
+        #     rand_commit.round,
+        #     salt,
+        #     app_id=600011887,  # TestNet VRF Beacon Application ID
+        # )
+
+        # # A temporary RNG seed and roll (use VRF Randomness Beacon call in real use case)
+        temp_seed = op.sha256(op.itob(Global.round) + Txn.tx_id)
+        roll = op.extract_uint16(temp_seed, 16)
+
+        # Create a copy of the player box and store the value turn value of that copy
         player = self.box_player[txn_sender].copy()
         current_player_turn = player.turn.native
 
+        # Fail transaction unless the assertion/s below evaluate/s True
         assert (
             atxn_group_size >= 2 and atxn_group_size <= MAX_PLAYERS
         ), "gamba(): Rejected. Atomic transaction group size is out of bounds."
@@ -246,15 +289,29 @@ class Pieout(ARC4Contract):
             current_player_turn == self.current_turn
         ), "gamba(): Rejected. Transaction sender turn is not aligned with current turn."
 
-        temp_seed = op.sha256(op.itob(Global.round) + Txn.tx_id)
-        roll = op.extract_uint16(temp_seed, 16)
 
-        if roll >= ELIM_THRESHOLD:
+        # If roll is above elimination threshold, player has advanced to next turn
+        if roll >= 33333:
+            # Increment current player turn and store it as the new turn value in player box
             current_player_turn += 1
-            player.turn = arc4.UInt8(current_player_turn)
+            player.turn = arc4.UInt16(current_player_turn)
             self.box_player[txn_sender] = player.copy()
+        # If roll is below elimination threshold, player has been eliminated
         else:
-            self.players_elim += 1
+            self.players_elim += 1  # Increment the players eliminated counter
+
+            # # NOTE: BELOW CAN NOT BE HERE, NEEDS TO BE IN SEPARATE METHOD
+            # del self.box_player[txn_sender]
+
+            # box_player_refund_itxn = itxn.Payment(
+            #     receiver=txn_sender,
+            #     amount=16_900,
+            # ).submit()
+
+            # assert (
+            #     box_player_refund_itxn.receiver == txn_sender
+            # ), "gamba(): Rejected. Box player refund itxn reciever address must match transaction sender address."
+
 
         self.players_pending += 1
 
@@ -263,22 +320,52 @@ class Pieout(ARC4Contract):
                 self.total_players -= self.players_elim
                 self.current_turn += 1
 
-            # RESET LOGIC
             self.players_elim = UInt64(0)
             self.players_pending = UInt64(0)
 
-        # if self.total_pending == MAX_PLAYERS:
-
-        #     # self.up_ref_budget()
-
-        #     player_addrs = self.player_addrs[Bytes(b"pa_")]
-        #     for i in urange(0, player_addrs.length, 32):
-        #         addr = Account.from_bytes(op.extract(player_addrs, i, 32))
-        #         player = self.player[addr].copy()
-        #         player.pending = arc4.Bool(False)  # noqa: FBT003
-        #         self.player[addr] = player.copy()
-
         return roll
+
+
+    @arc4.abimethod
+    def claim_prize_pool(self) -> None:
+        # Local scope cache commonly used values
+        txn_sender = Txn.sender
+
+        # Fail transaction unless the assertion/s below evaluate/s True
+        assert (
+            self.staking_finalized == 1
+        ), "claim_prize_pool(): Rejected. Premature attempt to claim prize pool. Staking must be finalized first."
+
+        assert (
+            self.total_players == 1
+        ), "claim_prize_pool(): Rejected. Premature attempt to claim prize pool. Winner not decided yet."
+
+        assert (
+            self.prize_pool_claimed == 0
+        ), "claim_prize_pool(): Rejected. Prize pool already claimed."
+
+        assert (
+            txn_sender in self.box_player
+        ), "claim_prize_pool(): Rejected. Transaction sender has no box player data to evaluate against."
+
+        player = self.box_player[txn_sender].copy()
+
+        assert (
+            player.turn == self.current_turn
+        ), "claim_prize_pool(): Rejected. Turn mismatch. Transaction sender is not a valid winner address."
+
+        # Mark prize pool as claimed
+        self.prize_pool_claimed = UInt64(1)
+
+        # Transaction sender (winner) recieves the prize pool amount via payment inner transaction
+        itxn.Payment(
+            receiver=txn_sender,
+            amount=self.prize_pool,
+        ).submit()
+
+        # Clear total players and prize pool
+        self.total_players = UInt64(0)
+        self.prize_pool = UInt64(0)
 
     # Allow application creator to delete the smart contract client
     @arc4.abimethod(allow_actions=["DeleteApplication"])
