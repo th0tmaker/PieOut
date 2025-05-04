@@ -2,28 +2,23 @@
 import base64
 import json
 import logging
-import time
 from datetime import datetime
 
 import pytest
 from algokit_utils import (
-    AppCallMethodCallParams,
     AppClientCompilationParams,
     CommonAppCallParams,
     FundAppAccountParams,
     OnSchemaBreak,
     OnUpdate,
     PaymentParams,
-    SendParams,
     TealTemplateParams,
     micro_algo,
 )
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
-from algosdk.abi import Contract, Method
-from algosdk.box_reference import BoxReference
-from algosdk.encoding import decode_address, encode_address
-from algosdk.transaction import Transaction, wait_for_confirmation
+from algosdk.abi import Contract
+from algosdk.transaction import wait_for_confirmation
 
 from smart_contracts.artifacts.pieout.pieout_client import (
     PieoutClient,
@@ -195,32 +190,123 @@ def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
     ), "fund_app_txn.confirmation transaction failed confirmation."
 
 
-def test_reveal_rand(apps: dict[str, PieoutClient]) -> None:
+def test_new_game(creator: SigningAccount, apps: dict[str, PieoutClient]) -> None:
+    max_players = 10
+    box_g_fee = apps["pieout_client_1"].send.calc_single_box_fee((10, 46)).abi_return
+    box_p_fee = (
+        apps["pieout_client_1"]
+        .send.calc_single_box_fee((10, (max_players * 32)))
+        .abi_return
+    )
 
-    reveal_rand_txn = apps["pieout_client_1"].send.reveal_rand(
-        params=CommonAppCallParams(
-            max_fee=micro_algo(10_000),
+    box_g_pay = apps["pieout_client_1"].algorand.create_transaction.payment(
+        PaymentParams(
+            sender=creator.address,
+            signer=creator.signer,
             validity_window=100,
-        ),
-        send_params=SendParams(
-            cover_app_call_inner_transaction_fees=True
+            receiver=apps["pieout_client_1"].app_address,
+            amount=micro_algo(box_g_fee),
+        )
+    )
+
+    box_p_pay = apps["pieout_client_1"].algorand.create_transaction.payment(
+        PaymentParams(
+            sender=creator.address,
+            signer=creator.signer,
+            validity_window=100,
+            receiver=apps["pieout_client_1"].app_address,
+            amount=micro_algo(box_p_fee),
+        )
+    )
+
+    new_game_txn = apps["pieout_client_1"].send.new_game(
+        args=(max_players, box_g_pay, box_p_pay),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+            validity_window=100,
         ),
     )
 
     # Verify transaction was confirmed by the network
     wait_for_confirmation(
-        apps["pieout_client_1"].algorand.client.algod, reveal_rand_txn.tx_id, 3
+        apps["pieout_client_1"].algorand.client.algod, new_game_txn.tx_id, 3
     )
     assert (
-        reveal_rand_txn.confirmation
-    ), "reveal_rand_txn.confirmation transaction failed confirmation."
+        new_game_txn.confirmation
+    ), "new_game_txn.confirmation transaction failed confirmation."
 
     # Log
-    roll_data = reveal_rand_txn.abi_return
-    rolls = [int.from_bytes(roll_data[i:i+2], "big") for i in range(0, len(roll_data), 2)]
-    logger.info(rolls)
-    logger.info(len(rolls))
-    logger.info(len(list(roll_data)))
+    all_boxes = apps["pieout_client_1"].algorand.client.algod.application_boxes(
+        application_id=apps["pieout_client_1"].app_id
+    )
+
+    for box in all_boxes["boxes"]:
+        box_name = base64.b64decode(box["name"])
+
+        # Get box value by name
+        box_response = apps[
+            "pieout_client_1"
+        ].algorand.client.algod.application_box_by_name(
+            application_id=apps["pieout_client_1"].app_id, box_name=box_name
+        )
+
+        box_value = base64.b64decode(box_response["value"])
+        logger.info(f"Box Name: {box_name}, Box Value: {list(box_value)}")
+
+
+def test_join_game(
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
+    apps: dict[str, PieoutClient],
+) -> None:
+
+    game_id = 0
+    join_game_txn = apps["pieout_client_1"].send.join_game(
+        args=(game_id,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+            validity_window=100,
+        ),
+    )
+
+    # Verify transaction was confirmed by the network
+    wait_for_confirmation(
+        apps["pieout_client_1"].algorand.client.algod, join_game_txn.tx_id, 3
+    )
+    assert (
+        join_game_txn.confirmation
+    ), "join_game_txn.confirmation transaction failed confirmation."
+
+    join_game_txn = apps["pieout_client_1"].send.join_game(
+        args=(game_id,),
+        params=CommonAppCallParams(
+            sender=randy_factory["randy_1"].address,
+            signer=randy_factory["randy_1"].signer,
+            validity_window=100,
+        ),
+    )
+
+    # Log
+    all_boxes = apps["pieout_client_1"].algorand.client.algod.application_boxes(
+        application_id=apps["pieout_client_1"].app_id
+    )
+
+    for box in all_boxes["boxes"]:
+        box_name = base64.b64decode(box["name"])
+
+        # Get box value by name
+        box_response = apps[
+            "pieout_client_1"
+        ].algorand.client.algod.application_box_by_name(
+            application_id=apps["pieout_client_1"].app_id, box_name=box_name
+        )
+
+        box_value = base64.b64decode(box_response["value"])
+        logger.info(f"Box Name: {box_name}, Box Value: {list(box_value)}")
+
+
 # def test_stake(
 #     creator: SigningAccount,
 #     randy_factory: dict[str, SigningAccount],
@@ -268,15 +354,16 @@ def test_reveal_rand(apps: dict[str, PieoutClient]) -> None:
 #             _, box_pay, stake_pay = stake_call_params(account)
 
 #             stake_txn = apps["pieout_client_1"].send.stake(
-#                 args=(box_pay, stake_pay),
+#                 args=(box_pay,),
 #                 params=CommonAppCallParams(
 #                     sender=account.address,
 #                     signer=account.signer,
+#                     max_fee=micro_algo(11_000),
 #                     validity_window=100,
-#                     # lease=b"testing-lease"
 #                 ),
 #                 send_params=SendParams(
 #                     populate_app_call_resources=True,
+#                     cover_app_call_inner_transaction_fees=True,
 #                 ),
 #             )
 
@@ -330,12 +417,33 @@ def test_reveal_rand(apps: dict[str, PieoutClient]) -> None:
 #         except Exception as e:
 #             logger.error(f"Atomic group stake transaction failed: {e}")
 
-#     # Run individual stake in different rounds
-#     for account in participants:
-#         try_stake_txn(account)
-#         # box = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
-#         #     apps["pieout_client_1"].app_id, b"pa_")
-#         # logger.info(list(base64.b64decode(box["value"])))
+#     try_stake_txn(participants[0])
+
+#     box = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
+#         apps["pieout_client_1"].app_id, b"p_" + decode_address(participants[0].address)
+#     )
+
+#     logger.info(list(base64.b64decode(box["value"])))
+
+# logger.info(int.from_bytes(bytes=box_byte_arr[:2], byteorder="big"))
+
+# spread = box_byte_arr[6:]
+# numbers = []
+
+# for i in range(0, len(spread), 2):
+#     uint16_bytes = spread[i : i + 2]
+#     number = int.from_bytes(uint16_bytes, byteorder="big")
+#     numbers.append(number)
+
+# logger.info(numbers)
+
+# # Run individual stake in different rounds
+# for account in participants:
+#     try_stake_txn(account)
+# box = apps["pieout_client_1"].algorand.client.algod.application_box_by_name(
+#     apps["pieout_client_1"].app_id, b"pa_")
+# logger.info(list(base64.b64decode(box["value"])))
+
 
 #     # Run atomic stake in same round
 #     # attempt_atomic_stake()
