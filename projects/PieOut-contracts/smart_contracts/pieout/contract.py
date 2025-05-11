@@ -22,13 +22,15 @@ from . import constants as cst
 from . import errors as err
 from . import structs as stc
 from . import subroutines as srt
-from . import type_aliases as taa
+from . import type_aliases as ta
 
 
 class Pieout(ARC4Contract):
     # Global State type declarations
     game_id: UInt64
     vrf_commit_id: UInt64
+    # top_score
+    # top_score_address
 
     # Application init method
     def __init__(self) -> None:
@@ -59,30 +61,35 @@ class Pieout(ARC4Contract):
 
     # Read the smart contract application game state box for given game id
     @arc4.abimethod(readonly=True)
-    def read_game_state(self, game_id: UInt64) -> taa.GameStateTuple:
+    def read_game_state(self, game_id: UInt64) -> ta.GameStateTuple:
         # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[game_id].copy()  # Make a copy of the game state data else immutable
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state data else immutable
 
         # Return the game state as a tuple
-        return taa.GameStateTuple((
-            arc4.UInt64(game_id),
-            game_state.staking_finalized,
-            game_state.max_players,
-            game_state.active_players,
-            game_state.high_score,
-            game_state.box_p_start_pos,
-            game_state.prize_pool,
-            game_state.manager_address,
-            game_state.winner_address,
-        ))
+        return ta.GameStateTuple(
+            (
+                arc4.UInt64(game_id),
+                game_state.staking_finalized,
+                game_state.max_players,
+                game_state.active_players,
+                game_state.highest_score,
+                game_state.box_p_start_pos,
+                game_state.expiry_unix_ts,
+                game_state.prize_pool,
+                game_state.manager_address,
+                game_state.winner_address,
+            )
+        )
 
     # Read the smart contract application game players box for given game id
     @arc4.abimethod(readonly=True)
-    def read_game_players(self, game_id: UInt64) -> taa.GamePlayersArr:
+    def read_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
         # Retrieve current game players from box using the game id parameter
         game_players = self.box_game_players[game_id]
 
-        players = taa.GamePlayersArr()
+        players = ta.GamePlayersArr()
         for i in urange(0, game_players.length, cst.ADDRESS_SIZE):
             player_addr_bytes = op.extract(game_players, i, cst.ADDRESS_SIZE)
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
@@ -110,14 +117,18 @@ class Pieout(ARC4Contract):
         stake_pay: gtxn.PaymentTransaction,
     ) -> None:
         # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[game_id].copy()  # Make a copy of the game state else immutable
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertion below evaluates True
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
         assert game_state.manager_address == Txn.sender, err.INVALID_MANAGER
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
-        assert stake_pay.receiver == Global.current_application_address, err.INVALID_STAKE_PAY_RECIEVER
+        assert (
+            stake_pay.receiver == Global.current_application_address
+        ), err.INVALID_STAKE_PAY_RECIEVER
         assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
 
         # For game players box, replace the sender's address at start index 0
@@ -126,8 +137,9 @@ class Pieout(ARC4Contract):
 
         game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
         game_state.active_players = arc4.UInt8(1)
-        game_state.high_score = arc4.UInt8(0)
+        game_state.highest_score = arc4.UInt8(0)
         game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
+        game_state.expiry_unix_ts = arc4.UInt64(0)
         game_state.prize_pool = arc4.UInt64(cst.STAKE_AMOUNT_MANAGER)
         game_state.winner_address = arc4.Address(Global.zero_address)
 
@@ -145,28 +157,35 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert total_players <= cst.PLAYER_CAP, err.PLAYER_CAP_OVERFLOW
 
-        assert box_s_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-        assert box_p_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
-
-        assert box_s_pay.receiver == Global.current_application_address, err.INVALID_BOX_PAY_RECIEVER
-        assert box_p_pay.receiver == Global.current_application_address, err.INVALID_BOX_PAY_RECIEVER
-        assert stake_pay.receiver == Global.current_application_address, err.INVALID_STAKE_PAY_RECIEVER
-
+        assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
         assert box_s_pay.amount >= cst.BOX_S_FEE, err.INVALID_BOX_PAY_FEE
         assert box_p_pay.amount >= self.calc_single_box_fee(
             key_size=arc4.UInt8(10),
-            value_size=arc4.UInt16(cst.ADDRESS_SIZE * total_players)
+            value_size=arc4.UInt16(cst.ADDRESS_SIZE * total_players),
         ), err.INVALID_BOX_PAY_FEE
-        assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
+
+        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
+        assert box_s_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+        assert box_p_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+
+        assert (
+            stake_pay.receiver == Global.current_application_address
+        ), err.INVALID_STAKE_PAY_RECIEVER
+        assert (
+            box_s_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECIEVER
+        assert (
+            box_p_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECIEVER
 
         # Initialize new game state by writing the default starting values and store them in game state box
         self.box_game_state[self.game_id] = stc.GameState(
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
             max_players=arc4.UInt8(total_players),
             active_players=arc4.UInt8(1),
-            high_score=arc4.UInt8(0),
+            highest_score=arc4.UInt8(0),
             box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
+            expiry_unix_ts=arc4.UInt64(0),
             prize_pool=arc4.UInt64(stake_pay.amount),
             manager_address=arc4.Address(Txn.sender),
             winner_address=arc4.Address(Global.zero_address),
@@ -176,7 +195,9 @@ class Pieout(ARC4Contract):
         self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * total_players)
 
         # For game players box, replace the sender's address at index 0
-        game_players_ref = BoxRef(key=self.box_game_players.key_prefix + op.itob(self.game_id))
+        game_players_ref = BoxRef(
+            key=self.box_game_players.key_prefix + op.itob(self.game_id)
+        )
         game_players_ref.replace(0, Txn.sender.bytes)
 
         # Increment game id by 1 for next new game instance
@@ -191,12 +212,16 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
 
-        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
-        assert stake_pay.receiver == Global.current_application_address, err.INVALID_STAKE_PAY_RECIEVER
         assert stake_pay.amount >= cst.STAKE_AMOUNT_OTHER, err.INVALID_STAKE_PAY_FEE
+        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
+        assert (
+            stake_pay.receiver == Global.current_application_address
+        ), err.INVALID_STAKE_PAY_RECIEVER
 
         # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[game_id].copy()  # Make a copy of the game state else immutable
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state else immutable
 
         assert (
             srt.check_sender_in_game(  # noqa: E712, RUF100
@@ -204,96 +229,134 @@ class Pieout(ARC4Contract):
                 box_game_players=self.box_game_players,
                 player_count=self.box_game_state[game_id].active_players.native,
                 clear_player=False,
-                )
-                == False
+            )
+            == False
         ), err.PLAYER_ACTIVE
 
         assert game_state.active_players <= game_state.max_players, err.FULL_GAME_LOBBY
         assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
         assert (
-            game_state.box_p_start_pos.native < cst.ADDRESS_SIZE * game_state.max_players.native
+            game_state.box_p_start_pos.native
+            < cst.ADDRESS_SIZE * game_state.max_players.native
         ), err.BOX_P_START_POS_OVERFLOW
 
         # For game players box, store the sender's address at the current game state box p_ placement position
-        game_players_ref = BoxRef(key=self.box_game_players.key_prefix + op.itob(game_id))
+        game_players_ref = BoxRef(
+            key=self.box_game_players.key_prefix + op.itob(game_id)
+        )
         game_players_ref.replace(game_state.box_p_start_pos.native, Txn.sender.bytes)
 
         # Increment number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native + 1)
 
         # Increment current game players box offset by 32 so that next player address can be stored
-        game_state.box_p_start_pos = arc4.UInt16(game_state.box_p_start_pos.native + cst.ADDRESS_SIZE)
+        game_state.box_p_start_pos = arc4.UInt16(
+            game_state.box_p_start_pos.native + cst.ADDRESS_SIZE
+        )
 
         # Increment prize pool by stake payment amount
-        game_state.prize_pool = arc4.UInt64(game_state.prize_pool.native + stake_pay.amount)
+        game_state.prize_pool = arc4.UInt64(
+            game_state.prize_pool.native + stake_pay.amount
+        )
 
         # If number of active players equals max players
         if game_state.active_players == game_state.max_players:
-            game_state.staking_finalized = arc4.Bool(True)  # Finalize staking  # noqa: FBT003
+            game_state.expiry_unix_ts = arc4.UInt64(
+                Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
+            )
+
+            game_state.staking_finalized = arc4.Bool(
+                True  # noqa: FBT003
+            )  # Finalize staking
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
-    @arc4.abimethod
-    def commit_rand(
-        self,
-        game_id: UInt64,
-        box_c_pay: gtxn.PaymentTransaction,
-    ) -> None:
-        # Fail transaction unless the assertions below evaluate True
-        assert game_id in self.box_game_state, err.INVALID_GAME_ID
+    # @arc4.abimethod
+    # def commit_rand(
+    #     self,
+    #     game_id: UInt64,
+    #     box_c_pay: gtxn.PaymentTransaction,
+    # ) -> None:
+    #     # Fail transaction unless the assertions below evaluate True
+    #     assert game_id in self.box_game_state, err.INVALID_GAME_ID
 
-        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-        assert box_c_pay.receiver == Global.current_application_address, err.INVALID_BOX_PAY_RECIEVER
-        assert box_c_pay.amount >= cst.BOX_C_FEE, err.INVALID_BOX_PAY_FEE
+    #     assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+    #     assert (
+    #         box_c_pay.receiver == Global.current_application_address
+    #     ), err.INVALID_BOX_PAY_RECIEVER
+    #     assert box_c_pay.amount >= cst.BOX_C_FEE, err.INVALID_BOX_PAY_FEE
 
-        assert (
-            srt.check_sender_in_game(  # noqa: E712, RUF100
-                game_id=game_id,
-                box_game_players=self.box_game_players,
-                player_count=self.box_game_state[game_id].max_players.native,
-                clear_player=False,
-                )
-                == True
-        ), err.INVALID_PLAYER
+    #     assert (
+    #         srt.check_sender_in_game(  # noqa: E712, RUF100
+    #             game_id=game_id,
+    #             box_game_players=self.box_game_players,
+    #             player_count=self.box_game_state[game_id].max_players.native,
+    #             clear_player=False,
+    #         )
+    #         == True
+    #     ), err.INVALID_PLAYER
 
-        # Pseudo-randomly select a round offset of 2, 3, or 4
-        round_offset = (
-            op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 0, 2)) % 3
-            + 2
-        )
+    #     # Pseudo-randomly select a round offset of 2, 3, or 4
+    #     round_offset = (
+    #         op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 0, 2)) % 3
+    #         + 2
+    #     )
 
-        # Define VRF commit round by adding round offset to current round
-        commit_round = Global.round + round_offset
+    #     # Define VRF commit round by adding round offset to current round
+    #     commit_round = Global.round + round_offset
 
-        self.box_commit_rand[Txn.sender] = stc.CommitRand(
-            game_id=arc4.UInt64(game_id),
-            commit_round=arc4.UInt64(commit_round),
-        )
-
+    #     self.box_commit_rand[Txn.sender] = stc.CommitRand(
+    #         game_id=arc4.UInt64(game_id),
+    #         commit_round=arc4.UInt64(commit_round),
+    #     )
 
     @arc4.abimethod
     def play_game(self, game_id: UInt64) -> None:
         # Ensure transaction has sufficient opcode budget
-        ensure_budget(required_budget=14000, fee_source=OpUpFeeSource.GroupCredit)
+        ensure_budget(required_budget=7000, fee_source=OpUpFeeSource.GroupCredit)
 
         # Fail transaction unless the assertions below evaluate True
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
+        assert Txn.sender in self.box_commit_rand
+
         assert (
             srt.check_sender_in_game(  # noqa: E712, RUF100
                 game_id=game_id,
                 box_game_players=self.box_game_players,
                 player_count=self.box_game_state[game_id].max_players.native,
                 clear_player=True,
-                )
-                == True
+            )
+            == True
         ), err.INVALID_PLAYER
 
+        # commit_rand = self.box_commit_rand[Txn.sender].copy()
+
+        # assert game_id == commit_rand.game_id.native
+        # assert (
+        #     Global.round >= commit_rand.commit_round.native
+        # ), err.COMMIT_ROUND_NOT_REACHED
+
+        # # Define VRF salt data to influence output seed
+        # commit_salt = op.sha256(Txn.tx_id + op.itob(self.vrf_commit_id))
+
+        # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        # seed = arc4.abi_call[Bytes](
+        #     "must_get(uint64,byte[])byte[]",
+        #     commit_rand.commit_round.native,
+        #     commit_salt,
+        #     app_id=600011887,  # TestNet VRF Beacon Application ID
+        # )[0]
+
         # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[game_id].copy()  # Make a copy of the game state else immutable
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
+
+        assert game_state.expiry_unix_ts > Global.latest_timestamp
 
         srt.roll_score(Txn.tx_id, game_state, Txn.sender)
 
@@ -334,13 +397,14 @@ class Pieout(ARC4Contract):
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
 
         # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[game_id].copy()  # Make a copy of the game state else immutable
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
         assert game_state.winner_address == Txn.sender, err.INVALID_WINNER
-
 
         # Transaction sender (winner) recieves the prize pool amount via payment inner transaction
         itxn.Payment(
@@ -353,8 +417,6 @@ class Pieout(ARC4Contract):
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
-
-
 
     # @arc4.abimethod
     # def stake(

@@ -192,14 +192,14 @@ def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
 def test_new_game(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
-    apps: dict[str, PieoutClient]
+    apps: dict[str, PieoutClient],
 ) -> None:
     # Method cache application client
     app_client = apps["pieout_client_1"]
 
     # Calculate payment amounts
     manager_stake_amount = 740_600
-    box_g_fee = app_client.send.calc_single_box_fee((10, 46)).abi_return
+    box_s_fee = app_client.send.calc_single_box_fee((10, 54)).abi_return
 
     # Define a nested function that tries to execute the new game method app call transaction
     def try_new_txn(
@@ -207,7 +207,9 @@ def test_new_game(
         max_players: int,
     ) -> None:
         # Calculate payment amounts
-        box_p_fee = app_client.send.calc_single_box_fee((10, max_players * 32)).abi_return
+        box_p_fee = app_client.send.calc_single_box_fee(
+            (10, max_players * 32)
+        ).abi_return
 
         # Define a nested function that handles payment transaction creation
         def create_payment(account: SigningAccount, amount: int) -> Transaction:
@@ -221,7 +223,7 @@ def test_new_game(
             )
 
         # Create the required payment transactions
-        box_g_pay = create_payment(account, box_g_fee)
+        box_g_pay = create_payment(account, box_s_fee)
         box_p_pay = create_payment(account, box_p_fee)
         stake_pay = create_payment(account, manager_stake_amount)
 
@@ -235,9 +237,7 @@ def test_new_game(
         )
 
         # Verify transaction was confirmed by the network
-        wait_for_confirmation(
-            app_client.algorand.client.algod, new_game_txn.tx_id, 3
-        )
+        wait_for_confirmation(app_client.algorand.client.algod, new_game_txn.tx_id, 3)
         assert (
             new_game_txn.confirmation
         ), "new_game_txn.confirmation transaction failed confirmation."
@@ -290,9 +290,7 @@ def test_join_game(
         )
 
         # Verify transaction was confirmed by the network
-        wait_for_confirmation(
-            app_client.algorand.client.algod, join_game_txn.tx_id, 3
-        )
+        wait_for_confirmation(app_client.algorand.client.algod, join_game_txn.tx_id, 3)
         assert (
             join_game_txn.confirmation
         ), "join_game_txn.confirmation transaction failed confirmation."
@@ -311,6 +309,7 @@ def test_join_game(
     # Log
     # log_app_boxes(app_client=app_client, logger=logger)
 
+
 def test_play_game(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
@@ -326,28 +325,32 @@ def test_play_game(
     ) -> None:
 
         play_game_txn = app_client.send.play_game(
-            args=(game_id, ),
+            args=(game_id,),
             params=CommonAppCallParams(
                 max_fee=micro_algo(30_000),
                 sender=account.address,
                 signer=account.signer,
             ),
-            send_params=SendParams(
-                cover_app_call_inner_transaction_fees=True
-            )
+            send_params=SendParams(cover_app_call_inner_transaction_fees=True),
         )
 
         # Verify transaction was confirmed by the network
-        wait_for_confirmation(
-            app_client.algorand.client.algod, play_game_txn.tx_id, 3
-        )
+        wait_for_confirmation(app_client.algorand.client.algod, play_game_txn.tx_id, 3)
         assert (
             play_game_txn.confirmation
         ), "play_game_txn.confirmation transaction failed confirmation."
 
     # Accounts playing game 1
     try_play_txn(account=creator, game_id=1)
-    players_game_1 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
+    players_game_1 = [
+        "randy_1",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+    ]
     for player in players_game_1:
         try_play_txn(account=randy_factory[player], game_id=1)
     # try_play_txn(account=randy_factory["randy_8"], game_id=1)  # <- Should trip assert error
@@ -359,7 +362,7 @@ def test_play_game(
 def test_read_game(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
-    apps: dict[str, PieoutClient]
+    apps: dict[str, PieoutClient],
 ) -> None:
     # Method cache application client
     app_client = apps["pieout_client_1"]
@@ -371,13 +374,17 @@ def test_read_game(
             if data == "state":
                 result = app_client.send.read_game_state(args=(game_id,), params=params)
                 logger.info(result.abi_return)
-                winner_address = result.abi_return[8]
+                winner_address = result.abi_return[9]
                 logger.info(winner_address)
                 return str(winner_address)
             elif data == "players":
-                result = app_client.send.read_game_players(args=(game_id,), params=params)
+                result = app_client.send.read_game_players(
+                    args=(game_id,), params=params
+                )
             else:
-                logger.info(f"No readable reference found for: '{data}' data parameter.")
+                logger.info(
+                    f"No readable reference found for: '{data}' data parameter."
+                )
                 return
 
             logger.info(f"ABI return - {data.upper()} - {result.abi_return}")
@@ -392,10 +399,7 @@ def test_read_game(
     accounts = [creator, *list(randy_factory.values())]
     for acc in accounts:
         if acc.address == winner_address:
-            winner_acc = {
-                "address": acc.address,
-                "private_key": acc.signer.private_key
-            }
+            winner_acc = {"address": acc.address, "private_key": acc.signer.private_key}
 
             # Write the winner account into a json file
             with open("winner_account.json", "w") as file:
@@ -416,7 +420,9 @@ def test_claim_prize_pool(
     app_client = apps["pieout_client_1"]
 
     if winner_account is None:
-        logger.warning("Exited test_claim_prize_pool before completion. No winner account found.")
+        logger.warning(
+            "Exited test_claim_prize_pool before completion. No winner account found."
+        )
         return
 
     def try_claim_prize_pool(
@@ -425,15 +431,13 @@ def test_claim_prize_pool(
     ) -> None:
 
         claim_prize_pool_txn = app_client.send.claim_prize_pool(
-            args=(game_id, ),
+            args=(game_id,),
             params=CommonAppCallParams(
                 max_fee=micro_algo(2000),
                 sender=account.address,
                 signer=account.signer,
             ),
-            send_params=SendParams(
-                cover_app_call_inner_transaction_fees=True
-            )
+            send_params=SendParams(cover_app_call_inner_transaction_fees=True),
         )
 
         # Verify transaction was confirmed by the network
@@ -444,19 +448,19 @@ def test_claim_prize_pool(
             claim_prize_pool_txn.confirmation
         ), "claim_prize_pool_txn.confirmation transaction failed confirmation."
 
-
     # try_claim_prize_pool(account=creator, game_id=1)
     try_claim_prize_pool(account=winner_account, game_id=1)
 
     read_game_state_txn = app_client.send.read_game_state(
-        args=(1, ),
+        args=(1,),
         params=CommonAppCallParams(
             sender=creator.address,
             signer=creator.signer,
-        )
+        ),
     )
 
     logger.info(read_game_state_txn.abi_return)
+
 
 # def test_reset_game(
 #     creator: SigningAccount,
@@ -523,47 +527,47 @@ def test_claim_prize_pool(
 
 #     logger.info(read_game_players_txn.abi_return)
 
-    # # Define a nested function that tries to execute the join game method app call transaction
-    # def try_play_atxn(
-    #     accounts: list[SigningAccount],
-    #     game_id: int,
-    # ) -> None:
+# # Define a nested function that tries to execute the join game method app call transaction
+# def try_play_atxn(
+#     accounts: list[SigningAccount],
+#     game_id: int,
+# ) -> None:
 
-    #     try:
-    #         composer = app_client.new_group().composer()
+#     try:
+#         composer = app_client.new_group().composer()
 
-    #         for acc in accounts:
-    #             composer.add_app_call_method_call(
-    #                 AppCallMethodCallParams(
-    #                     sender=acc.address,
-    #                     signer=acc.signer,
-    #                     note=int(datetime.now().timestamp()).to_bytes(
-    #                         length=8, byteorder="big"
-    #                         ),
-    #                     max_fee=micro_algo(50000),
-    #                     app_id=app_client.app_id,
-    #                     method=Method.from_signature("play_game(uint64)void"),
-    #                     args=[game_id],
-    #                 )
-    #             )
-    #             time.sleep(1)
+#         for acc in accounts:
+#             composer.add_app_call_method_call(
+#                 AppCallMethodCallParams(
+#                     sender=acc.address,
+#                     signer=acc.signer,
+#                     note=int(datetime.now().timestamp()).to_bytes(
+#                         length=8, byteorder="big"
+#                         ),
+#                     max_fee=micro_algo(50000),
+#                     app_id=app_client.app_id,
+#                     method=Method.from_signature("play_game(uint64)void"),
+#                     args=[game_id],
+#                 )
+#             )
+#             time.sleep(1)
 
-    #         composer.send(
-    #             params=SendParams(
-    #                 cover_app_call_inner_transaction_fees=True,
-    #             )
-    #         )
-    #         logger.info(f"atxn group size: {composer.count()}")
-    #         logger.info(len(accounts))
+#         composer.send(
+#             params=SendParams(
+#                 cover_app_call_inner_transaction_fees=True,
+#             )
+#         )
+#         logger.info(f"atxn group size: {composer.count()}")
+#         logger.info(len(accounts))
 
-    #     except Exception as e:
-    #        logger.error(f"Atomic group stake transaction failed: {e}")
+#     except Exception as e:
+#        logger.error(f"Atomic group stake transaction failed: {e}")
 
-    # accounts = list(randy_factory.values())
-    # accounts.remove(randy_factory["randy_7"])
-    # # accounts.remove(randy_factory["randy_8"])
-    # accounts.append(creator)
-    # try_play_atxn(accounts=accounts, game_id=1)
+# accounts = list(randy_factory.values())
+# accounts.remove(randy_factory["randy_7"])
+# # accounts.remove(randy_factory["randy_8"])
+# accounts.append(creator)
+# try_play_atxn(accounts=accounts, game_id=1)
 
 # def test_stake(
 #     creator: SigningAccount,

@@ -12,6 +12,7 @@ GameStateTuple: TypeAlias = arc4.Tuple[
     arc4.UInt8,
     arc4.UInt16,
     arc4.UInt64,
+    arc4.UInt64,
     arc4.Address,
     arc4.Address
 ]
