@@ -82,11 +82,15 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
         score += 1
 
     # Type cast score as an unsigned 8-bit integer
-    new_score = arc4.UInt8(score)
+    uint8_score = arc4.UInt8(score)
+
+    # Emit ARC-28 event for off-chain tracking
+    arc4.emit("player_score(address,uint8)", player, uint8_score)
 
     # If this score beats the current high score, update the game state
-    if new_score > game_state.highest_score:
-        game_state.highest_score = new_score  # Update game state high score
+    if uint8_score > game_state.highest_score:
+        game_state.highest_score = uint8_score  # Update game state high score
         game_state.winner_address = arc4.Address(
             player
         )  # Update game state winner address
+

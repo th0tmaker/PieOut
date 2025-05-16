@@ -28,9 +28,9 @@ from . import type_aliases as ta
 class Pieout(ARC4Contract):
     # Global State type declarations
     game_id: UInt64
-    vrf_commit_id: UInt64
-    # top_score
-    # top_score_address
+    commit_rand_salt_id: UInt64
+    top_score: UInt64
+    top_score_address: Account
 
     # Application init method
     def __init__(self) -> None:
@@ -76,7 +76,7 @@ class Pieout(ARC4Contract):
                 game_state.active_players,
                 game_state.highest_score,
                 game_state.box_p_start_pos,
-                game_state.expiry_unix_ts,
+                game_state.expiry_ts,
                 game_state.prize_pool,
                 game_state.manager_address,
                 game_state.winner_address,
@@ -108,60 +108,27 @@ class Pieout(ARC4Contract):
 
         # Assign Global State variables with their default starting value
         self.game_id = UInt64(0)
-        self.vrf_commit_id = UInt64(0)
+        self.commit_rand_salt_id = UInt64(0)
 
-    @arc4.abimethod
-    def reset_game(
-        self,
-        game_id: UInt64,
-        stake_pay: gtxn.PaymentTransaction,
-    ) -> None:
-        # Retrieve current game state from box using the game id parameter
-        game_state = self.box_game_state[
-            game_id
-        ].copy()  # Make a copy of the game state else immutable
-
-        # Fail transaction unless the assertion below evaluates True
-        assert game_id in self.box_game_state, err.INVALID_GAME_ID
-        assert game_state.manager_address == Txn.sender, err.INVALID_MANAGER
-        assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
-        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
-        assert (
-            stake_pay.receiver == Global.current_application_address
-        ), err.INVALID_STAKE_PAY_RECIEVER
-        assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
-
-        # For game players box, replace the sender's address at start index 0
-        game_players_ref = BoxRef(key=self.box_game_state.key_prefix + op.itob(game_id))
-        game_players_ref.replace(0, Txn.sender.bytes)
-
-        game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
-        game_state.active_players = arc4.UInt8(1)
-        game_state.highest_score = arc4.UInt8(0)
-        game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
-        game_state.expiry_unix_ts = arc4.UInt64(0)
-        game_state.prize_pool = arc4.UInt64(cst.STAKE_AMOUNT_MANAGER)
-        game_state.winner_address = arc4.Address(Global.zero_address)
-
-        # Copy the modified game state and store it as new value of box
-        self.box_game_state[game_id] = game_state.copy()
+        self.top_score = UInt64(0)
+        self.top_score_address = Global.zero_address
 
     @arc4.abimethod
     def new_game(
         self,
-        total_players: UInt64,
+        max_players: UInt64,
         box_s_pay: gtxn.PaymentTransaction,
         box_p_pay: gtxn.PaymentTransaction,
         stake_pay: gtxn.PaymentTransaction,
     ) -> None:
         # Fail transaction unless the assertion below evaluates True
-        assert total_players <= cst.PLAYER_CAP, err.PLAYER_CAP_OVERFLOW
+        assert max_players <= cst.PLAYER_CAP, err.PLAYER_CAP_OVERFLOW
 
         assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
         assert box_s_pay.amount >= cst.BOX_S_FEE, err.INVALID_BOX_PAY_FEE
         assert box_p_pay.amount >= self.calc_single_box_fee(
             key_size=arc4.UInt8(10),
-            value_size=arc4.UInt16(cst.ADDRESS_SIZE * total_players),
+            value_size=arc4.UInt16(cst.ADDRESS_SIZE * max_players),
         ), err.INVALID_BOX_PAY_FEE
 
         assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
@@ -181,24 +148,24 @@ class Pieout(ARC4Contract):
         # Initialize new game state by writing the default starting values and store them in game state box
         self.box_game_state[self.game_id] = stc.GameState(
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
-            max_players=arc4.UInt8(total_players),
+            max_players=arc4.UInt8(max_players),
             active_players=arc4.UInt8(1),
             highest_score=arc4.UInt8(0),
             box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
-            expiry_unix_ts=arc4.UInt64(0),
+            expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL),
             prize_pool=arc4.UInt64(stake_pay.amount),
             manager_address=arc4.Address(Txn.sender),
             winner_address=arc4.Address(Global.zero_address),
         )
 
         # Initialize box with zeroed bytes to store all player addresses (32 bytes per player)
-        self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * total_players)
+        self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * max_players)
 
         # For game players box, replace the sender's address at index 0
-        game_players_ref = BoxRef(
+        game_players_bref = BoxRef(
             key=self.box_game_players.key_prefix + op.itob(self.game_id)
         )
-        game_players_ref.replace(0, Txn.sender.bytes)
+        game_players_bref.replace(0, Txn.sender.bytes)
 
         # Increment game id by 1 for next new game instance
         self.game_id += 1
@@ -233,6 +200,7 @@ class Pieout(ARC4Contract):
             == False
         ), err.PLAYER_ACTIVE
 
+        assert game_state.expiry_ts > Global.latest_timestamp, err.DEADLINE_EXPIRED
         assert game_state.active_players <= game_state.max_players, err.FULL_GAME_LOBBY
         assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
         assert (
@@ -240,11 +208,11 @@ class Pieout(ARC4Contract):
             < cst.ADDRESS_SIZE * game_state.max_players.native
         ), err.BOX_P_START_POS_OVERFLOW
 
-        # For game players box, store the sender's address at the current game state box p_ placement position
-        game_players_ref = BoxRef(
+        # For game players box, store the sender's address at the current game state box p_ start position
+        game_players_bref = BoxRef(
             key=self.box_game_players.key_prefix + op.itob(game_id)
         )
-        game_players_ref.replace(game_state.box_p_start_pos.native, Txn.sender.bytes)
+        game_players_bref.replace(game_state.box_p_start_pos.native, Txn.sender.bytes)
 
         # Increment number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native + 1)
@@ -259,66 +227,109 @@ class Pieout(ARC4Contract):
             game_state.prize_pool.native + stake_pay.amount
         )
 
-        # If number of active players equals max players
-        if game_state.active_players == game_state.max_players:
-            game_state.expiry_unix_ts = arc4.UInt64(
-                Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
-            )
+        # Finalize staking if lobby full or deadline expired
+        if (
+            game_state.expiry_ts <= Global.latest_timestamp
+            or game_state.active_players == game_state.max_players
+        ):
+            # Mark join phase as complete when staking finalized evaluates True
+            game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
 
-            game_state.staking_finalized = arc4.Bool(
-                True  # noqa: FBT003
-            )  # Finalize staking
+            # Establish game play window by setting expiry timestamp
+            game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL))
+
+            # Emit ARC-28 event for off-chain tracking
+            arc4.emit("game_live(bool,uint64)", game_state.staking_finalized, game_state.expiry_ts)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
-    # @arc4.abimethod
-    # def commit_rand(
-    #     self,
-    #     game_id: UInt64,
-    #     box_c_pay: gtxn.PaymentTransaction,
-    # ) -> None:
-    #     # Fail transaction unless the assertions below evaluate True
-    #     assert game_id in self.box_game_state, err.INVALID_GAME_ID
+    @arc4.abimethod
+    def commit_rand(
+        self,
+        game_id: UInt64,
+        box_c_pay: gtxn.PaymentTransaction,
+    ) -> None:
+        # Fail transaction unless the assertions below evaluate True
+        assert game_id in self.box_game_state, err.INVALID_GAME_ID
 
-    #     assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-    #     assert (
-    #         box_c_pay.receiver == Global.current_application_address
-    #     ), err.INVALID_BOX_PAY_RECIEVER
-    #     assert box_c_pay.amount >= cst.BOX_C_FEE, err.INVALID_BOX_PAY_FEE
+        assert box_c_pay.amount >= cst.BOX_C_FEE, err.INVALID_BOX_PAY_FEE
+        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+        assert (
+            box_c_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECIEVER
 
-    #     assert (
-    #         srt.check_sender_in_game(  # noqa: E712, RUF100
-    #             game_id=game_id,
-    #             box_game_players=self.box_game_players,
-    #             player_count=self.box_game_state[game_id].max_players.native,
-    #             clear_player=False,
-    #         )
-    #         == True
-    #     ), err.INVALID_PLAYER
+        assert (
+            srt.check_sender_in_game(  # noqa: E712, RUF100
+                game_id=game_id,
+                box_game_players=self.box_game_players,
+                player_count=self.box_game_state[game_id].max_players.native,
+                clear_player=False,
+            )
+            == True
+        ), err.INVALID_PLAYER
 
-    #     # Pseudo-randomly select a round offset of 2, 3, or 4
-    #     round_offset = (
-    #         op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 0, 2)) % 3
-    #         + 2
-    #     )
+        # Pseudo-randomly select a round offset of 2, 3, or 4
+        round_offset = (
+            op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 16, 2)) % 3
+            + 3
+        )  # Default: +2
 
-    #     # Define VRF commit round by adding round offset to current round
-    #     commit_round = Global.round + round_offset
+        # NOTE: Maybe add user bounded arg that increments current round?
+        # Define VRF commit round by adding round offset to current round
+        commit_round = Global.round + round_offset
 
-    #     self.box_commit_rand[Txn.sender] = stc.CommitRand(
-    #         game_id=arc4.UInt64(game_id),
-    #         commit_round=arc4.UInt64(commit_round),
-    #     )
+        self.box_commit_rand[Txn.sender] = stc.CommitRand(
+            commit_round=arc4.UInt64(commit_round),
+        )
+
+    @arc4.abimethod
+    def del_box_commit_rand(
+        self,
+        game_id: UInt64,
+    ) -> None:
+        # Fail transaction unless the assertions below evaluate True
+        assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
+
+        assert game_id in self.box_game_state, err.INVALID_GAME_ID
+        assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
+
+        assert (
+            srt.check_sender_in_game(  # noqa: E712, RUF100
+                game_id=game_id,
+                box_game_players=self.box_game_players,
+                player_count=self.box_game_state[game_id].max_players.native,
+                clear_player=False,
+            )
+            == True
+        ), err.INVALID_PLAYER
+
+        # NOTE: Alternative delete method with confirmation emitted as ARC-28 event
+        # For commit rand box with sender's address as key, delete box from contract storage
+        # commit_rand_bref = BoxRef(key=self.box_commit_rand.key_prefix + Txn.sender)
+        # is_deleted = commit_rand_bref.delete()
+        # arc4.emit("box_commit_rand_del(address,bool)", Txn.sender, is_deleted)
+
+        # Delete sender box commit rand box from contract storage
+        del self.box_commit_rand[Txn.sender]
+
+        # Submit inner transaction that refunds box commit MBR to sender address
+        itxn.Payment(
+            receiver=Txn.sender,
+            amount=cst.BOX_C_FEE,
+            note="MBR refund payment transaction for box commit rand deletion"
+        ).submit()
 
     @arc4.abimethod
     def play_game(self, game_id: UInt64) -> None:
         # Ensure transaction has sufficient opcode budget
-        ensure_budget(required_budget=7000, fee_source=OpUpFeeSource.GroupCredit)
+        ensure_budget(required_budget=7700, fee_source=OpUpFeeSource.GroupCredit)
 
         # Fail transaction unless the assertions below evaluate True
+        assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
+
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
-        assert Txn.sender in self.box_commit_rand
+        assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
 
         assert (
             srt.check_sender_in_game(  # noqa: E712, RUF100
@@ -330,24 +341,6 @@ class Pieout(ARC4Contract):
             == True
         ), err.INVALID_PLAYER
 
-        # commit_rand = self.box_commit_rand[Txn.sender].copy()
-
-        # assert game_id == commit_rand.game_id.native
-        # assert (
-        #     Global.round >= commit_rand.commit_round.native
-        # ), err.COMMIT_ROUND_NOT_REACHED
-
-        # # Define VRF salt data to influence output seed
-        # commit_salt = op.sha256(Txn.tx_id + op.itob(self.vrf_commit_id))
-
-        # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-        # seed = arc4.abi_call[Bytes](
-        #     "must_get(uint64,byte[])byte[]",
-        #     commit_rand.commit_round.native,
-        #     commit_salt,
-        #     app_id=600011887,  # TestNet VRF Beacon Application ID
-        # )[0]
-
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
@@ -355,13 +348,77 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertions below evaluate True
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
+        assert game_state.expiry_ts > Global.latest_timestamp, err.DEADLINE_EXPIRED
 
-        assert game_state.expiry_unix_ts > Global.latest_timestamp
+        assert (
+            Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
+        ), err.COMMIT_ROUND_NOT_REACHED
 
-        srt.roll_score(Txn.tx_id, game_state, Txn.sender)
+        # Define VRF salt data to influence output seed
+        commit_salt = op.sha256(
+            Txn.tx_id
+            + op.itob(self.commit_rand_salt_id)
+            + op.itob(Global.latest_timestamp)
+        )
+
+        # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        seed = arc4.abi_call[Bytes](
+            "must_get(uint64,byte[])byte[]",
+            self.box_commit_rand[Txn.sender].commit_round.native,
+            commit_salt,
+            app_id=600011887,  # TestNet VRF Beacon Application ID
+        )[0]
+
+        # Increment commit rand salt id by 1
+        self.commit_rand_salt_id += 1
+
+        srt.roll_score(
+            seed,  # Txn.tx_id
+            game_state,
+            Txn.sender
+        )
+
+        # Update global state top score if this game's top score is higher
+        if game_state.highest_score.native > self.top_score:
+            self.top_score = game_state.highest_score.native
+            self.top_score_address = Txn.sender
 
         # Decrement number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
+
+        # Game over if no more active players or deadline expired
+        if (
+            # NOTE: Expiry ts doesn't get checked until someone that hasn't yet send this txn sends it
+            # NOTE: Consider refactor into iso method where game manager can send a txn to check if latest ts
+            # NOTE: -is greater than the game expiry ts; if it is, manager triggers payout
+            # NOTE: Can still leave the check in here but also add the check to the iso method callable by manager
+            game_state.expiry_ts <= Global.latest_timestamp
+            or game_state.active_players.native == 0
+        ) :
+            # Clear box game players data by setting its value to all zeroes
+            self.box_game_players[game_id] = op.bzero(cst.ADDRESS_SIZE * game_state.max_players.native)
+
+            # Mark game as over by setting active players to zero
+            game_state.active_players = arc4.UInt8(0)
+
+            # Establish claim prize pool window by setting expiry timestamp
+            # game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL))
+
+            # Emit ARC-28 event for off-chain tracking
+            arc4.emit("game_over(address,uint8)", game_state.winner_address, game_state.highest_score)
+
+            # NOTE: Current prize pool payout implementation has last sender cover the itxn fee
+            # NOTE: Maybe explore having prize pool payout in isolated method where the winner covers fee
+
+            # Winner address recieves the prize pool amount via payment inner transaction
+            itxn.Payment(
+                receiver=game_state.winner_address.native,
+                amount=game_state.prize_pool.native,
+                note="Prize pool payout payment transaction to winner address"
+            ).submit()
+
+            # Set prize pool amount to zero
+            game_state.prize_pool = arc4.UInt64(0)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
@@ -391,9 +448,86 @@ class Pieout(ARC4Contract):
         #         txn_i.app_id.id == current_app_id
         #     ), "gamba(): Rejected. Application ID mismatch not allowed."
 
+    # @arc4.abimethod
+    # def claim_prize_pool(self, game_id: UInt64) -> None:
+    #     # Fail transaction unless the assertions below evaluate True
+    #     assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
+    #     assert game_id in self.box_game_state, err.INVALID_GAME_ID
+
+    #     # Retrieve current game state from box using the game id parameter
+    #     game_state = self.box_game_state[
+    #         game_id
+    #     ].copy()  # Make a copy of the game state else immutable
+
+    #     # Fail transaction unless the assertions below evaluate True
+    #     assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712, RUF100
+    #     assert game_state.expiry_ts > Global.latest_timestamp, err.DEADLINE_EXPIRED
+    #     assert game_state.winner_address == Txn.sender, err.INVALID_WINNER
+    #     assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
+    #     assert self.box_game_players[game_id] == op.bzero(
+    #         cst.ADDRESS_SIZE * game_state.max_players), err.NON_ZERO_ACTIVE_PLAYERS
+
+    #     # Transaction sender, if winner address, recieves the prize pool amount via payment inner transaction
+    #     itxn.Payment(
+    #         receiver=Txn.sender,
+    #         amount=game_state.prize_pool.native,
+    #         note="Prize pool payout payment transaction to winner address"
+    #     ).submit()
+
+    #     # Set prize pool amount to zero
+    #     game_state.prize_pool = arc4.UInt64(0)
+
+    #     # Copy the modified game state and store it as new value of box
+    #     self.box_game_state[game_id] = game_state.copy()
+
     @arc4.abimethod
-    def claim_prize_pool(self, game_id: UInt64) -> None:
-        # Fail transaction unless the assertion/s below evaluate/s True
+    def reset_game(
+        self,
+        game_id: UInt64,
+        stake_pay: gtxn.PaymentTransaction,
+    ) -> None:
+        # Fail transaction unless the assertions below evaluate True
+        assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.INVALID_GAME_ID
+
+        assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
+        assert (
+            stake_pay.receiver == Global.current_application_address
+        ), err.INVALID_STAKE_PAY_RECIEVER
+        assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
+
+        # Retrieve current game state from box using the game id parameter
+        game_state = self.box_game_state[
+            game_id
+        ].copy()  # Make a copy of the game state else immutable
+
+        # Fail transaction unless the assertions below evaluate True
+        assert game_state.manager_address == Txn.sender, err.INVALID_MANAGER
+        assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
+        assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
+
+        # For game players box, replace the sender's address at start index 0
+        game_players_bref = BoxRef(key=self.box_game_state.key_prefix + op.itob(game_id))
+        game_players_bref.replace(0, Txn.sender.bytes)
+
+        game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
+        game_state.active_players = arc4.UInt8(1)
+        game_state.highest_score = arc4.UInt8(0)
+        game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
+        game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL)
+        game_state.prize_pool = arc4.UInt64(game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER)
+        game_state.winner_address = arc4.Address(Global.zero_address)
+
+        # Copy the modified game state and store it as new value of box
+        self.box_game_state[game_id] = game_state.copy()
+
+    @arc4.abimethod
+    def delete_game(
+        self,
+        game_id: UInt64,
+    ) -> None:
+        # Fail transaction unless the assertions below evaluate True
+        assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
 
         # Retrieve current game state from box using the game id parameter
@@ -402,21 +536,43 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
-        assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
-        assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
-        assert game_state.winner_address == Txn.sender, err.INVALID_WINNER
+        assert game_state.manager_address == Txn.sender, err.INVALID_MANAGER
 
-        # Transaction sender (winner) recieves the prize pool amount via payment inner transaction
+        # Ensure zero active players OR only player left is the manager
+        if game_state.active_players.native == 1:
+            txn_sender_in_game = srt.check_sender_in_game(
+                game_id=game_id,
+                box_game_players=self.box_game_players,
+                player_count=game_state.max_players.native,
+                clear_player=False,
+            )
+            assert txn_sender_in_game == True, err.MANAGER_SOLE_PLAYER  # noqa: E712
+
+            # Manager address recieves the prize pool amount via payment inner transaction
+            itxn.Payment(
+                receiver=Txn.sender,
+                amount=game_state.prize_pool.native,
+                note="Prize pool payout payment transaction to manager address after game deletion"
+            ).submit()
+
+        else:
+            assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
+            assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
+
+        # Delete box game state and box game players from contract storage
+        del self.box_game_state[game_id]
+        del self.box_game_players[game_id]
+
+        box_p_fee = self.calc_single_box_fee(
+            key_size=arc4.UInt8(10),
+            value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native))
+
+        # Submit inner transaction that refunds box commit MBR to sender address
         itxn.Payment(
             receiver=Txn.sender,
-            amount=game_state.prize_pool.native,
+            amount=cst.BOX_S_FEE + box_p_fee,
+            note="MBR refund payment transaction for box commit rand deletion"
         ).submit()
-
-        # Set prize pool amount to zero
-        game_state.prize_pool = arc4.UInt64(0)
-
-        # Copy the modified game state and store it as new value of box
-        self.box_game_state[game_id] = game_state.copy()
 
     # @arc4.abimethod
     # def stake(
@@ -484,7 +640,7 @@ class Pieout(ARC4Contract):
 
     #     # # Define VRF salt data to influence output seed
     #     # commit_salt = op.sha256(
-    #     #     txn_id + box_pay.txn_id + stake_pay.txn_id + op.itob(self.vrf_commit_id)
+    #     #     txn_id + box_pay.txn_id + stake_pay.txn_id + op.itob(self.commit_rand_salt_id)
     #     # )
 
     #     # # Fail transaction unless the assertion below evaluates True
@@ -527,7 +683,7 @@ class Pieout(ARC4Contract):
     #     )
 
     #     # Increment VRF commit ID by 1
-    #     self.vrf_commit_id += 1
+    #     self.commit_rand_salt_id += 1
 
     #     # Increment total players count by 1 for every new player
     #     self.total_players += 1
@@ -564,13 +720,13 @@ class Pieout(ARC4Contract):
     #     #     + atxn_group_id
     #     #     + txn_id
     #     #     + op.itob(txn_first_valid)
-    #     #     + op.itob(self.commit_rand_id)
+    #     #     + op.itob(self.commit_rand_salt_id)
     #     # )
 
     #     # # Fail transaction unless the assertion below evaluates True
     #     # assert (
     #     #     current_round >= rand_commit.round
-    #     # ), "Randomnes commit round not reached yet."
+    #     # ), "Randomness commit round not reached yet."
 
     #     # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
     #     # seed, rand_itxn = arc4.abi_call[Bytes](
@@ -701,11 +857,8 @@ class Pieout(ARC4Contract):
     # Allow application creator to delete the smart contract client
     @arc4.abimethod(allow_actions=["DeleteApplication"])
     def terminate(self) -> None:
-        # Fail transaction unless the assertion/s below evaluate/s True
-        assert (
-            Txn.sender == Global.creator_address
-        ), "Transaction sender address must match application creator address."
+        # Fail transaction unless the assertions below evaluate True
+        assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
+        assert TemplateVar[bool]("DELETABLE"), err.DELETEABLE_NOT_TRUE
 
-        assert TemplateVar[bool](
-            "DELETABLE"
-        ), "Template variable 'DELETABLE' needs to be 'True' at deploy-time."
+
