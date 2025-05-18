@@ -63,7 +63,7 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
         state=state,  # Data type is UInt16
         lower_bound=UInt64(1),  # Lower bound is 1 (to disallow 0 as a value)
         upper_bound=UInt64(0),  # Upper bound is 0 (to indicate full range)
-        length=UInt64(100),  # Number of values is 100
+        length=UInt64(255),  # Number of values generated is 100
     )[1]
 
     # Initialize the player's score
@@ -93,4 +93,3 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
         game_state.winner_address = arc4.Address(
             player
         )  # Update game state winner address
-

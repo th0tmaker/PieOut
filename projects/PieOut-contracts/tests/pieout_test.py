@@ -93,7 +93,7 @@ def accs() -> dict[str, SigningAccount]:
     accs = {
         name: SigningAccount(
             private_key=testnet_accs[name]["private_key"],
-            address=testnet_accs[name]["address"]
+            address=testnet_accs[name]["address"],
         )
         for name in ["creator"] + [f"randy_{i}" for i in range(1, 8)]
     }  # Change range `stop` param to add more accounts
@@ -109,7 +109,7 @@ def accs() -> dict[str, SigningAccount]:
 def app_factory(
     algorand: AlgorandClient,
     # creator: SigningAccount,
-    accs: dict[str, SigningAccount]
+    accs: dict[str, SigningAccount],
 ) -> PieoutFactory:
     creator = accs["creator"]
     return algorand.client.get_typed_app_factory(
@@ -168,7 +168,7 @@ def sc_client(app_factory: PieoutFactory) -> PieoutClient:
         ),
     )[0]
 
-    # Return the deployed OpalTokenClient with creator as default sender and signer
+    # Return the deployed PieoutClient with creator as default sender and signer
     return sc_client
 
 
@@ -185,7 +185,7 @@ def apps(
         f"APP CLIENT 1 ID: {apps['pieout_client_1'].app_id}"
     )  #  Check client 1 app ID
 
-    # Return apps dict with app clients (output: dict[str, OpalTokenClient])
+    # Return apps dict with app clients (output: dict[str, PieoutClient])
     return apps
 
 
@@ -238,11 +238,12 @@ def test_new_game(
     # randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
     accs: dict[str, SigningAccount],
-    ) -> None:
+) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
     creator = accs["creator"]
     randy_1 = accs["randy_1"]
+
     # Define nested function to try `new_game` method call
     def try_new_game_txn(
         account: SigningAccount,
@@ -250,12 +251,20 @@ def test_new_game(
     ) -> None:
         # Define payment amounts
         # box_s_fee = app_client.send.calc_single_box_fee((10, 86)).abi_return
-        box_p_fee = app_client.send.calc_single_box_fee((10, max_players * 32)).abi_return
+        box_p_fee = app_client.send.calc_single_box_fee(
+            (10, max_players * 32)
+        ).abi_return
 
         # Create the required payment transactions
-        box_g_pay = create_payment_txn(app_client, account, cst.BOX_S_FEE)  # Game box storage fee
-        box_p_pay = create_payment_txn(app_client, account, box_p_fee)  # Game box players fee
-        stake_pay = create_payment_txn(app_client, account, cst.STAKE_AMOUNT_MANAGER)  # Manager stake deposit
+        box_g_pay = create_payment_txn(
+            app_client, account, cst.BOX_S_FEE
+        )  # Game box storage fee
+        box_p_pay = create_payment_txn(
+            app_client, account, box_p_fee
+        )  # Game box players fee
+        stake_pay = create_payment_txn(
+            app_client, account, cst.STAKE_AMOUNT_MANAGER
+        )  # Manager stake deposit
 
         # Send app call transaction to smart contract method `new_game`
         send_app_call_txn(
@@ -263,7 +272,7 @@ def test_new_game(
             account=account,
             method=app_client.send.new_game,
             args=(max_players, box_g_pay, box_p_pay, stake_pay),
-            description="New Game App Call"
+            description="New Game App Call",
         )
 
     # Call try new game transaction function
@@ -301,7 +310,9 @@ def test_join_game(
         other_stake_amount = 1_000_000
 
         # Create the required payment transactions
-        stake_pay = create_payment_txn(app_client, account, other_stake_amount)  # Other stake deposit
+        stake_pay = create_payment_txn(
+            app_client, account, other_stake_amount
+        )  # Other stake deposit
 
         # Send app call transaction to smart contract method `join_game`
         send_app_call_txn(
@@ -309,7 +320,7 @@ def test_join_game(
             account=account,
             method=app_client.send.join_game,
             args=(game_id, stake_pay),
-            description="Join Game App Call"
+            description="Join Game App Call",
         )
 
     # NOTE: Accounts joining Game 0 for LocalNet testing
@@ -324,7 +335,15 @@ def test_join_game(
     #     try_join_txn(account=randy_factory[player], game_id=1)
 
     # NOTE: Accounts joinging Game 1 for TestNet testing
-    players_game_1 = ["creator", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
+    players_game_1 = [
+        "creator",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+    ]
     for player in players_game_1:
         # Since they are creator of Game 1, randy_1 acc is already a player by default
         try_join_txn(account=accs[player], game_id=1)
@@ -346,14 +365,16 @@ def test_commit_rand(
 
     # Define nested function to try `commit_rand` method call
     def try_commit_rand_txn(
-            account: SigningAccount,
-            game_id: int,
+        account: SigningAccount,
+        game_id: int,
     ) -> None:
         # Define payment amounts
         # box_c_fee = app_client.send.calc_single_box_fee((34, 8)).abi_return
 
         # Create the required payment transactions
-        box_c_pay = create_payment_txn(app_client, account, cst.BOX_C_FEE)  # Commit rand box fee
+        box_c_pay = create_payment_txn(
+            app_client, account, cst.BOX_C_FEE
+        )  # Commit rand box fee
 
         # Send app call transaction to smart contract method `commit_rand`
         send_app_call_txn(
@@ -361,7 +382,7 @@ def test_commit_rand(
             account=account,
             method=app_client.send.commit_rand,
             args=(game_id, box_c_pay),
-            description="Commit Rand App Call"
+            description="Commit Rand App Call",
         )
 
     # # Accounts commiting rand game 0
@@ -377,14 +398,22 @@ def test_commit_rand(
     #     "randy_9",
     # ]
 
-
     try_commit_rand_txn(accs["creator"], 0)
     # for player in players_game_0:
     #     try_commit_rand_txn(account=randy_factory[player], game_id=0)
 
     # Accounts commiting rand game 1
     # try_commit_rand_txn(account=creator, game_id=1)
-    players_game_1 = ["creator", "randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
+    players_game_1 = [
+        "creator",
+        "randy_1",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+    ]
     for player in players_game_1:
         try_commit_rand_txn(accs[player], 1)
 
@@ -447,9 +476,9 @@ def test_play_game(
             account=account,
             method=app_client.send.play_game,
             args=(game_id,),
-            max_fee=micro_algo(15_000),
+            max_fee=micro_algo(80_000),
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
-            description="Play Game App Call"
+            description="Play Game App Call",
         )
 
     # # Accounts playing game 0
@@ -462,7 +491,16 @@ def test_play_game(
 
     # Accounts playing game 1
     # try_play_txn(account=creator, game_id=1)
-    players_game_1 = ["creator", "randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
+    players_game_1 = [
+        "creator",
+        "randy_1",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+    ]
     for player in players_game_1:
         try_play_txn(account=accs[player], game_id=1)
     # try_play_txn(account=randy_factory["randy_8"], game_id=1)  # <- Should trip assert error
@@ -474,13 +512,17 @@ def test_play_game(
     log_app_boxes(app_client=app_client, logger=logger)
 
     read_game0_state_txn = app_client.send.read_game_state(
-        args=(0, ),
-        params=CommonAppCallParams(sender=accs["creator"].address, signer=accs["creator"].signer),
+        args=(0,),
+        params=CommonAppCallParams(
+            sender=accs["creator"].address, signer=accs["creator"].signer
+        ),
     )
 
     read_game1_state_txn = app_client.send.read_game_state(
-        args=(1, ),
-        params=CommonAppCallParams(sender=accs["creator"].address, signer=accs["creator"].signer),
+        args=(1,),
+        params=CommonAppCallParams(
+            sender=accs["creator"].address, signer=accs["creator"].signer
+        ),
     )
 
     logger.info(read_game0_state_txn.abi_return)
@@ -637,6 +679,7 @@ def test_play_game(
 #     logger.info(read_game0_state_txn.abi_return)
 #     logger.info(read_game1_state_txn.abi_return)
 
+
 # Test case for executing an app call transaction to the `delete_game` method of the smart contract
 def test_delete_game(
     # creator: SigningAccount,
@@ -662,7 +705,7 @@ def test_delete_game(
             args=(game_id,),
             max_fee=micro_algo(3_000),
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
-            description="Delete Game App Call"
+            description="Delete Game App Call",
         )
 
     try_delete_txn(account=creator, game_id=0)
@@ -673,7 +716,7 @@ def test_delete_game(
     # )
 
     read_game1_state_txn = app_client.send.read_game_state(
-        args=(1, ),
+        args=(1,),
         params=CommonAppCallParams(sender=creator.address, signer=creator.signer),
     )
 

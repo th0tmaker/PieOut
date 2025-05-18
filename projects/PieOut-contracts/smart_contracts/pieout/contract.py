@@ -236,10 +236,16 @@ class Pieout(ARC4Contract):
             game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
 
             # Establish game play window by setting expiry timestamp
-            game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL))
+            game_state.expiry_ts = arc4.UInt64(
+                Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
+            )
 
             # Emit ARC-28 event for off-chain tracking
-            arc4.emit("game_live(bool,uint64)", game_state.staking_finalized, game_state.expiry_ts)
+            arc4.emit(
+                "game_live(bool,uint64)",
+                game_state.staking_finalized,
+                game_state.expiry_ts,
+            )
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
@@ -272,7 +278,7 @@ class Pieout(ARC4Contract):
         # Pseudo-randomly select a round offset of 2, 3, or 4
         round_offset = (
             op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 16, 2)) % 3
-            + 3
+            + 4
         )  # Default: +2
 
         # NOTE: Maybe add user bounded arg that increments current round?
@@ -317,13 +323,13 @@ class Pieout(ARC4Contract):
         itxn.Payment(
             receiver=Txn.sender,
             amount=cst.BOX_C_FEE,
-            note="MBR refund payment transaction for box commit rand deletion"
+            note="MBR refund payment transaction for box commit rand deletion",
         ).submit()
 
     @arc4.abimethod
     def play_game(self, game_id: UInt64) -> None:
         # Ensure transaction has sufficient opcode budget
-        ensure_budget(required_budget=7700, fee_source=OpUpFeeSource.GroupCredit)
+        ensure_budget(required_budget=36000, fee_source=OpUpFeeSource.GroupCredit)
 
         # Fail transaction unless the assertions below evaluate True
         assert Global.group_size <= 1, err.STANDALONE_TXN_ONLY
@@ -372,11 +378,7 @@ class Pieout(ARC4Contract):
         # Increment commit rand salt id by 1
         self.commit_rand_salt_id += 1
 
-        srt.roll_score(
-            seed,  # Txn.tx_id
-            game_state,
-            Txn.sender
-        )
+        srt.roll_score(seed, game_state, Txn.sender)  # Txn.tx_id
 
         # Update global state top score if this game's top score is higher
         if game_state.highest_score.native > self.top_score:
@@ -394,9 +396,11 @@ class Pieout(ARC4Contract):
             # NOTE: Can still leave the check in here but also add the check to the iso method callable by manager
             game_state.expiry_ts <= Global.latest_timestamp
             or game_state.active_players.native == 0
-        ) :
+        ):
             # Clear box game players data by setting its value to all zeroes
-            self.box_game_players[game_id] = op.bzero(cst.ADDRESS_SIZE * game_state.max_players.native)
+            self.box_game_players[game_id] = op.bzero(
+                cst.ADDRESS_SIZE * game_state.max_players.native
+            )
 
             # Mark game as over by setting active players to zero
             game_state.active_players = arc4.UInt8(0)
@@ -405,7 +409,11 @@ class Pieout(ARC4Contract):
             # game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL))
 
             # Emit ARC-28 event for off-chain tracking
-            arc4.emit("game_over(address,uint8)", game_state.winner_address, game_state.highest_score)
+            arc4.emit(
+                "game_over(address,uint8)",
+                game_state.winner_address,
+                game_state.highest_score,
+            )
 
             # NOTE: Current prize pool payout implementation has last sender cover the itxn fee
             # NOTE: Maybe explore having prize pool payout in isolated method where the winner covers fee
@@ -414,7 +422,7 @@ class Pieout(ARC4Contract):
             itxn.Payment(
                 receiver=game_state.winner_address.native,
                 amount=game_state.prize_pool.native,
-                note="Prize pool payout payment transaction to winner address"
+                note="Prize pool payout payment transaction to winner address",
             ).submit()
 
             # Set prize pool amount to zero
@@ -507,15 +515,21 @@ class Pieout(ARC4Contract):
         assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
 
         # For game players box, replace the sender's address at start index 0
-        game_players_bref = BoxRef(key=self.box_game_state.key_prefix + op.itob(game_id))
+        game_players_bref = BoxRef(
+            key=self.box_game_state.key_prefix + op.itob(game_id)
+        )
         game_players_bref.replace(0, Txn.sender.bytes)
 
         game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
         game_state.active_players = arc4.UInt8(1)
         game_state.highest_score = arc4.UInt8(0)
         game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
-        game_state.expiry_ts = arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL)
-        game_state.prize_pool = arc4.UInt64(game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER)
+        game_state.expiry_ts = arc4.UInt64(
+            Global.latest_timestamp + cst.EXPIRY_INTERVAL
+        )
+        game_state.prize_pool = arc4.UInt64(
+            game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER
+        )
         game_state.winner_address = arc4.Address(Global.zero_address)
 
         # Copy the modified game state and store it as new value of box
@@ -552,7 +566,7 @@ class Pieout(ARC4Contract):
             itxn.Payment(
                 receiver=Txn.sender,
                 amount=game_state.prize_pool.native,
-                note="Prize pool payout payment transaction to manager address after game deletion"
+                note="Prize pool payout payment transaction to manager address after game deletion",
             ).submit()
 
         else:
@@ -565,13 +579,14 @@ class Pieout(ARC4Contract):
 
         box_p_fee = self.calc_single_box_fee(
             key_size=arc4.UInt8(10),
-            value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native))
+            value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native),
+        )
 
         # Submit inner transaction that refunds box commit MBR to sender address
         itxn.Payment(
             receiver=Txn.sender,
             amount=cst.BOX_S_FEE + box_p_fee,
-            note="MBR refund payment transaction for box commit rand deletion"
+            note="MBR refund payment transaction for box commit rand deletion",
         ).submit()
 
     # @arc4.abimethod
@@ -860,5 +875,3 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertions below evaluate True
         assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
         assert TemplateVar[bool]("DELETABLE"), err.DELETEABLE_NOT_TRUE
-
-
