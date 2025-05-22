@@ -10,6 +10,7 @@ from algokit_utils import (
     FundAppAccountParams,
     OnSchemaBreak,
     OnUpdate,
+    PaymentParams,
     SendParams,
     TealTemplateParams,
     micro_algo,
@@ -18,8 +19,8 @@ from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
 from algosdk.abi import Contract
 from algosdk.transaction import wait_for_confirmation
-from dotenv import load_dotenv
 
+# from dotenv import load_dotenv
 from smart_contracts.artifacts.pieout.pieout_client import (
     PieoutClient,
     PieoutFactory,
@@ -32,14 +33,14 @@ from .helpers import create_payment_txn, log_app_boxes, send_app_call_txn
 from .subscriber import (
     AlgorandSubscriber,
     create_subscriber,
-    # log_subbed_arc28_events
+    # log_subbed_arc28_events,
 )
 
 # Setup the logging.Logger
 logger = logging.getLogger(__name__)
 
 # Load TestNet environment variables
-load_dotenv(".env.testnet")
+# load_dotenv(".env.testnet")
 
 
 # Return an instance of the AlgorandClient object from the default localnet config
@@ -49,102 +50,95 @@ def algorand() -> AlgorandClient:
     algorand.set_default_validity_window(100)
     return algorand
 
-
 # Return an instance of the AlgorandSubscriber object to listen for network events
 @pytest.fixture(scope="session")
 def subscriber(algorand: AlgorandClient) -> AlgorandSubscriber:
-    return create_subscriber(algod_client=algorand.client.algod, max_rounds_to_sync=100)
+    return create_subscriber(algod_client=algorand.client.algod, max_rounds_to_sync=50)
 
-
-# # Return a dispenser account as SigningAccount object that will fund other accounts
-# @pytest.fixture(scope="session")
-# def dispenser(algorand: AlgorandClient) -> SigningAccount:
-#     # return algorand.account.dispenser_from_environment()  # LocalNet
-#     return algorand.client.get_testnet_dispenser()  # TestNet
-
-
-# # Generate a random account that will act as the default creator account for testing
-# @pytest.fixture(scope="session")
-# def creator(algorand: AlgorandClient, dispenser: SigningAccount) -> SigningAccount:
-#     # Create a random Algorand account to represent the creator account
-#     creator = algorand.account.random()
-
-#     # Send signed payment transaction using the Algorand client
-#     algorand.send.payment(
-#         PaymentParams(
-#             sender=dispenser.address,
-#             signer=dispenser.signer,
-#             receiver=creator.address,
-#             amount=micro_algo(50_000_000),
-#         )
-#     )
-#     # Return the creator account
-#     return creator
-
-
-# Create a dictionary to store any TestNet accounts that were genereated and written to a JSON file
+# Return a dispenser account as SigningAccount object that will fund other accounts
 @pytest.fixture(scope="session")
-def accs() -> dict[str, SigningAccount]:
-    # Load TestNet account data from JSON
-    with open("testnet_accs.json") as f:
-        testnet_accs = json.load(f)
+def dispenser(algorand: AlgorandClient) -> SigningAccount:
+    return algorand.account.dispenser_from_environment()  # LocalNet
+    # return algorand.client.get_testnet_dispenser()  # TestNet
 
-    # Create a dictionary to store accounts for easy access
-    accs = {
-        name: SigningAccount(
-            private_key=testnet_accs[name]["private_key"],
-            address=testnet_accs[name]["address"],
+# Generate a random account that will act as the default creator account for testing
+@pytest.fixture(scope="session")
+def creator(algorand: AlgorandClient, dispenser: SigningAccount) -> SigningAccount:
+    # Create a random Algorand account to represent the creator account
+    creator = algorand.account.random()
+
+    # Send signed payment transaction using the Algorand client
+    algorand.send.payment(
+        PaymentParams(
+            sender=dispenser.address,
+            signer=dispenser.signer,
+            receiver=creator.address,
+            amount=micro_algo(50_000_000),
         )
-        for name in ["creator"] + [f"randy_{i}" for i in range(1, 8)]
-    }  # Change range `stop` param to add more accounts
+    )
+    # Return the creator account
+    return creator
 
-    # NOTE: Don't forget to fund the accounts with TestNet ALGO!
-    # Use a.) `TestNetDispenserApiClient` or b.) `https://bank.testnet.algorand.network/`
+# # Create a dictionary to store any TestNet accounts that were genereated and written to a JSON file
+# @pytest.fixture(scope="session")
+# def accs() -> dict[str, SigningAccount]:
+#     # Load TestNet account data from JSON
+#     with open("testnet_accs.json") as f:
+#         testnet_accs = json.load(f)
 
-    return accs
+#     # Create a dictionary to store accounts for easy access
+#     accs = {
+#         name: SigningAccount(
+#             private_key=testnet_accs[name]["private_key"],
+#             address=testnet_accs[name]["address"],
+#         )
+#         for name in ["creator"] + [f"randy_{i}" for i in range(1, 8)]
+#     }  # Change range `stop` param to add more accounts
 
+#     # NOTE: Don't forget to fund the accounts with TestNet ALGO!
+#     # Use a.) `TestNetDispenserApiClient` or b.) `https://bank.testnet.algorand.network/`
+
+#     return accs
 
 # Return a typed smart contract factory with default sender and signer
 @pytest.fixture(scope="session")
 def app_factory(
     algorand: AlgorandClient,
-    # creator: SigningAccount,
-    accs: dict[str, SigningAccount],
+    creator: SigningAccount,
+    # accs: dict[str, SigningAccount],
 ) -> PieoutFactory:
-    creator = accs["creator"]
+    # creator = accs["creator"]
     return algorand.client.get_typed_app_factory(
         PieoutFactory,
         default_sender=creator.address,
         default_signer=creator.signer,
     )
 
+# Create a factory that can generate an arbitrary amount of random localnet test accounts called Randy
+@pytest.fixture(scope="session")
+def randy_factory(algorand: AlgorandClient, dispenser: SigningAccount) -> dict:
+    # Define the number of randy accounts that will be created and used for testing
+    randy_accounts = 9
 
-# # Create a factory that can generate an arbitrary amount of random localnet test accounts called Randy
-# @pytest.fixture(scope="session")
-# def randy_factory(algorand: AlgorandClient, dispenser: SigningAccount) -> dict:
-#     # Define the number of randy accounts that will be created and used for testing
-#     randy_accounts = 9
+    # Create a list to store all the randy accounts that were randomly generated by the Algorand client
+    randies = [algorand.account.random() for _ in range(randy_accounts)]
 
-#     # Create a list to store all the randy accounts that were randomly generated by the Algorand client
-#     randies = [algorand.account.random() for _ in range(randy_accounts)]
+    # Create a list to store all the funding amounts (first randy gets 30_000_000, subsequent ones get 1_000_000 less)
+    funding_amounts = [30_000_000 - i * 1_000_000 for i in range(randy_accounts)]
 
-#     # Create a list to store all the funding amounts (first randy gets 30_000_000, subsequent ones get 1_000_000 less)
-#     funding_amounts = [30_000_000 - i * 1_000_000 for i in range(randy_accounts)]
+    # Take the matching indices of both lists and zip them into a tuple then iterate through a new list of these tuples
+    for randy, amount in zip(randies, funding_amounts):
+        algorand.send.payment(
+            PaymentParams(
+                sender=dispenser.address,
+                signer=dispenser.signer,
+                receiver=randy.address,
+                amount=micro_algo(amount),
+            )
+        )  # Send signed txn through the Algorand client
 
-#     # Take the matching indices of both lists and zip them into a tuple then iterate through a new list of these tuples
-#     for randy, amount in zip(randies, funding_amounts):
-#         algorand.send.payment(
-#             PaymentParams(
-#                 sender=dispenser.address,
-#                 signer=dispenser.signer,
-#                 receiver=randy.address,
-#                 amount=micro_algo(amount),
-#             )
-#         )  # Send signed txn through the Algorand client
-
-#     # Return a dict with all randy accounts (output: dict[str, AddressAndSigner])
-#     return {f"randy_{i+1}": randy for i, randy in enumerate(randies)}
-
+    # Return a dict with all randy accounts (output: dict[str, AddressAndSigner])
+    return {f"randy_{i+1}": randy for i, randy in enumerate(randies)}
 
 # Create smart contract client using factory deploy method
 @pytest.fixture(scope="session")
@@ -171,7 +165,6 @@ def sc_client(app_factory: PieoutFactory) -> PieoutClient:
     # Return the deployed PieoutClient with creator as default sender and signer
     return sc_client
 
-
 # Create a dict called apps that stores as many smart contract clients as needed
 @pytest.fixture(scope="session")
 def apps(
@@ -188,7 +181,6 @@ def apps(
     # Return apps dict with app clients (output: dict[str, PieoutClient])
     return apps
 
-
 # Return an ABI compliant Contract object made from the smart contract json file
 @pytest.fixture(scope="session")
 def sc() -> Contract:
@@ -197,7 +189,6 @@ def sc() -> Contract:
 
     # return Contract.from_json(json.dumps(js["methods"])) <- if you want specific key
     return Contract.from_json(json.dumps(js))
-
 
 # Helper method to retrieve the winning player from a JSON file
 @pytest.fixture(scope="session")
@@ -212,7 +203,6 @@ def winner_account() -> SigningAccount | None:
         return SigningAccount(address=address, private_key=private_key)
     except (FileNotFoundError, KeyError, json.JSONDecodeError):
         return None
-
 
 # Fund smart contract app account (app creator is account doing the funding, implied by use of their client instance)
 def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
@@ -231,18 +221,19 @@ def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
         fund_app_txn.confirmation
     ), "fund_app_txn.confirmation transaction failed confirmation."
 
-
 # Test case for executing an app call transaction to the `new_game` method of the smart contract
 def test_new_game(
-    # creator: SigningAccount,
-    # randy_factory: dict[str, SigningAccount],
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
-    accs: dict[str, SigningAccount],
+    # accs: dict[str, SigningAccount],
 ) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
-    creator = accs["creator"]
-    randy_1 = accs["randy_1"]
+
+    # creator = accs["creator"]
+    # randy_1 = accs["randy_1"]
+    randy_1 = randy_factory["randy_1"]
 
     # Define nested function to try `new_game` method call
     def try_new_game_txn(
@@ -259,6 +250,10 @@ def test_new_game(
         box_g_pay = create_payment_txn(
             app_client, account, cst.BOX_S_FEE
         )  # Game box storage fee
+        # Create the required payment transactions
+        box_c_pay = create_payment_txn(
+            app_client, account, cst.BOX_C_FEE
+        )  # Commit rand box fee
         box_p_pay = create_payment_txn(
             app_client, account, box_p_fee
         )  # Game box players fee
@@ -268,10 +263,11 @@ def test_new_game(
 
         # Send app call transaction to smart contract method `new_game`
         send_app_call_txn(
+            logger=logger,
             app_client=app_client,
             account=account,
             method=app_client.send.new_game,
-            args=(max_players, box_g_pay, box_p_pay, stake_pay),
+            args=(max_players, box_g_pay, box_c_pay, box_p_pay, stake_pay),
             description="New Game App Call",
         )
 
@@ -284,81 +280,80 @@ def test_new_game(
     # Log box data
     log_app_boxes(app_client=app_client, logger=logger)
 
-
 # Test case for executing an app call transaction to the `join_game` method of the smart contract
 def test_join_game(
-    # creator: SigningAccount,
-    # randy_factory: dict[str, SigningAccount],
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
-    accs: dict[str, SigningAccount],
-    subscriber: AlgorandSubscriber,
+    # accs: dict[str, SigningAccount],
+    # subscriber: AlgorandSubscriber,
 ) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
 
     # NOTE: Uncomment to use subscriber for event listening
     # Register the event handler for filtered name `filter1`
-    # subscriber.on("filter1", log_subbed_arc28_events(logger, events_to_log=["game_live", "player_score"]))
+    # subscriber.on("filter1", log_subbed_arc28_events(
+    #     logger, events_to_log=["game_live", "player_score", "game_over"]))
 
     # Define nested function to try `join_game` method call
     def try_join_txn(
         account: SigningAccount,
         game_id: int,
     ) -> None:
-
-        # Define payment amounts
-        other_stake_amount = 1_000_000
-
         # Create the required payment transactions
+        box_c_pay = create_payment_txn(
+            app_client, account, cst.BOX_C_FEE
+        )  # Commit rand box fee
         stake_pay = create_payment_txn(
-            app_client, account, other_stake_amount
+            app_client, account, cst.STAKE_AMOUNT_OTHER
         )  # Other stake deposit
 
         # Send app call transaction to smart contract method `join_game`
         send_app_call_txn(
+            logger=logger,
             app_client=app_client,
             account=account,
             method=app_client.send.join_game,
-            args=(game_id, stake_pay),
+            args=(game_id, box_c_pay, stake_pay),
             description="Join Game App Call",
         )
 
     # NOTE: Accounts joining Game 0 for LocalNet testing
-    # players_game_0 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7", "randy_8", "randy_9"]
-    # for player in players_game_0:
-    #     try_join_txn(account=randy_factory[player], game_id=0)
+    players_game_0 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7", "randy_8", "randy_9"]
+    for player in players_game_0:
+        try_join_txn(account=randy_factory[player], game_id=0)
 
     # NOTE: Accounts joining Game 1 for LocalNet testing
-    # try_join_txn(account=creator, game_id=1)
-    # players_game_1 = ["randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
-    # for player in players_game_1:
-    #     try_join_txn(account=randy_factory[player], game_id=1)
-
-    # NOTE: Accounts joinging Game 1 for TestNet testing
-    players_game_1 = [
-        "creator",
-        "randy_2",
-        "randy_3",
-        "randy_4",
-        "randy_5",
-        "randy_6",
-        "randy_7",
-    ]
+    try_join_txn(account=creator, game_id=1)
+    players_game_1 = ["randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
     for player in players_game_1:
-        # Since they are creator of Game 1, randy_1 acc is already a player by default
-        try_join_txn(account=accs[player], game_id=1)
+        try_join_txn(account=randy_factory[player], game_id=1)
+
+    # # NOTE: Accounts joinging Game 1 for TestNet testing
+    # players_game_1 = [
+    #     "creator",
+    #     "randy_2",
+    #     "randy_3",
+    #     "randy_4",
+    #     "randy_5",
+    #     "randy_6",
+    #     "randy_7",
+    # ]
+    # for player in players_game_1:
+    #     # Since they are creator of Game 1, randy_1 acc is already a player by default
+    #     try_join_txn(account=accs[player], game_id=1)
 
     # Log
     log_app_boxes(app_client=app_client, logger=logger)
     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
 
-
 # Test case for executing an app call transaction to the `commit_rand` method of the smart contract
 def test_commit_rand(
-    # creator: SigningAccount,
-    # randy_factory: dict[str, SigningAccount],
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
-    accs: dict[str, SigningAccount],
+    # accs: dict[str, SigningAccount],
 ) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
@@ -368,44 +363,18 @@ def test_commit_rand(
         account: SigningAccount,
         game_id: int,
     ) -> None:
-        # Define payment amounts
-        # box_c_fee = app_client.send.calc_single_box_fee((34, 8)).abi_return
-
-        # Create the required payment transactions
-        box_c_pay = create_payment_txn(
-            app_client, account, cst.BOX_C_FEE
-        )  # Commit rand box fee
-
         # Send app call transaction to smart contract method `commit_rand`
         send_app_call_txn(
+            logger=logger,
             app_client=app_client,
             account=account,
             method=app_client.send.commit_rand,
-            args=(game_id, box_c_pay),
+            args=(game_id, ),
             description="Commit Rand App Call",
         )
 
-    # # Accounts commiting rand game 0
-    # players_game_0 = [
-    #     "randy_1",
-    #     "randy_2",
-    #     "randy_3",
-    #     "randy_4",
-    #     "randy_5",
-    #     "randy_6",
-    #     "randy_7",
-    #     "randy_8",
-    #     "randy_9",
-    # ]
-
-    try_commit_rand_txn(accs["creator"], 0)
-    # for player in players_game_0:
-    #     try_commit_rand_txn(account=randy_factory[player], game_id=0)
-
-    # Accounts commiting rand game 1
-    # try_commit_rand_txn(account=creator, game_id=1)
-    players_game_1 = [
-        "creator",
+    # Accounts commiting rand game 0
+    players_game_0 = [
         "randy_1",
         "randy_2",
         "randy_3",
@@ -413,53 +382,40 @@ def test_commit_rand(
         "randy_5",
         "randy_6",
         "randy_7",
+        "randy_8",
+        "randy_9",
     ]
-    for player in players_game_1:
-        try_commit_rand_txn(accs[player], 1)
+
+    try_commit_rand_txn(creator, 0)
+    for player in players_game_0:
+        try_commit_rand_txn(randy_factory[player], 0)
+
+    # # Accounts commiting rand game 1
+    # players_game_1 = [
+    #     # "creator",
+    #     "randy_1",
+    #     "randy_2",
+    #     "randy_3",
+    #     "randy_4",
+    #     "randy_5",
+    #     "randy_6",
+    #     "randy_7",
+    # ]
+
+    # try_commit_rand_txn(creator, 1)
+    # for player in players_game_1:
+    #     try_commit_rand_txn(randy_factory[player], 1)
+    #     # try_commit_rand_txn(accs[player], 1)
 
     log_app_boxes(app_client, logger)
 
-
-# # Test case for executing an app call transaction to the `commit_rand` method of the smart contract
-# def test_del_box_commit_rand(
-#     # creator: SigningAccount,
-#     # randy_factory: dict[str, SigningAccount],
-#     apps: dict[str, PieoutClient],
-#     accs: dict[str, SigningAccount],
-# ) -> None:
-#     # Get the app client from the apps dict
-#     app_client = apps["pieout_client_1"]
-#     creator = accs["creator"]
-
-#     # Define nested function to try `commit_rand` method call
-#     def try_del_box_commit_rand_txn(
-#             account: SigningAccount,
-#             game_id: int,
-#     ) -> None:
-
-#         # Send app call transaction to smart contract method `commit_rand`
-#         send_app_call_txn(
-#             app_client=app_client,
-#             account=account,
-#             method=app_client.send.del_box_commit_rand,
-#             args=(game_id,),
-#             max_fee=micro_algo(2_000),
-#             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
-#             description="Del Box Commit Rand App Call"
-#         )
-
-#     try_del_box_commit_rand_txn(creator, 1)
-#     log_app_boxes(app_client, logger)
-#     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
-
-
 # Test case for executing an app call transaction to the `play_game` method of the smart contract
 def test_play_game(
-    # creator: SigningAccount,
-    # randy_factory: dict[str, SigningAccount],
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
-    accs: dict[str, SigningAccount],
-    subscriber: AlgorandSubscriber,
+    # accs: dict[str, SigningAccount],
+    # subscriber: AlgorandSubscriber,
 ) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
@@ -472,27 +428,26 @@ def test_play_game(
 
         # Send app call transaction to smart contract method `play_game`
         send_app_call_txn(
+            logger=logger,
             app_client=app_client,
             account=account,
             method=app_client.send.play_game,
             args=(game_id,),
-            max_fee=micro_algo(80_000),
+            max_fee=micro_algo(27_000),
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
             description="Play Game App Call",
         )
 
-    # # Accounts playing game 0
-    try_play_txn(accs["creator"], 0)
-
-    # players_game_0 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7", "randy_8",
-    #  "randy_9"]
-    # for player in players_game_0:
-    #     try_play_txn(account=randy_factory[player], game_id=0)
+    # Accounts playing game 0
+    try_play_txn(creator, 0)
+    players_game_0 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7", "randy_8",
+     "randy_9"]
+    for player in players_game_0:
+        try_play_txn(randy_factory[player], 0)
 
     # Accounts playing game 1
-    # try_play_txn(account=creator, game_id=1)
     players_game_1 = [
-        "creator",
+        # "creator",
         "randy_1",
         "randy_2",
         "randy_3",
@@ -501,8 +456,12 @@ def test_play_game(
         "randy_6",
         "randy_7",
     ]
+
+    try_play_txn(creator, 1)
     for player in players_game_1:
-        try_play_txn(account=accs[player], game_id=1)
+        try_play_txn(randy_factory[player], 1)
+        # try_play_txn(account=accs[player], game_id=1)
+
     # try_play_txn(account=randy_factory["randy_8"], game_id=1)  # <- Should trip assert error
 
     # Run subscriber in poll once mode
@@ -514,14 +473,20 @@ def test_play_game(
     read_game0_state_txn = app_client.send.read_game_state(
         args=(0,),
         params=CommonAppCallParams(
-            sender=accs["creator"].address, signer=accs["creator"].signer
+            sender=creator.address,
+            signer=creator.signer
+            # sender=accs["creator"].address,
+            # signer=accs["creator"].signer
         ),
     )
 
     read_game1_state_txn = app_client.send.read_game_state(
         args=(1,),
         params=CommonAppCallParams(
-            sender=accs["creator"].address, signer=accs["creator"].signer
+            sender=creator.address,
+            signer=creator.signer
+            # sender=accs["creator"].address,
+            # signer=accs["creator"].signer
         ),
     )
 
@@ -529,6 +494,117 @@ def test_play_game(
     logger.info(read_game1_state_txn.abi_return)
     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
 
+# Test case for executing an app call transaction to the `commit_rand` method of the smart contract
+def test_del_box_commit_rand(
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
+    apps: dict[str, PieoutClient],
+    # accs: dict[str, SigningAccount],
+) -> None:
+    # Get the app client from the apps dict
+    app_client = apps["pieout_client_1"]
+    # creator = accs["creator"]
+
+    # Define nested function to try `del_box_commit_rand` method call
+    def try_del_box_commit_rand_txn(
+            account: SigningAccount,
+    ) -> None:
+
+        # Send app call transaction to smart contract method `commit_rand`
+        send_app_call_txn(
+            logger=logger,
+            app_client=app_client,
+            account=account,
+            method=app_client.send.del_box_commit_rand,
+            max_fee=micro_algo(2_000),
+            send_params=SendParams(cover_app_call_inner_transaction_fees=True),
+            description="Del Box Commit Rand App Call"
+        )
+
+    # Accounts playing game 0
+    try_del_box_commit_rand_txn(creator)
+    players_game_0 = ["randy_1", "randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7", "randy_8",
+     "randy_9"]
+    for player in players_game_0:
+        try_del_box_commit_rand_txn(randy_factory[player])
+
+    # # Accounts playing game 1
+    # players_game_1 = [
+    #     # "creator",
+    #     "randy_1",
+    #     "randy_2",
+    #     "randy_3",
+    #     "randy_4",
+    #     "randy_5",
+    #     "randy_6",
+    #     "randy_7",
+    # ]
+
+    # try_del_box_commit_rand_txn(creator)
+    # for player in players_game_1:
+    #     try_del_box_commit_rand_txn(randy_factory[player], 1)
+
+    log_app_boxes(app_client, logger)
+    logger.info(f"Global State: {app_client.state.global_state.get_all()}")
+
+# # Test case for executing an app call transaction to the `expiry_payout` method of the smart contract
+# def test_check_game_event(
+#     creator: SigningAccount,
+#     randy_factory: dict[str, SigningAccount],
+#     apps: dict[str, PieoutClient],
+#     # accs: dict[str, SigningAccount],
+# ) -> None:
+#     # Get the app client from the apps dict
+#     app_client = apps["pieout_client_1"]
+
+#     # Define nested function to try `play_game` method call
+#     def try_check_game_event_txn(
+#         account: SigningAccount,
+#         game_id: int,
+#         game_id_event: int,
+#     ) -> None:
+
+#         # Send app call transaction to smart contract method `play_game`
+#         send_app_call_txn(
+#             logger=logger,
+#             app_client=app_client,
+#             account=account,
+#             method=app_client.send.check_game_event,
+#             args=(game_id, game_id_event),
+#             max_fee=micro_algo(2_000),
+#             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
+#             description="Check Game Event App Call",
+#         )
+
+
+#     try_check_game_event_txn(randy_factory["randy_1"], 1, 2)
+
+#     # # Log box data
+#     # log_app_boxes(app_client=app_client, logger=logger)
+
+#     # read_game0_state_txn = app_client.send.read_game_state(
+#     #     args=(0,),
+#     #     params=CommonAppCallParams(
+#     #         sender=creator.address,
+#     #         signer=creator.signer
+#     #         # sender=accs["creator"].address,
+#     #         # signer=accs["creator"].signer
+#     #     ),
+#     # )
+
+#     # read_game1_state_txn = app_client.send.read_game_state(
+#     #     args=(1,),
+#     #     params=CommonAppCallParams(
+#     #         sender=creator.address,
+#     #         signer=creator.signer
+#     #         # sender=accs["creator"].address,
+#     #         # signer=accs["creator"].signer
+#     #     ),
+#     # )
+
+#     # logger.info(read_game0_state_txn.abi_return)
+#     # logger.info(read_game1_state_txn.abi_return)
+#     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
 
 # # Test case for simulating an app call `read_only=True` transaction to read current game state and get winner account
 # def test_read_game_get_winner(
@@ -636,15 +712,16 @@ def test_play_game(
 
 # # Test case for executing an app call transaction to the `reset_game` method of the smart contract
 # def test_reset_game(
-#     # creator: SigningAccount,
-#     # randy_factory: dict[str, SigningAccount],
+#     creator: SigningAccount,
+#     randy_factory: dict[str, SigningAccount],
 #     apps: dict[str, PieoutClient],
-#     accs: dict[str, SigningAccount],
+#     # accs: dict[str, SigningAccount],
 # ) -> None:
 #     # Get the app client from the apps dict
 #     app_client = apps["pieout_client_1"]
-#     creator = accs["creator"]
-#     randy_1 = accs["randy_1"]
+#     # creator = accs["creator"]
+#     # randy_1 = accs["randy_1"]
+#     randy_1 = randy_factory["randy_1"]
 
 #     def try_reset_txn(
 #         account: SigningAccount,
@@ -655,6 +732,7 @@ def test_play_game(
 
 #         # Send app call transaction to smart contract method `new_game`
 #         send_app_call_txn(
+#             logger=logger,
 #             app_client=app_client,
 #             account=account,
 #             method=app_client.send.reset_game,
@@ -662,9 +740,9 @@ def test_play_game(
 #             description="Reset Game App Call"
 #         )
 
-#     # try_reset_txn(account=creator, game_id=0)
+#     try_reset_txn(creator, 0)
 #     # try_reset_txn(account=creator, game_id=1)
-#     # try_reset_txn(account=randy_1, game_id=1)
+#     try_reset_txn(randy_1, 1)
 
 #     read_game0_state_txn = app_client.send.read_game_state(
 #         args=(0, ),
@@ -682,14 +760,14 @@ def test_play_game(
 
 # Test case for executing an app call transaction to the `delete_game` method of the smart contract
 def test_delete_game(
-    # creator: SigningAccount,
-    # randy_factory: dict[str, SigningAccount],
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
-    accs: dict[str, SigningAccount],
+    # accs: dict[str, SigningAccount],
 ) -> None:
     # Get the app client from the apps dict
     app_client = apps["pieout_client_1"]
-    creator = accs["creator"]
+    # creator = accs["creator"]
     # randy_1 = accs["randy_1"]
 
     def try_delete_txn(
@@ -699,26 +777,28 @@ def test_delete_game(
 
         # Send app call transaction to smart contract method `new_game`
         send_app_call_txn(
+            logger=logger,
             app_client=app_client,
             account=account,
             method=app_client.send.delete_game,
             args=(game_id,),
-            max_fee=micro_algo(3_000),
+            max_fee=micro_algo(2_000),
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
             description="Delete Game App Call",
         )
 
-    try_delete_txn(account=creator, game_id=0)
+    try_delete_txn(creator, 0)
+    try_delete_txn(randy_factory["randy_1"], 1)
 
     # read_game0_state_txn = app_client.send.read_game_state(
     #     args=(0, ),
     #     params=CommonAppCallParams(sender=creator.address, signer=creator.signer),
     # )
 
-    read_game1_state_txn = app_client.send.read_game_state(
-        args=(1,),
-        params=CommonAppCallParams(sender=creator.address, signer=creator.signer),
-    )
+    # read_game1_state_txn = app_client.send.read_game_state(
+    #     args=(1, ),
+    #     params=CommonAppCallParams(sender=creator.address, signer=creator.signer),
+    # )
 
     # logger.info(read_game0_state_txn.abi_return)
-    logger.info(read_game1_state_txn.abi_return)
+    # logger.info(read_game1_state_txn.abi_return)

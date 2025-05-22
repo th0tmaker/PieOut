@@ -4,15 +4,11 @@ from typing import Any, Callable, Optional, TypedDict
 from algokit_subscriber import AlgorandSubscriber
 from algosdk.v2client import algod
 
-# --- TypedDict for ARC-28 Event Structure ---
 
 class ARC28Event(TypedDict):
     group_name: str
     event_name: str
     args: list[Any]
-
-
-# --- Define ARC-28 Event Group Configuration ---
 
 pieout_events = {
     "group_name": "pieout",
@@ -20,6 +16,7 @@ pieout_events = {
         {
             "name": "game_live",
             "args": [
+                {"name": "game_id", "type": "uint64"},
                 {"name": "staking_finalized", "type": "bool"},
                 {"name": "expiry_ts", "type": "uint64"},
             ]
@@ -27,10 +24,19 @@ pieout_events = {
         {
             "name": "player_score",
             "args": [
+                {"name": "game_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
                 {"name": "score", "type": "uint8"},
             ]
-        }
+        },
+        {
+            "name": "game_over",
+            "args": [
+                {"name": "game_id", "type": "uint64"},
+                {"name": "winner", "type": "address"},
+                {"name": "highest_score", "type": "uint8"},
+            ]
+        },
     ],
     "continue_on_error": False
 }
@@ -47,6 +53,7 @@ def create_subscriber(algod_client: algod.AlgodClient, max_rounds_to_sync: int) 
                     "arc28_events": [
                         {"group_name": "pieout", "event_name": "game_live"},
                         {"group_name": "pieout", "event_name": "player_score"},
+                        {"group_name": "pieout", "event_name": "game_over"},
                     ]
                 },
             }
@@ -74,8 +81,9 @@ def log_subbed_arc28_events(
 ) -> Callable[[dict, str], None]:
     # Define expected args per event name
     event_arg_keys: dict[str, list[str]] = {
-        "game_live": ["staking_finalized", "expiry_ts"],
-        "player_score": ["player", "_score"],
+        "game_live": ["game_id", "staking_finalized", "expiry_ts"],
+        "player_score": ["game_id", "player", "score"],
+        "game_over": ["game_id","winner", "highest_score"]
     }
 
     tracked_events = set(events_to_log or event_arg_keys.keys())

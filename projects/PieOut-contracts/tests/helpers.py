@@ -1,4 +1,5 @@
 import base64
+import inspect
 from logging import Logger
 from typing import Callable, Optional
 
@@ -22,18 +23,16 @@ def create_payment_txn(app_client: PieoutClient, account: SigningAccount, amount
         )
     )
 
-
 def send_app_call_txn(
+    logger: Logger,
     app_client: PieoutClient,
     account: SigningAccount,
     method: Callable[..., SendAppTransactionResult],
-    args: tuple = (),
-    # params: Optional[CommonAppCallParams] = None,
+    args: Optional[tuple] = None,
     max_fee: int = 1000,
     send_params: Optional[SendParams] = None,
-    description: str = "App call"
+    description: str = "App call",
 ) -> None:
-
     params = CommonAppCallParams(
         max_fee=micro_algo(max_fee),
         sender=account.address,
@@ -41,16 +40,68 @@ def send_app_call_txn(
     )
 
     try:
-        if send_params:
-            result = method(args=args, params=params, send_params=send_params)
+        # Check method signature to see if it accepts 'args'
+        sig = inspect.signature(method)
+        accepts_args = "args" in sig.parameters
+
+        if accepts_args:
+            # Call with args (can be empty tuple)
+            result = method(
+                args=args or (),
+                params=params,
+                send_params=send_params,
+            )
         else:
-            result = method(args=args, params=params)
+            # Call without args
+            result = method(
+                params=params,
+                send_params=send_params,
+            )
 
         wait_for_confirmation(app_client.algorand.client.algod, result.tx_id, 3)
 
         assert result.confirmation, f"{description} transaction failed confirmation."
+
+        if result.abi_return is not None:
+            logger.info(f"{description} ABI return value: {result.abi_return}")
+
     except Exception as e:
-        print(f"{description} transaction failed: {e}")
+        logger.warning(f"{description} transaction failed: {e}")
+
+
+# def send_app_call_txn(
+#     logger: Logger,
+#     app_client: PieoutClient,
+#     account: SigningAccount,
+#     method: Callable[..., SendAppTransactionResult],
+#     args: tuple = (),
+#     # params: Optional[CommonAppCallParams] = None,
+#     max_fee: int = 1000,
+#     send_params: Optional[SendParams] = None,
+#     description: str = "App call",
+# ) -> None:
+
+#     params = CommonAppCallParams(
+#         max_fee=micro_algo(max_fee),
+#         sender=account.address,
+#         signer=account.signer,
+#     )
+
+#     try:
+#         if send_params:
+#             result = method(args=args, params=params, send_params=send_params)
+#         else:
+#             result = method(args=args, params=params)
+
+#         wait_for_confirmation(app_client.algorand.client.algod, result.tx_id, 3)
+
+#         assert result.confirmation, f"{description} transaction failed confirmation."
+
+#         if result.abi_return is not None:
+#             logger.info(f"{description} ABI return value: {result.abi_return}")
+
+#     except Exception as e:
+#         logger.warning(f"{description} transaction failed: {e}")
 
 
 def read_game_data(

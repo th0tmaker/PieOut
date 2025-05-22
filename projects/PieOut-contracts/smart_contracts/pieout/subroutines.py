@@ -4,9 +4,11 @@ from algopy import (
     BoxMap,
     BoxRef,
     Bytes,
+    Global,
     Txn,
     UInt64,
     arc4,
+    itxn,
     op,
     subroutine,
     urange,
@@ -40,7 +42,7 @@ def check_sender_in_game(
         if Txn.sender.bytes == player_addr_bytes:
             txn_sender_in_game = True
 
-            # Optionally clear this player from the list by replacing their address with zero bytes
+            # Optionally clear this player from the box by replacing their address with zero bytes
             if clear_player:
                 players_ref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
                 players_ref.replace(i, cst.ZERO_ADDR_BYTES)
@@ -51,10 +53,9 @@ def check_sender_in_game(
     # Return True if sender was found in the game, else False
     return txn_sender_in_game
 
-
 # Use the PCG AVM library to generate a sequence of rolls and compute a score
 @subroutine
-def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
+def roll_score(game_id: UInt64, seed: Bytes, game_state: stc.GameState, player: Account) -> None:
     # Initialize the PCG pseudo-random generator state using 8 bytes from the given seed
     state = pcg16_init(seed=op.extract(seed, 16, 8))
 
@@ -63,7 +64,7 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
         state=state,  # Data type is UInt16
         lower_bound=UInt64(1),  # Lower bound is 1 (to disallow 0 as a value)
         upper_bound=UInt64(0),  # Upper bound is 0 (to indicate full range)
-        length=UInt64(255),  # Number of values generated is 100
+        length=UInt64(255),  # Number of values generated is 255
     )[1]
 
     # Initialize the player's score
@@ -85,7 +86,12 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
     uint8_score = arc4.UInt8(score)
 
     # Emit ARC-28 event for off-chain tracking
-    arc4.emit("player_score(address,uint8)", player, uint8_score)
+    arc4.emit(
+        "player_score(uint64,address,uint8)",
+        game_id,
+        player,
+        uint8_score,
+    )
 
     # If this score beats the current high score, update the game state
     if uint8_score > game_state.highest_score:
@@ -93,3 +99,75 @@ def roll_score(seed: Bytes, game_state: stc.GameState, player: Account) -> None:
         game_state.winner_address = arc4.Address(
             player
         )  # Update game state winner address
+
+# Check if game is live and execute its conditional logic
+@subroutine
+def is_game_live(game_state: stc.GameState) -> arc4.Bool:
+    # Check game live criteria
+    if (
+        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
+        or game_state.active_players == game_state.max_players  # If lobby full
+    ):
+        # Mark join phase as complete when staking finalized evaluates True
+        game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
+
+        # Establish game play window by setting expiry timestamp
+        game_state.expiry_ts = arc4.UInt64(
+            Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
+        )
+
+        # Emit ARC-28 event for off-chain tracking
+        arc4.emit(
+            "game_live(bool,uint64)",
+            game_state.staking_finalized,
+            game_state.expiry_ts,
+        )
+
+        return arc4.Bool(True)  # noqa: FBT003
+    else:
+        return arc4.Bool(False)  # noqa: FBT003
+
+
+# Check if game is over and execute its conditional logic
+@subroutine
+def is_game_over(game_id: UInt64, game_state: stc.GameState, box_game_players: BoxMap[UInt64, Bytes]) -> arc4.Bool:
+    # Check game over criteria
+    if (
+        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
+        or game_state.active_players.native == 0  # If no more active players
+    ):
+        # Clear box game players data by setting its value to all zeroes
+        box_game_players[game_id] = op.bzero(
+            cst.ADDRESS_SIZE * game_state.max_players.native
+        )
+
+        # Mark game as over by setting active players to zero
+        game_state.active_players = arc4.UInt8(0)
+
+        # Emit ARC-28 event for off-chain tracking
+        arc4.emit(
+            "game_over(address,uint8)",
+            game_state.winner_address,
+            game_state.highest_score,
+        )
+
+        # Default prize pool reciever is game winner address
+        receiver = game_state.winner_address.native
+
+        # If game winner address is empty, reciever is game manager
+        if game_state.winner_address.native == Global.zero_address:
+            receiver = game_state.manager_address.native
+
+        # Make application account send prize pool amount of algo through a payment inner transaction
+        itxn.Payment(
+            receiver=receiver,
+            amount=game_state.prize_pool.native,
+            note="Prize pool game_over_critera payment inner transaction",
+        ).submit()
+
+        # Set prize pool amount to zero
+        game_state.prize_pool = arc4.UInt64(0)
+
+        return arc4.Bool(True)  # noqa: FBT003
+    else:
+        return arc4.Bool(False)  # noqa: FBT003
