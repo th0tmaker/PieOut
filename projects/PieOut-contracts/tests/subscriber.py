@@ -25,6 +25,7 @@ pieout_events = {
             "name": "player_score",
             "args": [
                 {"name": "game_id", "type": "uint64"},
+                {"name": "commit_rand_salt_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
                 {"name": "score", "type": "uint8"},
             ]
@@ -33,8 +34,10 @@ pieout_events = {
             "name": "game_over",
             "args": [
                 {"name": "game_id", "type": "uint64"},
-                {"name": "winner", "type": "address"},
-                {"name": "highest_score", "type": "uint8"},
+                {"name": "high_score", "type": "uint8"},
+                {"name": "first_place_address", "type": "address"},
+                {"name": "second_place_address", "type": "address"},
+                {"name": "third_place_address", "type": "address"},
             ]
         },
     ],
@@ -43,7 +46,6 @@ pieout_events = {
 
 
 # --- Create the AlgorandSubscriber ---
-
 def create_subscriber(algod_client: algod.AlgodClient, max_rounds_to_sync: int) -> AlgorandSubscriber:
     config = {
         "filters": [
@@ -82,8 +84,8 @@ def log_subbed_arc28_events(
     # Define expected args per event name
     event_arg_keys: dict[str, list[str]] = {
         "game_live": ["game_id", "staking_finalized", "expiry_ts"],
-        "player_score": ["game_id", "player", "score"],
-        "game_over": ["game_id","winner", "highest_score"]
+        "player_score": ["game_id", "commit_rand_salt_id", "player", "score"],
+        "game_over": ["game_id", "high_score", "first_place_address", "second_place_address", "third_place_address"]
     }
 
     tracked_events = set(events_to_log or event_arg_keys.keys())

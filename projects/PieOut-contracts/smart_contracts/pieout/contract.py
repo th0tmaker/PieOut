@@ -2,11 +2,13 @@
 from algopy import (
     Account,
     ARC4Contract,
+    Box,
     BoxMap,
     BoxRef,
     Bytes,
     Global,
     OpUpFeeSource,
+    String,
     TemplateVar,
     Txn,
     UInt64,
@@ -29,8 +31,8 @@ class Pieout(ARC4Contract):
     # Global State type declarations
     game_id: UInt64
     commit_rand_salt_id: UInt64
-    top_score: UInt64
-    top_score_address: Account
+    ath_score: UInt64
+    ath_address: Account
 
     # Application init method
     def __init__(self) -> None:
@@ -38,6 +40,53 @@ class Pieout(ARC4Contract):
         self.box_game_state = BoxMap(UInt64, stc.GameState, key_prefix="s_")
         self.box_game_players = BoxMap(UInt64, Bytes, key_prefix="p_")
         self.box_commit_rand = BoxMap(Account, stc.CommitRand, key_prefix="c_")
+        self.box_game_trophy = Box(UInt64, key=b"t_")
+
+    @arc4.abimethod
+    def create_trophy(
+        self,
+        box_t_pay: gtxn.PaymentTransaction,
+        mint_pay: gtxn.PaymentTransaction,
+    ) -> None:
+        # if self.ath_address == Global.zero_address:
+        assert box_t_pay.amount >= cst.BOX_T_FEE, err.INVALID_BOX_PAY_FEE
+        assert box_t_pay.sender == Global.creator_address, err.INVALID_BOX_PAY_SENDER
+        assert (
+            box_t_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECIEVER
+
+        assert mint_pay.amount >= Global.asset_create_min_balance, err.INVALID_MINT_PAY_FEE
+        assert mint_pay.sender == Global.creator_address, err.INVALID_MINT_PAY_SENDER
+        assert (
+            mint_pay.receiver == Global.current_application_address
+        ), err.INVALID_MINT_PAY_RECIEVER
+
+        acfg_itxn = itxn.AssetConfig(
+            total=1,
+            unit_name="TRFY",
+            asset_name="Gamename-ATH-Trophy",
+            decimals=0,
+            default_frozen=False,
+            # url=,
+            # metadata_hash=,
+            manager=Global.current_application_address,
+            # reserve=,
+            freeze=Global.current_application_address,
+            clawback=Global.current_application_address,
+        ).submit()
+
+        self.box_game_trophy.create(size=acfg_itxn.created_asset.id)
+
+    # @arc4.abimethod
+    # def xfer_trfy(self) -> None:
+    #     assert Txn.sender == self.ath_address, "Only ATH address can be trophy reciever"
+    #     assert Txn.sender.is_opted_in(Asset(self.box_game_trophy.value)), "Sender needs to be opt-in to recieve trophy"
+
+    #     itxn.AssetTransfer(
+    #         xfer_asset=self.box_game_trophy.value,
+    #         asset_receiver=Txn.sender,
+    #         asset_amount=1,
+    #     ).submit()
 
     # Calculate the minimum balance requirement (MBR) fee for data storage in a single box unit
     @arc4.abimethod(readonly=True)
@@ -74,12 +123,16 @@ class Pieout(ARC4Contract):
                 game_state.staking_finalized,
                 game_state.max_players,
                 game_state.active_players,
-                game_state.highest_score,
+                game_state.first_place_score,
+                game_state.second_place_score,
+                game_state.third_place_score,
                 game_state.box_p_start_pos,
                 game_state.expiry_ts,
                 game_state.prize_pool,
                 game_state.manager_address,
-                game_state.winner_address,
+                game_state.first_place_address,
+                game_state.second_place_address,
+                game_state.third_place_address,
             )
         )
 
@@ -109,9 +162,8 @@ class Pieout(ARC4Contract):
         # Assign Global State variables with their default starting value
         self.game_id = UInt64(0)
         self.commit_rand_salt_id = UInt64(0)
-
-        self.top_score = UInt64(0)
-        self.top_score_address = Global.zero_address
+        self.ath_score = UInt64(0)
+        self.ath_address = Global.zero_address
 
     # Create new game instance with the required box storage and stake payment transactions
     @arc4.abimethod
@@ -159,12 +211,16 @@ class Pieout(ARC4Contract):
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
             max_players=arc4.UInt8(max_players),
             active_players=arc4.UInt8(1),
-            highest_score=arc4.UInt8(0),
+            first_place_score=arc4.UInt8(0),
+            second_place_score=arc4.UInt8(0),
+            third_place_score=arc4.UInt8(0),
             box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
             expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL),
             prize_pool=arc4.UInt64(stake_pay.amount),
             manager_address=arc4.Address(Txn.sender),
-            winner_address=arc4.Address(Global.zero_address),
+            first_place_address=arc4.Address(Global.zero_address),
+            second_place_address=arc4.Address(Global.zero_address),
+            third_place_address=arc4.Address(Global.zero_address),
         )
 
         # Initialize box game players with zeroed bytes to store all player addresses (32 bytes per player)
@@ -325,7 +381,7 @@ class Pieout(ARC4Contract):
     @arc4.abimethod
     def play_game(self, game_id: UInt64) -> None:
         # Ensure transaction has sufficient opcode budget
-        ensure_budget(required_budget=17500, fee_source=OpUpFeeSource.GroupCredit)
+        ensure_budget(required_budget=19600, fee_source=OpUpFeeSource.GroupCredit)
 
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
@@ -370,15 +426,21 @@ class Pieout(ARC4Contract):
         #     app_id=600011887,  # TestNet VRF Beacon Application ID
         # )[0]
 
+        srt.roll_score(
+            game_id=game_id,
+            commit_rand_salt_id=self.commit_rand_salt_id,
+            game_state=game_state,
+            player=Txn.sender,
+            seed=Txn.tx_id,  # Use VRF output as seed in TestNet/production case, else use Txn.tx_id
+        )
+
         # Increment commit rand salt id by 1
         self.commit_rand_salt_id += 1
 
-        srt.roll_score(game_id, Txn.tx_id, game_state, Txn.sender)  # Txn.tx_id / seed
-
         # Update global state top score if this game's top score is higher
-        if game_state.highest_score.native > self.top_score:
-            self.top_score = game_state.highest_score.native
-            self.top_score_address = Txn.sender
+        if game_state.first_place_score.native > self.ath_score:
+            self.ath_score = game_state.first_place_score.native
+            self.ath_address = Txn.sender
 
         # Decrement number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
@@ -422,8 +484,10 @@ class Pieout(ARC4Contract):
             assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
             assert game_state.expiry_ts < Global.latest_timestamp, err.DEADLINE_EXPIRED
             assert (
-                game_state.winner_address == Txn.sender
-                or game_state.manager_address == Txn.sender
+                game_state.manager_address == Txn.sender
+                or game_state.first_place_address == Txn.sender
+                or game_state.second_place_address == Txn.sender
+                or game_state.third_place_address == Txn.sender
             ), err.UNAUTH_ADDR
 
             # Check if game is over
@@ -462,13 +526,15 @@ class Pieout(ARC4Contract):
 
         # For game players box, replace the sender's address at start index 0
         game_players_bref = BoxRef(
-            key=self.box_game_state.key_prefix + op.itob(game_id)
+            key=self.box_game_players.key_prefix + op.itob(game_id)
         )
         game_players_bref.replace(0, Txn.sender.bytes)
 
         game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
         game_state.active_players = arc4.UInt8(1)
-        game_state.highest_score = arc4.UInt8(0)
+        game_state.first_place_score = arc4.UInt8(0)
+        game_state.second_place_score = arc4.UInt8(0)
+        game_state.third_place_score = arc4.UInt8(0)
         game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
         game_state.expiry_ts = arc4.UInt64(
             Global.latest_timestamp + cst.EXPIRY_INTERVAL
@@ -476,7 +542,9 @@ class Pieout(ARC4Contract):
         game_state.prize_pool = arc4.UInt64(
             game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER
         )
-        game_state.winner_address = arc4.Address(Global.zero_address)
+        game_state.first_place_address = arc4.Address(Global.zero_address)
+        game_state.second_place_address = arc4.Address(Global.zero_address)
+        game_state.third_place_address = arc4.Address(Global.zero_address)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
@@ -496,31 +564,28 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertion below evaluates True
-        assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert game_state.manager_address == Txn.sender, err.INVALID_MANAGER
-        assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
-        assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
 
-        # # Ensure zero active players OR only player left is the manager
-        # if game_state.active_players.native == 1:
-        #     txn_sender_in_game = srt.check_sender_in_game(
-        #         game_id=game_id,
-        #         box_game_players=self.box_game_players,
-        #         player_count=game_state.max_players.native,
-        #         clear_player=False,
-        #     )
-        #     assert txn_sender_in_game == True, err.MANAGER_SOLE_PLAYER  # noqa: E712, RUF100
+        # Ensure zero active players OR only player left is the manager
+        txn_sender_in_game = False
+        if game_state.active_players.native == 1:
+            txn_sender_in_game = srt.check_sender_in_game(
+                game_id=game_id,
+                box_game_players=self.box_game_players,
+                player_count=UInt64(1),
+                clear_player=False,
+            )
 
-        #     # Manager address recieves the prize pool amount via payment inner transaction
-        #     itxn.Payment(
-        #         receiver=Txn.sender,
-        #         amount=game_state.prize_pool.native,
-        #         note="Prize pool payout payment transaction to manager address after game deletion",
-        #     ).submit()
+            # Fail transaction unless the assertion below evaluates True
+            assert txn_sender_in_game == True, err.MANAGER_SOLE_PLAYER  # noqa: E712, RUF100
 
-        # else:
-        #     assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
-        #     assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
+            # Submit payout inner transaction
+            srt.payout_itxn(arc4.Address(Txn.sender), game_state.prize_pool.native,
+                             String("sender:app_address,reciever:manager_address,concern:prize_pool_payout"))
+        else:
+            # Fail transaction unless the assertion below evaluates True
+            assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
+            assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
 
         # Delete box game state and box game players from contract storage
         del self.box_game_state[game_id]
@@ -532,12 +597,9 @@ class Pieout(ARC4Contract):
             value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native),
         )
 
-        # Submit inner transaction that refunds box game state and players MBR to sender address
-        itxn.Payment(
-            receiver=Txn.sender,
-            amount=cst.BOX_S_FEE + box_p_fee,
-            note="MBR refund payment transaction for game deletion",
-        ).submit()
+        # Submit payout inner transaction
+        srt.payout_itxn(arc4.Address(Txn.sender), cst.BOX_S_FEE + box_p_fee,
+                             String("sender:app_address,reciever:manager_address,concern:box_storage_deletion"))
 
 # NOTE: LEGACY code
 # # NOTE: Below asserts may be required if this method can only be called as part of a group

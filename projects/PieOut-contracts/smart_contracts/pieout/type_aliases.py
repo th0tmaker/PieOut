@@ -10,11 +10,15 @@ GameStateTuple: TypeAlias = arc4.Tuple[
     arc4.UInt8,
     arc4.UInt8,
     arc4.UInt8,
+    arc4.UInt8,
+    arc4.UInt8,
     arc4.UInt16,
     arc4.UInt64,
     arc4.UInt64,
     arc4.Address,
-    arc4.Address
+    arc4.Address,
+    arc4.Address,
+    arc4.Address,
 ]
 
 # Type alias from arc4 dynamic array data type

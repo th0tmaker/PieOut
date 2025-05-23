@@ -7,12 +7,16 @@ class GameState(arc4.Struct):
     staking_finalized: arc4.Bool
     max_players: arc4.UInt8
     active_players: arc4.UInt8
-    highest_score: arc4.UInt8
+    first_place_score: arc4.UInt8
+    second_place_score: arc4.UInt8
+    third_place_score: arc4.UInt8
     box_p_start_pos: arc4.UInt16
     expiry_ts: arc4.UInt64
     prize_pool: arc4.UInt64
     manager_address: arc4.Address
-    winner_address: arc4.Address
+    first_place_address: arc4.Address
+    second_place_address: arc4.Address
+    third_place_address: arc4.Address
 
 # Struct containing commit randomness values
 class CommitRand(arc4.Struct):
