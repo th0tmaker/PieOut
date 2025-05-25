@@ -18,6 +18,13 @@ class GameState(arc4.Struct):
     second_place_address: arc4.Address
     third_place_address: arc4.Address
 
+
+# Struct containing game trophy values
+class GameTrophy(arc4.Struct):
+    asset_id: arc4.UInt64
+    owner_address: arc4.Address
+
+
 # Struct containing commit randomness values
 class CommitRand(arc4.Struct):
     commit_round: arc4.UInt64

@@ -20,6 +20,29 @@ from . import constants as cst
 from . import structs as stc
 
 
+@subroutine
+def clawback_itxn(
+    asset_id: UInt64,
+    asset_sender: Account,
+    asset_receiver: Account,
+) -> None:
+    itxn.AssetTransfer(
+        asset_receiver=asset_receiver,
+        xfer_asset=asset_id,
+        asset_sender=asset_sender,
+        asset_amount=1,
+    ).submit()
+
+
+@subroutine
+def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
+    itxn.Payment(
+        receiver=receiver,
+        amount=amount,
+        note=note,
+    ).submit()
+
+
 # Check if transaction sender is active player in a valid game instance
 @subroutine
 def check_sender_in_game(
@@ -53,6 +76,7 @@ def check_sender_in_game(
 
     # Return True if sender was found in the game, else False
     return txn_sender_in_game
+
 
 # Use the PCG AVM library to generate a sequence of rolls and compute a score
 @subroutine
@@ -98,9 +122,9 @@ def roll_score(
         arc4.UInt8(score),
     )
 
-    # Define Top 3 placement criteria
+    # Check if score is great enough for a top three placement and arrange leaderboard accordingly
     if score > game_state.first_place_score.native:
-        # Assign: Top 2 -> Top 3, Top 1 -> Top 2, Score -> Top 1
+        # Assign: Second -> Third, First -> Second, Score -> First
         game_state.third_place_score = game_state.second_place_score
         game_state.third_place_address = game_state.second_place_address
 
@@ -113,7 +137,7 @@ def roll_score(
         score > game_state.second_place_score.native
         and arc4.Address(player) != game_state.first_place_address
     ):
-        # Assign: Top 2 -> Top 3, Score -> Top 2
+        # Assign: Second -> Third, Score -> Second
         game_state.third_place_score = game_state.second_place_score
         game_state.third_place_address = game_state.second_place_address
 
@@ -124,18 +148,10 @@ def roll_score(
         and arc4.Address(player) != game_state.first_place_address
         and arc4.Address(player) != game_state.second_place_address
     ):
-        # Assign: Score -> Top 3
+        # Assign: Score -> Third
         game_state.third_place_score = arc4.UInt8(score)
         game_state.third_place_address = arc4.Address(player)
 
-
-    # If current score is equal to the game state high score
-        # if game_state.top_1_address != Global.zero_address:
-        #     game_state.top_2_address = game_state.top_1_address
-
-        # game_state.winner_address = arc4.Address(
-        #     player
-        # )  # Update game state winner address
 
 # Check if game is live and execute its conditional logic
 @subroutine
@@ -164,18 +180,12 @@ def is_game_live(game_state: stc.GameState) -> arc4.Bool:
     else:
         return arc4.Bool(False)  # noqa: FBT003
 
-@subroutine
-def payout_itxn(receiver: arc4.Address, amount: UInt64, note: String) -> None:
-    if receiver != Global.zero_address:
-        itxn.Payment(
-            receiver=receiver.native,
-            amount=amount,
-            note=note,
-        ).submit()
 
 # Check if game is over and execute its conditional logic
 @subroutine
-def is_game_over(game_id: UInt64, game_state: stc.GameState, box_game_players: BoxMap[UInt64, Bytes]) -> arc4.Bool:
+def is_game_over(
+    game_id: UInt64, game_state: stc.GameState, box_game_players: BoxMap[UInt64, Bytes]
+) -> arc4.Bool:
     # Check game over criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
@@ -199,31 +209,41 @@ def is_game_over(game_id: UInt64, game_state: stc.GameState, box_game_players: B
         )
 
         # Calculate 1st, 2nd and 3rd place prize pool win shares
-        top1_win_share = game_state.prize_pool.native * UInt64(50) // UInt64(100)  # Top 1 gets 50%
-        top2_win_share = game_state.prize_pool.native * UInt64(30) // UInt64(100)  # Top 2 gets 30%
-        top3_win_share = game_state.prize_pool.native - top1_win_share - top2_win_share  # Top 3 gets remainder
+        first_win_share = (
+            game_state.prize_pool.native * UInt64(50) // UInt64(100)
+        )  # First place gets 50%
+        second_win_share = (
+            game_state.prize_pool.native * UInt64(30) // UInt64(100)
+        )  # Second place gets 30%
+        third_win_share = (
+            game_state.prize_pool.native - first_win_share - second_win_share
+        )  # Third place gets remainder
 
         # Issue payouts to 1st, 2nd and 3rd place accounts
-        payout_itxn(game_state.first_place_address, top1_win_share, String("prize pool payout -> first place address"))
-        payout_itxn(game_state.second_place_address, top2_win_share, String("prize pool payout -> second place address"))
-        payout_itxn(game_state.third_place_address, top3_win_share, String("prize pool payout -> third place address"))
+        payout_itxn(
+            receiver=game_state.first_place_address.native,
+            amount=first_win_share,
+            note=String(
+                "sender:app_address,reciever:first_place_address,concern:prize_pool_first_win_share_payout"
+            ),
+        )
+        payout_itxn(
+            receiver=game_state.second_place_address.native,
+            amount=second_win_share,
+            note=String(
+                "sender:app_address,reciever:second_place_address,concern:prize_pool_second_win_share_payout"
+            ),
+        )
+        payout_itxn(
+            receiver=game_state.third_place_address.native,
+            amount=third_win_share,
+            note=String(
+                "sender:app_address,reciever:third_place_address,concern:prize_pool_third_win_share_payout"
+            ),
+        )
 
         # Set prize pool amount to zero
         game_state.prize_pool = arc4.UInt64(0)
-
-        # # Default prize pool reciever is game winner address
-        # receiver = game_state.winner_address.native
-
-        # # If game winner address is empty, reciever is game manager
-        # if game_state.winner_address.native == Global.zero_address:
-        #     receiver = game_state.manager_address.native
-
-        # # Make application account send prize pool amount of algo through a payment inner transaction
-        # itxn.Payment(
-        #     receiver=receiver,
-        #     amount=game_state.prize_pool.native,
-        #     note="Prize pool game_over_critera payment inner transaction",
-        # ).submit()
 
         return arc4.Bool(True)  # noqa: FBT003
     else:
