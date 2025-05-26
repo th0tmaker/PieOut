@@ -309,7 +309,25 @@ class Pieout(ARC4Contract):
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
-    # Get commit round value for randomness seed reveal and store it in a box with sender address as key
+    # Get box commit rand
+    @arc4.abimethod
+    def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        # assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+        assert Txn.sender not in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
+
+        assert box_c_pay.amount >= cst.BOX_C_T_FEE, err.INVALID_BOX_PAY_FEE
+        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+        assert (
+            box_c_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECEIVER
+
+        # Initialize box commit rand with default commit round value
+        self.box_commit_rand[Txn.sender] = stc.CommitRand(
+            commit_round=arc4.UInt64(0),
+        )
+
+    # Commit to obtaining the randomness seed reveal and store it in a box with sender address as key
     @arc4.abimethod
     def commit_rand(
         self,
@@ -347,24 +365,6 @@ class Pieout(ARC4Contract):
             commit_round=arc4.UInt64(commit_round),
         )
 
-    # Get box commit rand
-    @arc4.abimethod
-    def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert Txn.sender not in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
-
-        assert box_c_pay.amount >= cst.BOX_C_T_FEE, err.INVALID_BOX_PAY_FEE
-        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-        assert (
-            box_c_pay.receiver == Global.current_application_address
-        ), err.INVALID_BOX_PAY_RECEIVER
-
-        # Initialize box commit rand with default commit round value
-        self.box_commit_rand[Txn.sender] = stc.CommitRand(
-            commit_round=arc4.UInt64(0),
-        )
-
     # Delete existing commit rand box and receive the MBR deposit cost back as refund
     @arc4.abimethod
     def del_box_commit_rand(self) -> None:
@@ -398,7 +398,7 @@ class Pieout(ARC4Contract):
         ensure_budget(required_budget=19600, fee_source=OpUpFeeSource.GroupCredit)
 
         # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        # assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
         assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
 
@@ -458,20 +458,19 @@ class Pieout(ARC4Contract):
 
             # If ath address is not equal to empty address, clawback trophy asset
             if self.ath_address != Global.zero_address:
-                pass
                 # Look up an asset by its ID and retrieve its balance for the specified account
-                # balance, did_exist = op.AssetHoldingGet.asset_balance(
-                #     self.box_game_trophy.value.owner_address.native,
-                #     self.box_game_trophy.value.asset_id.native,
-                # )
+                balance, did_exist = op.AssetHoldingGet.asset_balance(
+                    self.box_game_trophy.value.owner_address.native,
+                    self.box_game_trophy.value.asset_id.native,
+                )
 
                 # If asset did exist and its balance is one, perform clawback via asset transfer inner transaction
-                # if did_exist and balance == 1:
-                #     srt.clawback_itxn(
-                #         asset_id=self.box_game_trophy.value.asset_id.native,
-                #         asset_sender=self.box_game_trophy.value.owner_address.native,
-                #         asset_receiver=Global.current_application_address,
-                #     )
+                if did_exist and balance == 1:
+                    srt.clawback_itxn(
+                        asset_id=self.box_game_trophy.value.asset_id.native,
+                        asset_sender=self.box_game_trophy.value.owner_address.native,
+                        asset_receiver=Global.current_application_address,
+                    )
 
             # Update ath address, transaction sender is the new ath address
             self.ath_address = Txn.sender

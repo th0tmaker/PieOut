@@ -121,7 +121,7 @@ def roll_score(
         player,
         arc4.UInt8(score),
     )
-
+    # NOTE: Assign placements also when score is 0 if top 3 address is empty
     # Check if score is great enough for a top three placement and arrange leaderboard accordingly
     if score > game_state.first_place_score.native:
         # Assign: Second -> Third, First -> Second, Score -> First
