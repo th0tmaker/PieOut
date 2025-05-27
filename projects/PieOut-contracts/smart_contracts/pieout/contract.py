@@ -422,7 +422,26 @@ class Pieout(ARC4Contract):
         assert game_state.expiry_ts >= Global.latest_timestamp, err.DEADLINE_EXPIRED
 
         assert self.box_game_trophy, "Trophy has not yet been minted."
-        assert self.box_game_trophy.value.asset_id != UInt64(0), "Asset must have valid ID."
+
+        balance = UInt64(0)
+        did_exist = False
+        if self.ath_address != Global.zero_address:
+            balance, did_exist = op.AssetHoldingGet.asset_balance(
+                self.box_game_trophy.value.owner_address.native,
+                self.box_game_trophy.value.asset_id.native,
+            )
+
+        # a = self.box_game_trophy.value.asset_id
+        # b = self.box_game_trophy.value.owner_address
+        # assert self.box_game_trophy.value.asset_id != UInt64(
+        #     0
+        # ), "Asset must have valid ID."
+
+        # assert (
+        #     self.box_game_trophy.value.owner_address
+        #     == self.box_game_trophy.value.owner_address
+        # )
+
         # first_place_account = game_state.first_place_address
         # first_second_account = game_state.second_place_address
         # first_third_account = game_state.third_place_address
@@ -466,20 +485,20 @@ class Pieout(ARC4Contract):
             self.ath_score = game_state.first_place_score.native
 
             # If ath address is not equal to empty address, clawback trophy asset
-            if self.ath_address != Global.zero_address:
-                # Look up an asset by its ID and retrieve its balance for the specified account
-                balance, did_exist = op.AssetHoldingGet.asset_balance(
-                    self.box_game_trophy.value.owner_address.native,
-                    self.box_game_trophy.value.asset_id.native,
-                )
+            # if self.ath_address != Global.zero_address:
+            # Look up an asset by its ID and retrieve its balance for the specified account
+            # balance, did_exist = op.AssetHoldingGet.asset_balance(
+            #     self.box_game_trophy.value.owner_address.native,
+            #     self.box_game_trophy.value.asset_id.native,
+            # )
 
-                # If asset did exist and its balance is one, perform clawback via asset transfer inner transaction
-                if did_exist and balance == 1:
-                    srt.clawback_itxn(
-                        asset_id=self.box_game_trophy.value.asset_id.native,
-                        asset_sender=self.box_game_trophy.value.owner_address.native,
-                        asset_receiver=Global.current_application_address,
-                    )
+            # If asset did exist and its balance is one, perform clawback via asset transfer inner transaction
+            if did_exist and balance == 1:
+                srt.clawback_itxn(
+                    asset_id=self.box_game_trophy.value.asset_id.native,
+                    asset_sender=self.box_game_trophy.value.owner_address.native,
+                    asset_receiver=Global.current_application_address,
+                )
 
             # Update ath address, transaction sender is the new ath address
             self.ath_address = Txn.sender

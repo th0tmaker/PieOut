@@ -7,6 +7,7 @@ from datetime import datetime
 import pytest
 from algokit_utils import (
     AppClientCompilationParams,
+    AssetOptInParams,
     BoxReference,
     CommonAppCallParams,
     FundAppAccountParams,
@@ -19,11 +20,9 @@ from algokit_utils import (
 )
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
-from algokit_utils.transactions import AppCallMethodCallParams
-from algosdk.abi import Contract, Method
+from algosdk.abi import Contract
 from algosdk.encoding import encode_address
 from algosdk.transaction import wait_for_confirmation
-
 
 # from dotenv import load_dotenv
 from smart_contracts.artifacts.pieout.pieout_client import (
@@ -572,7 +571,6 @@ def test_play_game(
     logger.info(f"Box Trophy Owner Address: {owner_address}")
     logger.info(f"ATH address before play {app_client.state.global_state.ath_address}")
 
-
     # Define nested function to try `play_game` method call
     def try_play_txn(
         account: SigningAccount,
@@ -597,11 +595,8 @@ def test_play_game(
         # )  # Commit rand box fee
 
         read_game_state_sim_result = app_client.send.read_game_state(
-            args=(game_id, ),
-            params=CommonAppCallParams(
-                sender=account.address,
-                signer=account.signer
-            ),
+            args=(game_id,),
+            params=CommonAppCallParams(sender=account.address, signer=account.signer),
         )
 
         read_game_state_sim_return = read_game_state_sim_result.abi_return
@@ -615,7 +610,8 @@ def test_play_game(
         logger.info(f"Third place acc: {third_place_address}")
 
         play_game_acc_refs = [
-            addr for addr in (first_place_address, second_place_address, third_place_address)
+            addr
+            for addr in (first_place_address, second_place_address, third_place_address)
             if addr != encode_address(cst.ZERO_ADDR_BYTES)
         ]
         play_game_box_refs = [BoxReference(app_id=app_client.app_id, name=b"t_")]
@@ -631,7 +627,6 @@ def test_play_game(
         #         args=[box_c_pay],
         #         )
         #     )
-
 
         # composer.add_app_call_method_call(
         #     params=AppCallMethodCallParams(
@@ -670,8 +665,9 @@ def test_play_game(
         app_client.send.play_game(
             args=(game_id,),
             params=CommonAppCallParams(
-                # account_references=play_game_acc_refs,
-                # asset_references=[asset_id],
+                account_references=play_game_acc_refs,
+                # account_references=[owner_address],
+                asset_references=[asset_id],
                 # box_references=play_game_box_refs,
                 max_fee=micro_algo(100_000),
                 sender=account.address,
@@ -685,6 +681,32 @@ def test_play_game(
 
     # # Accounts playing game 0
     try_play_txn(creator, 0)
+
+    # Perform asset opt-in using the matched SigningAccount
+    app_client.algorand.send.asset_opt_in(
+        params=AssetOptInParams(
+            sender=creator.address,
+            signer=creator.signer,
+            asset_id=asset_id,
+        )
+    )
+
+    app_client.send.get_trophy(
+        params=CommonAppCallParams(
+            # account_references=play_game_acc_refs,
+            # account_references=[owner_address],
+            # asset_references=[asset_id],
+            # box_references=play_game_box_refs,
+            max_fee=micro_algo(150_000),
+            sender=creator.address,
+            signer=creator.signer,
+        ),
+        send_params=SendParams(
+            # populate_app_call_resources=True,
+            cover_app_call_inner_transaction_fees=True,
+        ),
+    )
+
     logger.info(
         f"ATH address after creator play {app_client.state.global_state.ath_address}"
     )
