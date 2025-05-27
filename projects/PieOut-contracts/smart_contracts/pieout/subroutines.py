@@ -121,37 +121,41 @@ def roll_score(
         player,
         arc4.UInt8(score),
     )
-    # NOTE: Assign placements also when score is 0 if top 3 address is empty
+
     # Check if score is great enough for a top three placement and arrange leaderboard accordingly
-    if score > game_state.first_place_score.native:
-        # Assign: Second -> Third, First -> Second, Score -> First
+    if (
+        # First Place
+        game_state.first_place_address == arc4.Address(Global.zero_address)
+        or score > game_state.first_place_score.native
+    ):
+        # Assign: Second -> Third
         game_state.third_place_score = game_state.second_place_score
         game_state.third_place_address = game_state.second_place_address
-
+        # Assign: First -> Second
         game_state.second_place_score = game_state.first_place_score
         game_state.second_place_address = game_state.first_place_address
-
+        # Assign: Score -> First
         game_state.first_place_score = arc4.UInt8(score)
         game_state.first_place_address = arc4.Address(player)
     elif (
-        score > game_state.second_place_score.native
-        and arc4.Address(player) != game_state.first_place_address
+        # Second Place
+        game_state.second_place_address == arc4.Address(Global.zero_address)
+        or score > game_state.second_place_score.native
     ):
-        # Assign: Second -> Third, Score -> Second
+        # Assign: Second -> Third
         game_state.third_place_score = game_state.second_place_score
         game_state.third_place_address = game_state.second_place_address
-
+        # Assign: Score -> Second
         game_state.second_place_score = arc4.UInt8(score)
         game_state.second_place_address = arc4.Address(player)
     elif (
-        score > game_state.third_place_score.native
-        and arc4.Address(player) != game_state.first_place_address
-        and arc4.Address(player) != game_state.second_place_address
+        # Third Place
+        game_state.third_place_address == arc4.Address(Global.zero_address)
+        or score > game_state.third_place_score.native
     ):
         # Assign: Score -> Third
         game_state.third_place_score = arc4.UInt8(score)
         game_state.third_place_address = arc4.Address(player)
-
 
 # Check if game is live and execute its conditional logic
 @subroutine

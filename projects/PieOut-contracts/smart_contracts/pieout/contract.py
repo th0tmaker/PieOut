@@ -412,7 +412,7 @@ class Pieout(ARC4Contract):
             == True
         ), err.INVALID_PLAYER
 
-        # Retrieve current game state from box using the game id parameter
+        # Retrieve the game state value from its corresponding box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
@@ -420,6 +420,15 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertions below evaluate True
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert game_state.expiry_ts >= Global.latest_timestamp, err.DEADLINE_EXPIRED
+
+        assert self.box_game_trophy, "Trophy has not yet been minted."
+        assert self.box_game_trophy.value.asset_id != UInt64(0), "Asset must have valid ID."
+        # first_place_account = game_state.first_place_address
+        # first_second_account = game_state.second_place_address
+        # first_third_account = game_state.third_place_address
+
+        # # Retrieve the game trophy value from its corresponding box
+        # game_trophy = self.box_game_trophy.value.copy()  # Make a copy of the game state else immutable
 
         # assert (
         #     Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
@@ -477,12 +486,14 @@ class Pieout(ARC4Contract):
 
             # Update trophy owner address, ath address is the new trophy asset owner address
             self.box_game_trophy.value.owner_address = arc4.Address(self.ath_address)
+            # game_trophy.owner_address = arc4.Address(self.ath_address)
+            # self.box_game_trophy.value.owner_address = game_trophy.owner_address
 
         # Decrement number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
 
         # Check if game is over on every call
-        srt.is_game_over(game_id, game_state, self.box_game_players)
+        # srt.is_game_over(game_id, game_state, self.box_game_players)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()

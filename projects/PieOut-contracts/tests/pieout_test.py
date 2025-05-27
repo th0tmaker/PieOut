@@ -562,6 +562,7 @@ def test_play_game(
     box_t_ = app_client.algorand.client.algod.application_box_by_name(
         app_client.app_id, b"t_"
     )
+
     box_t_bytes = base64.b64decode(box_t_["value"])
     asset_id = int.from_bytes(box_t_bytes[:8], byteorder="big")
     owner_address = encode_address(box_t_bytes[8:])
@@ -612,7 +613,6 @@ def test_play_game(
         logger.info(f"First place acc: {first_place_address}")
         logger.info(f"Second place acc: {second_place_address}")
         logger.info(f"Third place acc: {third_place_address}")
-        logger.info("/")
 
         play_game_acc_refs = [
             addr for addr in (first_place_address, second_place_address, third_place_address)
@@ -670,8 +670,8 @@ def test_play_game(
         app_client.send.play_game(
             args=(game_id,),
             params=CommonAppCallParams(
-                account_references=play_game_acc_refs,
-                asset_references=[asset_id],
+                # account_references=play_game_acc_refs,
+                # asset_references=[asset_id],
                 # box_references=play_game_box_refs,
                 max_fee=micro_algo(100_000),
                 sender=account.address,
