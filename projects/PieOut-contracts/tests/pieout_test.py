@@ -665,17 +665,13 @@ def test_play_game(
         app_client.send.play_game(
             args=(game_id,),
             params=CommonAppCallParams(
-                account_references=play_game_acc_refs,
+                # account_references=play_game_acc_refs,
                 # account_references=[owner_address],
-                asset_references=[asset_id],
+                # asset_references=[asset_id],
                 # box_references=play_game_box_refs,
-                max_fee=micro_algo(100_000),
+                extra_fee=micro_algo(31_000),
                 sender=account.address,
                 signer=account.signer,
-            ),
-            send_params=SendParams(
-                # populate_app_call_resources=True,
-                cover_app_call_inner_transaction_fees=True,
             ),
         )
 
@@ -693,16 +689,11 @@ def test_play_game(
 
     app_client.send.get_trophy(
         params=CommonAppCallParams(
-            # account_references=play_game_acc_refs,
-            # account_references=[owner_address],
-            # asset_references=[asset_id],
-            # box_references=play_game_box_refs,
-            max_fee=micro_algo(150_000),
+            max_fee=micro_algo(2_000),
             sender=creator.address,
             signer=creator.signer,
         ),
         send_params=SendParams(
-            # populate_app_call_resources=True,
             cover_app_call_inner_transaction_fees=True,
         ),
     )

@@ -314,7 +314,7 @@ class Pieout(ARC4Contract):
     def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
         # Fail transaction unless the assertion below evaluates True
         # assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert Txn.sender not in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
+        assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
 
         assert box_c_pay.amount >= cst.BOX_C_T_FEE, err.INVALID_BOX_PAY_FEE
         assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
@@ -335,7 +335,7 @@ class Pieout(ARC4Contract):
     ) -> None:
         # Fail transaction unless the assertion below evaluate True
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
-        assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
 
         assert (
             self.box_game_state[game_id].staking_finalized == True  # noqa: E712
@@ -370,13 +370,7 @@ class Pieout(ARC4Contract):
     def del_box_commit_rand(self) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
-
-        # NOTE: Alternative delete method with confirmation emitted as ARC-28 event
-        # For commit rand box with sender's address as key, delete box from contract storage
-        # commit_rand_bref = BoxRef(key=self.box_commit_rand.key_prefix + Txn.sender)
-        # is_deleted = commit_rand_bref.delete()
-        # arc4.emit("box_commit_rand_del(address,bool)", Txn.sender, is_deleted)
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
 
         # Delete sender box commit rand box from contract storage
         del self.box_commit_rand[Txn.sender]
@@ -400,7 +394,8 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         # assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
-        assert Txn.sender in self.box_commit_rand, err.COMMIT_RAND_BOX_MISSING
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert self.box_game_trophy, err.BOX_NOT_FOUND
 
         assert (
             srt.check_sender_in_game(  # noqa: E712, RUF100
@@ -421,8 +416,6 @@ class Pieout(ARC4Contract):
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert game_state.expiry_ts >= Global.latest_timestamp, err.DEADLINE_EXPIRED
 
-        assert self.box_game_trophy, "Trophy has not yet been minted."
-
         balance = UInt64(0)
         did_exist = False
         if self.ath_address != Global.zero_address:
@@ -430,24 +423,6 @@ class Pieout(ARC4Contract):
                 self.box_game_trophy.value.owner_address.native,
                 self.box_game_trophy.value.asset_id.native,
             )
-
-        # a = self.box_game_trophy.value.asset_id
-        # b = self.box_game_trophy.value.owner_address
-        # assert self.box_game_trophy.value.asset_id != UInt64(
-        #     0
-        # ), "Asset must have valid ID."
-
-        # assert (
-        #     self.box_game_trophy.value.owner_address
-        #     == self.box_game_trophy.value.owner_address
-        # )
-
-        # first_place_account = game_state.first_place_address
-        # first_second_account = game_state.second_place_address
-        # first_third_account = game_state.third_place_address
-
-        # # Retrieve the game trophy value from its corresponding box
-        # game_trophy = self.box_game_trophy.value.copy()  # Make a copy of the game state else immutable
 
         # assert (
         #     Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
@@ -484,14 +459,6 @@ class Pieout(ARC4Contract):
             # Update ath score, game state first place score is the new ath score
             self.ath_score = game_state.first_place_score.native
 
-            # If ath address is not equal to empty address, clawback trophy asset
-            # if self.ath_address != Global.zero_address:
-            # Look up an asset by its ID and retrieve its balance for the specified account
-            # balance, did_exist = op.AssetHoldingGet.asset_balance(
-            #     self.box_game_trophy.value.owner_address.native,
-            #     self.box_game_trophy.value.asset_id.native,
-            # )
-
             # If asset did exist and its balance is one, perform clawback via asset transfer inner transaction
             if did_exist and balance == 1:
                 srt.clawback_itxn(
@@ -505,14 +472,12 @@ class Pieout(ARC4Contract):
 
             # Update trophy owner address, ath address is the new trophy asset owner address
             self.box_game_trophy.value.owner_address = arc4.Address(self.ath_address)
-            # game_trophy.owner_address = arc4.Address(self.ath_address)
-            # self.box_game_trophy.value.owner_address = game_trophy.owner_address
 
         # Decrement number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
 
         # Check if game is over on every call
-        # srt.is_game_over(game_id, game_state, self.box_game_players)
+        srt.is_game_over(game_id, game_state, self.box_game_players)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
