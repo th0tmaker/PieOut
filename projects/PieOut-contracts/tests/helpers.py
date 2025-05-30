@@ -30,6 +30,7 @@ def send_app_call_txn(
     method: Callable[..., SendAppTransactionResult],
     args: Optional[tuple] = None,
     max_fee: int = 1000,
+    note: bytes | str | None = None,
     send_params: Optional[SendParams] = None,
     description: str = "App call",
 ) -> None:
@@ -37,6 +38,7 @@ def send_app_call_txn(
         max_fee=micro_algo(max_fee),
         sender=account.address,
         signer=account.signer,
+        note=note,
     )
 
     try:
@@ -67,42 +69,6 @@ def send_app_call_txn(
 
     except Exception as e:
         logger.warning(f"{description} transaction failed: {e}")
-
-
-# def send_app_call_txn(
-#     logger: Logger,
-#     app_client: PieoutClient,
-#     account: SigningAccount,
-#     method: Callable[..., SendAppTransactionResult],
-#     args: tuple = (),
-#     # params: Optional[CommonAppCallParams] = None,
-#     max_fee: int = 1000,
-#     send_params: Optional[SendParams] = None,
-#     description: str = "App call",
-# ) -> None:
-
-#     params = CommonAppCallParams(
-#         max_fee=micro_algo(max_fee),
-#         sender=account.address,
-#         signer=account.signer,
-#     )
-
-#     try:
-#         if send_params:
-#             result = method(args=args, params=params, send_params=send_params)
-#         else:
-#             result = method(args=args, params=params)
-
-#         wait_for_confirmation(app_client.algorand.client.algod, result.tx_id, 3)
-
-#         assert result.confirmation, f"{description} transaction failed confirmation."
-
-#         if result.abi_return is not None:
-#             logger.info(f"{description} ABI return value: {result.abi_return}")
-
-#     except Exception as e:
-#         logger.warning(f"{description} transaction failed: {e}")
-
 
 def read_game_data(
     app_client: PieoutClient,

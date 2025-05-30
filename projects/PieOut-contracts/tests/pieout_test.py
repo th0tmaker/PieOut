@@ -6,6 +6,7 @@ from datetime import datetime
 
 import pytest
 from algokit_utils import (
+    AppCallMethodCallParams,
     AppClientCompilationParams,
     AssetOptInParams,
     BoxReference,
@@ -20,7 +21,7 @@ from algokit_utils import (
 )
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
-from algosdk.abi import Contract
+from algosdk.abi import Contract, Method
 from algosdk.encoding import encode_address
 from algosdk.transaction import wait_for_confirmation
 
@@ -251,10 +252,11 @@ def test_mint_trophy(
 
     def try_mint_trophy_txn(
         account: SigningAccount,
+        note: bytes | str | None = None
     ) -> None:
         # Create the required payment transactions
         box_t_pay = create_payment_txn(
-            app_client, account, cst.BOX_C_T_FEE
+            app_client, account, cst.BOX_T_FEE
         )  # Game box trophy fee
         mint_pay = create_payment_txn(app_client, account, 100_000)  # asset create fee
 
@@ -266,12 +268,16 @@ def test_mint_trophy(
             method=app_client.send.mint_trophy,
             args=(box_t_pay, mint_pay),
             max_fee=micro_algo(2_000),
+            note=note,
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
             description="Mint Trophy App Call",
         )
 
     # Call try mint trophy transaction function
     try_mint_trophy_txn(account=creator)
+
+    # Second call should trip assert error cause trophy already exists
+    # try_mint_trophy_txn(account=creator, note="uniquetxn")
 
 
 # Test case for executing an app call transaction to the `new_game` method of the smart contract
@@ -370,7 +376,7 @@ def test_join_game(
         )
 
     # NOTE: Accounts joining Game 0 for LocalNet testing
-    players_game_0 = [
+    players_game_1 = [
         "randy_1",
         "randy_2",
         "randy_3",
@@ -381,14 +387,14 @@ def test_join_game(
         "randy_8",
         "randy_9",
     ]
-    for player in players_game_0:
-        try_join_txn(account=randy_factory[player], game_id=0)
-
-    # NOTE: Accounts joining Game 1 for LocalNet testing
-    try_join_txn(account=creator, game_id=1)
-    players_game_1 = ["randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
     for player in players_game_1:
         try_join_txn(account=randy_factory[player], game_id=1)
+
+    # NOTE: Accounts joining Game 1 for LocalNet testing
+    try_join_txn(account=creator, game_id=2)
+    players_game_2 = ["randy_2", "randy_3", "randy_4", "randy_5", "randy_6", "randy_7"]
+    for player in players_game_2:
+        try_join_txn(account=randy_factory[player], game_id=2)
 
     # # NOTE: Accounts joinging Game 1 for TestNet testing
     # players_game_1 = [
@@ -404,8 +410,8 @@ def test_join_game(
     #     # Since they are creator of Game 1, randy_1 acc is already a player by default
     #     try_join_txn(account=accs[player], game_id=1)
 
-    read_game0_state_txn = app_client.send.read_game_state(
-        args=(0,),
+    read_game1_state_txn = app_client.send.read_game_state(
+        args=(1,),
         params=CommonAppCallParams(
             sender=creator.address,
             signer=creator.signer,
@@ -414,8 +420,8 @@ def test_join_game(
         ),
     )
 
-    read_game1_state_txn = app_client.send.read_game_state(
-        args=(1,),
+    read_game2_state_txn = app_client.send.read_game_state(
+        args=(2,),
         params=CommonAppCallParams(
             sender=creator.address,
             signer=creator.signer,
@@ -428,8 +434,8 @@ def test_join_game(
     view_app_boxes(app_client, {b"s_", b"p_"}, logger)
 
     # Log read game state transaction abi returns
-    logger.info(read_game0_state_txn.abi_return)
     logger.info(read_game1_state_txn.abi_return)
+    logger.info(read_game2_state_txn.abi_return)
 
     # Log App Global State
     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
@@ -450,7 +456,7 @@ def test_get_box_commit_rand(
     ) -> None:
         # Create the required payment transactions
         box_c_pay = create_payment_txn(
-            app_client, account, cst.BOX_C_T_FEE
+            app_client, account, cst.BOX_C_FEE
         )  # Commit rand box fee
 
         # Send app call transaction to smart contract method `commit_rand`
@@ -464,7 +470,7 @@ def test_get_box_commit_rand(
         )
 
     # Accounts commiting rand game 0
-    players_game_0 = [
+    players_game_1 = [
         "randy_1",
         "randy_2",
         "randy_3",
@@ -477,12 +483,76 @@ def test_get_box_commit_rand(
     ]
 
     try_get_box_commit_rand_txn(creator)
-    for player in players_game_0:
+    for player in players_game_1:
         try_get_box_commit_rand_txn(randy_factory[player])
 
 
+# # Test case for executing an app call transaction to the `commit_rand` method of the smart contract
+# def test_del_box_commit_rand_player(
+#     creator: SigningAccount,
+#     randy_factory: dict[str, SigningAccount],
+#     apps: dict[str, PieoutClient],
+#     # accs: dict[str, SigningAccount],
+# ) -> None:
+#     # Get the app client from the apps dict
+#     app_client = apps["pieout_client_1"]
+#     # creator = accs["creator"]
+
+#     # Define nested function to try `del_box_commit_rand` method call
+#     def try_del_box_commit_rand_player_txn(
+#         account: SigningAccount,
+#     ) -> None:
+
+#         # Send app call transaction to smart contract method `commit_rand`
+#         send_app_call_txn(
+#             logger=logger,
+#             app_client=app_client,
+#             account=account,
+#             method=app_client.send.del_box_commit_rand_player,
+#             max_fee=micro_algo(2_000),
+#             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
+#             description="Del Box Commit Rand Player App Call",
+#         )
+
+#     # Accounts playing game 1
+#     try_del_box_commit_rand_player_txn(creator)
+#     players_game_1 = [
+#         "randy_1",
+#         "randy_2",
+#         "randy_3",
+#         "randy_4",
+#         "randy_5",
+#         "randy_6",
+#         "randy_7",
+#         "randy_8",
+#         "randy_9",
+#     ]
+
+#     for player in players_game_1:
+#         try_del_box_commit_rand_player_txn(randy_factory[player])
+
+#     # # Accounts playing game 1
+#     # players_game_1 = [
+#     #     # "creator",
+#     #     "randy_1",
+#     #     "randy_2",
+#     #     "randy_3",
+#     #     "randy_4",
+#     #     "randy_5",
+#     #     "randy_6",
+#     #     "randy_7",
+#     # ]
+
+#     # try_del_box_commit_rand_txn(creator)
+#     # for player in players_game_1:
+#     #     try_del_box_commit_rand_txn(randy_factory[player], 1)
+
+#     # Log App Global State
+#     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
+
+
 # Test case for executing an app call transaction to the `commit_rand` method of the smart contract
-def test_commit_rand(
+def test_get_commit_rand_round(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
@@ -492,7 +562,7 @@ def test_commit_rand(
     app_client = apps["pieout_client_1"]
 
     # Define nested function to try `commit_rand` method call
-    def try_commit_rand_txn(
+    def try_get_commit_rand_round_txn(
         account: SigningAccount,
         game_id: int,
     ) -> None:
@@ -501,13 +571,13 @@ def test_commit_rand(
             logger=logger,
             app_client=app_client,
             account=account,
-            method=app_client.send.commit_rand,
+            method=app_client.send.get_commit_rand_round,
             args=(game_id,),
-            description="Commit Rand App Call",
+            description="Get Commit Rand Round App Call",
         )
 
     # Accounts commiting rand game 0
-    players_game_0 = [
+    players_game_1 = [
         "randy_1",
         "randy_2",
         "randy_3",
@@ -519,26 +589,13 @@ def test_commit_rand(
         "randy_9",
     ]
 
-    try_commit_rand_txn(creator, 0)
-    for player in players_game_0:
-        try_commit_rand_txn(randy_factory[player], 0)
-
-    # Accounts commiting rand game 1
-    players_game_1 = [
-        # "creator",
-        "randy_1",
-        "randy_2",
-        "randy_3",
-        "randy_4",
-        "randy_5",
-        "randy_6",
-        "randy_7",
-    ]
-
-    try_commit_rand_txn(creator, 1)
+    try_get_commit_rand_round_txn(creator, 1)
     for player in players_game_1:
-        try_commit_rand_txn(randy_factory[player], 1)
-        # try_commit_rand_txn(accs[player], 1)
+        try_get_commit_rand_round_txn(randy_factory[player], 1)
+
+    # Testing Try get commit rand round multiple times for same account should trip assert error
+    # try_get_commit_rand_round_txn(creator, 1)  # Should trip assert error
+
 
     # View box data
     view_app_boxes(app_client, {b"s_", b"p_"}, logger)
@@ -572,49 +629,50 @@ def test_play_game(
     logger.info(f"ATH address before play {app_client.state.global_state.ath_address}")
 
     # Define nested function to try `play_game` method call
-    def try_play_txn(
+    def try_play_game_txn(
         account: SigningAccount,
         game_id: int,
     ) -> None:
 
         # Send app call transaction to smart contract method `play_game`
-        # send_app_call_txn(
-        #     logger=logger,
-        #     app_client=app_client,
-        #     account=account,
-        #     method=app_client.send.play_game,
-        #     args=(game_id,),
-        #     max_fee=micro_algo(100_000),
-        #     send_params=SendParams(cover_app_call_inner_transaction_fees=True),
-        #     description="Play Game App Call",
-        # )
+        send_app_call_txn(
+            logger=logger,
+            app_client=app_client,
+            account=account,
+            method=app_client.send.play_game,
+            args=(game_id,),
+            max_fee=micro_algo(40_000),
+            send_params=SendParams(cover_app_call_inner_transaction_fees=True),
+            description="Play Game App Call",
+        )
 
         # # Create the required payment transactions
         # box_c_pay = create_payment_txn(
-        #     app_client, account, cst.BOX_C_T_FEE
+        #     app_client, account, cst.BOX_C_FEE
         # )  # Commit rand box fee
 
-        read_game_state_sim_result = app_client.send.read_game_state(
-            args=(game_id,),
-            params=CommonAppCallParams(sender=account.address, signer=account.signer),
-        )
+        # read_game_state_sim_result = app_client.send.read_game_state(
+        #     args=(game_id,),
+        #     params=CommonAppCallParams(sender=account.address, signer=account.signer),
+        # )
 
-        read_game_state_sim_return = read_game_state_sim_result.abi_return
-        first_place_address = str(read_game_state_sim_return[11])
-        second_place_address = str(read_game_state_sim_return[12])
-        third_place_address = str(read_game_state_sim_return[13])
+        # read_game_state_sim_return = read_game_state_sim_result.abi_return
+        # first_place_address = str(read_game_state_sim_return[11])
+        # second_place_address = str(read_game_state_sim_return[12])
+        # third_place_address = str(read_game_state_sim_return[13])
 
-        logger.info("/")
-        logger.info(f"First place acc: {first_place_address}")
-        logger.info(f"Second place acc: {second_place_address}")
-        logger.info(f"Third place acc: {third_place_address}")
+        # logger.info("/")
+        # logger.info(f"First place acc: {first_place_address}")
+        # logger.info(f"Second place acc: {second_place_address}")
+        # logger.info(f"Third place acc: {third_place_address}")
 
-        play_game_acc_refs = [
-            addr
-            for addr in (first_place_address, second_place_address, third_place_address)
-            if addr != encode_address(cst.ZERO_ADDR_BYTES)
-        ]
-        play_game_box_refs = [BoxReference(app_id=app_client.app_id, name=b"t_")]
+        # play_game_acc_refs = [
+        #     addr
+        #     for addr in (first_place_address, second_place_address, third_place_address)
+        #     if addr != encode_address(cst.ZERO_ADDR_BYTES)
+        # ]
+        # play_game_box_refs = [BoxReference(app_id=app_client.app_id, name=b"t_")]
+
         # composer = app_client.new_group().composer()
 
         # composer.add_app_call_method_call(
@@ -634,7 +692,7 @@ def test_play_game(
         #         signer=account.signer,
         #         max_fee=micro_algo(2_000),
         #         app_id=app_client.app_id,
-        #         method=Method.from_signature("commit_rand(uint64)void"),
+        #         method=Method.from_signature("get_commit_rand_round(uint64)void"),
         #         args=[game_id],
         #         )
         #     )
@@ -643,12 +701,12 @@ def test_play_game(
         #     params=AppCallMethodCallParams(
         #         sender=account.address,
         #         signer=account.signer,
-        #         max_fee=micro_algo(100_000),
+        #         max_fee=micro_algo(40_000),
         #         app_id=app_client.app_id,
         #         method=Method.from_signature("play_game(uint64)void"),
         #         args=[game_id],
-        #         account_references=play_game_acc_refs,
-        #         box_references=play_game_box_refs,
+        #         # account_references=play_game_acc_refs,
+        #         # box_references=play_game_box_refs,
         #         )
         #     )
 
@@ -660,23 +718,22 @@ def test_play_game(
         # logger.info(f"group id: {result.group_id}")
         # logger.info(f"group txn 0 id: {result.tx_ids[0]}")
         # logger.info(f"group txn 1 id: {result.tx_ids[1]}")
-        # logger.info(f"group txn 2 id: {result.tx_ids[2]}")
 
-        app_client.send.play_game(
-            args=(game_id,),
-            params=CommonAppCallParams(
-                # account_references=play_game_acc_refs,
-                # account_references=[owner_address],
-                # asset_references=[asset_id],
-                # box_references=play_game_box_refs,
-                extra_fee=micro_algo(31_000),
-                sender=account.address,
-                signer=account.signer,
-            ),
-        )
+        # app_client.send.play_game(
+        #     args=(game_id,),
+        #     params=CommonAppCallParams(
+        #         # account_references=play_game_acc_refs,
+        #         # account_references=[owner_address],
+        #         # asset_references=[asset_id],
+        #         # box_references=play_game_box_refs,
+        #         extra_fee=micro_algo(31_000),
+        #         sender=account.address,
+        #         signer=account.signer,
+        #     ),
+        # )
 
     # # Accounts playing game 0
-    try_play_txn(creator, 0)
+    try_play_game_txn(creator, 1)
 
     # Perform asset opt-in using the matched SigningAccount
     app_client.algorand.send.asset_opt_in(
@@ -701,7 +758,8 @@ def test_play_game(
     logger.info(
         f"ATH address after creator play {app_client.state.global_state.ath_address}"
     )
-    players_game_0 = [
+
+    players_game_1 = [
         "randy_1",
         "randy_2",
         "randy_3",
@@ -712,8 +770,8 @@ def test_play_game(
         "randy_8",
         "randy_9",
     ]
-    for player in players_game_0:
-        try_play_txn(randy_factory[player], 0)
+    for player in players_game_1:
+        try_play_game_txn(randy_factory[player], 1)
 
     # # Accounts playing game 1
     # players_game_1 = [
@@ -737,8 +795,8 @@ def test_play_game(
     # Run subscriber in poll once mode
     subscriber.poll_once()
 
-    read_game0_state_txn = app_client.send.read_game_state(
-        args=(0,),
+    read_game1_state_txn = app_client.send.read_game_state(
+        args=(1,),
         params=CommonAppCallParams(
             sender=creator.address,
             signer=creator.signer,
@@ -747,8 +805,8 @@ def test_play_game(
         ),
     )
 
-    read_game1_state_txn = app_client.send.read_game_state(
-        args=(1,),
+    read_game2_state_txn = app_client.send.read_game_state(
+        args=(2,),
         params=CommonAppCallParams(
             sender=creator.address,
             signer=creator.signer,
@@ -761,15 +819,15 @@ def test_play_game(
     view_app_boxes(app_client, {b"s_", b"p_"}, logger)
 
     # Log read game state transaction abi returns
-    logger.info(read_game0_state_txn.abi_return)
     logger.info(read_game1_state_txn.abi_return)
+    logger.info(read_game2_state_txn.abi_return)
 
     # Log App Global State
     logger.info(f"Global State: {app_client.state.global_state.get_all()}")
 
 
 # Test case for executing an app call transaction to the `commit_rand` method of the smart contract
-def test_del_box_commit_rand(
+def test_del_box_commit_rand_admin(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
     apps: dict[str, PieoutClient],
@@ -780,8 +838,10 @@ def test_del_box_commit_rand(
     # creator = accs["creator"]
 
     # Define nested function to try `del_box_commit_rand` method call
-    def try_del_box_commit_rand_txn(
+    def try_del_box_commit_rand_admin_txn(
         account: SigningAccount,
+        game_id: int,
+        player: SigningAccount,
     ) -> None:
 
         # Send app call transaction to smart contract method `commit_rand`
@@ -789,43 +849,24 @@ def test_del_box_commit_rand(
             logger=logger,
             app_client=app_client,
             account=account,
-            method=app_client.send.del_box_commit_rand,
+            method=app_client.send.del_box_commit_rand_admin,
+            args=(game_id, player.address),
             max_fee=micro_algo(2_000),
             send_params=SendParams(cover_app_call_inner_transaction_fees=True),
-            description="Del Box Commit Rand App Call",
+            description="Del Box Commit Rand Admin App Call",
         )
 
-    # Accounts playing game 0
-    try_del_box_commit_rand_txn(creator)
-    players_game_0 = [
-        "randy_1",
-        "randy_2",
-        "randy_3",
-        "randy_4",
-        "randy_5",
-        "randy_6",
-        "randy_7",
-        "randy_8",
-        "randy_9",
-    ]
-    for player in players_game_0:
-        try_del_box_commit_rand_txn(randy_factory[player])
+    read_game1_players_txn = app_client.send.read_game_players(
+        args=(1,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer
+        ),
+    )
 
-    # # Accounts playing game 1
-    # players_game_1 = [
-    #     # "creator",
-    #     "randy_1",
-    #     "randy_2",
-    #     "randy_3",
-    #     "randy_4",
-    #     "randy_5",
-    #     "randy_6",
-    #     "randy_7",
-    # ]
+    logger.info(f"Game ID: 1 - player list: {read_game1_players_txn.abi_return}")
 
-    # try_del_box_commit_rand_txn(creator)
-    # for player in players_game_1:
-    #     try_del_box_commit_rand_txn(randy_factory[player], 1)
+    try_del_box_commit_rand_admin_txn(creator, 1, randy_factory["randy_1"])
 
     # Log App Global State
     logger.info(f"Global State: {app_client.state.global_state.get_all()}")

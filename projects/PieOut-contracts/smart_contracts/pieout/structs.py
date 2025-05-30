@@ -13,7 +13,7 @@ class GameState(arc4.Struct):
     box_p_start_pos: arc4.UInt16
     expiry_ts: arc4.UInt64
     prize_pool: arc4.UInt64
-    manager_address: arc4.Address
+    admin_address: arc4.Address
     first_place_address: arc4.Address
     second_place_address: arc4.Address
     third_place_address: arc4.Address
@@ -27,4 +27,6 @@ class GameTrophy(arc4.Struct):
 
 # Struct containing commit randomness values
 class CommitRand(arc4.Struct):
+    # used: arc4.Bool
+    game_id: arc4.UInt64
     commit_round: arc4.UInt64

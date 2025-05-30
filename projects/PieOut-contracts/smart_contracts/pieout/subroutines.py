@@ -45,8 +45,9 @@ def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
 
 # Check if transaction sender is active player in a valid game instance
 @subroutine
-def check_sender_in_game(
+def check_acc_in_game(
     game_id: UInt64,
+    account: Account,
     box_game_players: BoxMap[UInt64, Bytes],
     player_count: UInt64,
     clear_player: bool,  # noqa: FBT001
@@ -54,17 +55,17 @@ def check_sender_in_game(
     # Calculate total byte length to iterate over based on player count and address size
     game_players_length = player_count * cst.ADDRESS_SIZE
 
-    # Initialize flag to track if the transaction sender is found in the game
-    txn_sender_in_game = False
+    # Initialize flag to track if account is found in game
+    acc_in_game = False
 
     # Iterate through the player byte array in 32-byte chunks (one address per chunk)
     for i in urange(0, game_players_length, cst.ADDRESS_SIZE):
         # Extract the 32-byte player address at start index i
         player_addr_bytes = op.extract(box_game_players[game_id], i, cst.ADDRESS_SIZE)
 
-        # Check if the extracted player address matches the transaction sender address
-        if Txn.sender.bytes == player_addr_bytes:
-            txn_sender_in_game = True
+        # Check if the extracted player address bytes match up with the account bytes
+        if account.bytes == player_addr_bytes:
+            acc_in_game = True
 
             # Optionally clear this player from the box by replacing their address with zero bytes
             if clear_player:
@@ -74,15 +75,15 @@ def check_sender_in_game(
             # Exit loop early since sender was found
             break
 
-    # Return True if sender was found in the game, else False
-    return txn_sender_in_game
+    # Return True if account was found in the game, else False
+    return acc_in_game
 
 
 # Use the PCG AVM library to generate a sequence of rolls and compute a score
 @subroutine
-def roll_score(
+def calc_score_get_place(
     game_id: UInt64,
-    commit_rand_salt_id: UInt64,
+    score_id: UInt64,
     game_state: stc.GameState,
     player: Account,
     seed: Bytes,
@@ -117,7 +118,7 @@ def roll_score(
     arc4.emit(
         "player_score(uint64,uint64,address,uint8)",
         game_id,
-        commit_rand_salt_id,
+        score_id,
         player,
         arc4.UInt8(score),
     )
@@ -162,7 +163,8 @@ def roll_score(
 def is_game_live(game_state: stc.GameState) -> arc4.Bool:
     # Check game live criteria
     if (
-        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
+        (game_state.expiry_ts < Global.latest_timestamp  # If deadline expired AND
+        and game_state.active_players >= cst.MAX_PLAYERS_BOT_BOUND)  # Min amount of active players
         or game_state.active_players == game_state.max_players  # If lobby full
     ):
         # Mark join phase as complete when staking finalized evaluates True
@@ -223,23 +225,40 @@ def is_game_over(
             game_state.prize_pool.native - first_win_share - second_win_share
         )  # Third place gets remainder
 
+        # Define win share recievers, if any address is empty, reciever for that address is game manager
+        first_place_receiver = (
+            game_state.first_place_address.native
+            if game_state.first_place_address.native != Global.zero_address
+            else game_state.admin_address.native
+        )
+        second_place_receiver = (
+            game_state.second_place_address.native
+            if game_state.second_place_address.native != Global.zero_address
+            else game_state.admin_address.native
+        )
+        third_place_receiver = (
+            game_state.third_place_address.native
+            if game_state.third_place_address.native != Global.zero_address
+            else game_state.admin_address.native
+        )
+
         # Issue payouts to 1st, 2nd and 3rd place accounts
         payout_itxn(
-            receiver=game_state.first_place_address.native,
+            receiver=first_place_receiver,
             amount=first_win_share,
             note=String(
                 "sender:app_address,reciever:first_place_address,concern:prize_pool_first_win_share_payout"
             ),
         )
         payout_itxn(
-            receiver=game_state.second_place_address.native,
+            receiver=second_place_receiver,
             amount=second_win_share,
             note=String(
                 "sender:app_address,reciever:second_place_address,concern:prize_pool_second_win_share_payout"
             ),
         )
         payout_itxn(
-            receiver=game_state.third_place_address.native,
+            receiver=third_place_receiver,
             amount=third_win_share,
             note=String(
                 "sender:app_address,reciever:third_place_address,concern:prize_pool_third_win_share_payout"
