@@ -43,6 +43,27 @@ def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
     ).submit()
 
 
+@subroutine
+def resolve_receiver_by_prio(
+    acc1: Account,
+    acc2: Account,
+    acc3: Account,
+) -> Account:
+    if acc1 != Global.zero_address and op.AcctParamsGet.acct_balance(acc1)[1]:
+        return acc1
+    elif acc2 != Global.zero_address and op.AcctParamsGet.acct_balance(acc2)[1]:
+        return acc2
+    elif acc3 != Global.zero_address and op.AcctParamsGet.acct_balance(acc3)[1]:
+        return acc3
+    elif (
+        Txn.sender != Global.zero_address
+        and op.AcctParamsGet.acct_balance(Txn.sender)[1]
+    ):
+        return Txn.sender
+    else:
+        return Global.current_application_address
+
+
 # Check if transaction sender is active player in a valid game instance
 @subroutine
 def check_acc_in_game(
@@ -158,13 +179,13 @@ def calc_score_get_place(
         game_state.third_place_score = arc4.UInt8(score)
         game_state.third_place_address = arc4.Address(player)
 
+
 # Check if game is live and execute its conditional logic
 @subroutine
 def is_game_live(game_state: stc.GameState) -> arc4.Bool:
     # Check game live criteria
     if (
-        (game_state.expiry_ts < Global.latest_timestamp  # If deadline expired AND
-        and game_state.active_players >= cst.MAX_PLAYERS_BOT_BOUND)  # Min amount of active players
+        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
         or game_state.active_players == game_state.max_players  # If lobby full
     ):
         # Mark join phase as complete when staking finalized evaluates True
@@ -214,58 +235,70 @@ def is_game_over(
             game_state.third_place_address,
         )
 
-        # Calculate 1st, 2nd and 3rd place prize pool win shares
-        first_win_share = (
-            game_state.prize_pool.native * UInt64(50) // UInt64(100)
-        )  # First place gets 50%
-        second_win_share = (
-            game_state.prize_pool.native * UInt64(30) // UInt64(100)
-        )  # Second place gets 30%
-        third_win_share = (
-            game_state.prize_pool.native - first_win_share - second_win_share
-        )  # Third place gets remainder
+        # If only 1 player in lobby after game goes live, they get entire prize pool
+        if game_state.prize_pool.native == cst.STAKE_AMOUNT_OTHER:
+            first_prize_share = game_state.prize_pool.native
+            second_prize_share = UInt64(0)
+            third_prize_share = UInt64(0)
+        # Elif, only 2 players in lobby after game goes live, split prize pool: 60% / remainder / 0
+        elif game_state.prize_pool.native == 2 * cst.STAKE_AMOUNT_OTHER:
+            first_prize_share = game_state.prize_pool.native * UInt64(60) // UInt64(100)
+            second_prize_share = game_state.prize_pool.native - first_prize_share
+            third_prize_share = UInt64(0)  # No third player
+        # Else, split prize pool: 50% / 30% / remainder
+        else:
+            first_prize_share = game_state.prize_pool.native * UInt64(50) // UInt64(100)
+            second_prize_share = (
+                game_state.prize_pool.native * UInt64(30) // UInt64(100)
+            )
+            third_prize_share = (
+                game_state.prize_pool.native - first_prize_share - second_prize_share
+            )
 
-        # Define win share recievers, if any address is empty, reciever for that address is game manager
-        first_place_receiver = (
-            game_state.first_place_address.native
-            if game_state.first_place_address.native != Global.zero_address
-            else game_state.admin_address.native
+        # Resolve prize pool win share receivers by priority
+        first_place_receiver = resolve_receiver_by_prio(
+            acc1=game_state.first_place_address.native,
+            acc2=game_state.admin_address.native,
+            acc3=Global.creator_address,
         )
-        second_place_receiver = (
-            game_state.second_place_address.native
-            if game_state.second_place_address.native != Global.zero_address
-            else game_state.admin_address.native
+        second_place_receiver = resolve_receiver_by_prio(
+            acc1=game_state.second_place_address.native,
+            acc2=game_state.admin_address.native,
+            acc3=Global.creator_address,
         )
-        third_place_receiver = (
-            game_state.third_place_address.native
-            if game_state.third_place_address.native != Global.zero_address
-            else game_state.admin_address.native
-        )
-
-        # Issue payouts to 1st, 2nd and 3rd place accounts
-        payout_itxn(
-            receiver=first_place_receiver,
-            amount=first_win_share,
-            note=String(
-                "sender:app_address,reciever:first_place_address,concern:prize_pool_first_win_share_payout"
-            ),
-        )
-        payout_itxn(
-            receiver=second_place_receiver,
-            amount=second_win_share,
-            note=String(
-                "sender:app_address,reciever:second_place_address,concern:prize_pool_second_win_share_payout"
-            ),
-        )
-        payout_itxn(
-            receiver=third_place_receiver,
-            amount=third_win_share,
-            note=String(
-                "sender:app_address,reciever:third_place_address,concern:prize_pool_third_win_share_payout"
-            ),
+        third_place_receiver = resolve_receiver_by_prio(
+            acc1=game_state.third_place_address.native,
+            acc2=game_state.admin_address.native,
+            acc3=Global.creator_address,
         )
 
-        # Set prize pool amount to zero
+        # Issue prize pool share payouts to first, second and third place accounts if their share is non-zero amount
+        if first_prize_share > UInt64(0):
+            payout_itxn(
+                receiver=first_place_receiver,
+                amount=first_prize_share,
+                note=String(
+                    "sender:app_address,receiver:first_place_address,concern:first_prize_share_payout"
+                ),
+            )
+        if second_prize_share > UInt64(0):
+            payout_itxn(
+                receiver=second_place_receiver,
+                amount=second_prize_share,
+                note=String(
+                    "sender:app_address,receiver:second_place_address,concern:second_prize_share_payout"
+                ),
+            )
+        if third_prize_share > UInt64(0):
+            payout_itxn(
+                receiver=third_place_receiver,
+                amount=third_prize_share,
+                note=String(
+                    "sender:app_address,receiver:third_place_address,concern:third_prize_share_payout"
+                ),
+            )
+
+        # Set prize pool amount to zero after making payouts
         game_state.prize_pool = arc4.UInt64(0)
 
         return arc4.Bool(True)  # noqa: FBT003

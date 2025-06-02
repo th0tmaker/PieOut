@@ -127,8 +127,9 @@ class Pieout(ARC4Contract):
         box_t_pay: gtxn.PaymentTransaction,
         mint_pay: gtxn.PaymentTransaction,
     ) -> None:
-
+        # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 3, err.INVALID_GROUP_SIZE
+        assert not self.box_game_trophy, err.BOX_FOUND
 
         assert box_t_pay.amount >= cst.BOX_T_FEE, err.INVALID_BOX_PAY_FEE
         assert box_t_pay.sender == Global.creator_address, err.INVALID_BOX_PAY_SENDER
@@ -144,8 +145,7 @@ class Pieout(ARC4Contract):
             mint_pay.receiver == Global.current_application_address
         ), err.INVALID_MINT_PAY_RECEIVER
 
-        assert not self.box_game_trophy, "Can only mint if it doesn't exist yet"
-
+        # Mint a new unique asset representing the game trophy by making an asset config inner transaction
         acfg_itxn = itxn.AssetConfig(
             total=1,
             unit_name="TRFY",
@@ -161,26 +161,29 @@ class Pieout(ARC4Contract):
             note="creator:app_address,fee_payer:creator_address,concern:mint_trophy_asset_create",
         ).submit()
 
-        # Create the box game trophy and Store the created asset ID as its as value
+        # Create the box game trophy and assign its default starting values
         self.box_game_trophy.create()
         self.box_game_trophy.value = stc.GameTrophy(
             asset_id=arc4.UInt64(acfg_itxn.created_asset.id),
             owner_address=arc4.Address(Global.zero_address),
         )
 
-    # Allow ATH address to add the trophy to their asset balance via an asset transfer inner transaction
+    # Allow the ATH address to add the trophy to their asset balance via an asset transfer inner transaction
     @arc4.abimethod
     def claim_trophy(self) -> None:
+        # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        # assert Txn.sender == self.ath_address, "Only ATH address can be trophy receiver"
+        assert Txn.sender == self.ath_address, err.INVALID_TROPHY_RECEIVER
         assert Txn.sender.is_opted_in(
             Asset(self.box_game_trophy.value.asset_id.native)
-        ), "Sender needs to be opt-in to receieve trophy"
+        ), err.ASSET_OPT_IN_REQUIRED
 
+        # Transfer game trophy to by making an asset transfer inner transaction
         itxn.AssetTransfer(
             xfer_asset=self.box_game_trophy.value.asset_id.native,
             asset_receiver=Txn.sender,
             asset_amount=1,
+            note="sender:app_address,receiver:sender_address,concern:claim_trophy_asset",
         ).submit()
 
     # Create new game instance with a unique ID
@@ -221,7 +224,7 @@ class Pieout(ARC4Contract):
             box_p_pay.receiver == Global.current_application_address
         ), err.INVALID_BOX_PAY_RECEIVER
 
-        # Initialize new game state by writing the default starting values and store them in game state box
+        # Initialize a new game state box with unique game IQ and write the default starting values inside
         self.box_game_state[self.game_id] = stc.GameState(
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
             max_players=arc4.UInt8(max_players),
@@ -260,6 +263,7 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
+        assert Txn.sender not in self.box_commit_rand
 
         assert stake_pay.amount >= cst.STAKE_AMOUNT_OTHER, err.INVALID_STAKE_PAY_FEE
         assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
@@ -320,7 +324,7 @@ class Pieout(ARC4Contract):
     @arc4.abimethod
     def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
         # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 2, err.STANDALONE_TXN_ONLY
+        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
         assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
 
         assert box_c_pay.amount >= cst.BOX_C_FEE, err.INVALID_BOX_PAY_FEE
@@ -329,7 +333,7 @@ class Pieout(ARC4Contract):
             box_c_pay.receiver == Global.current_application_address
         ), err.INVALID_BOX_PAY_RECEIVER
 
-        # Initialize box commit rand with default commit round value
+        # Initialize box commit rand fields with default start value
         self.box_commit_rand[Txn.sender] = stc.CommitRand(
             game_id=arc4.UInt64(0),
             commit_round=arc4.UInt64(0),
@@ -337,27 +341,17 @@ class Pieout(ARC4Contract):
 
     # Get randomness commit round tied to the game ID arg and store them in the commit rand box w/ sender address as key
     @arc4.abimethod
-    def get_rand_commit_round(
+    def get_commit_rand_field_values(
         self,
         game_id: UInt64,
     ) -> None:
-        # Fail transaction unless the assertion below evaluate True
-        # assert Global.group_size > 1, "Also needs to be lesser than itself + max possible txns play_game can produce"
-        # assert Txn.group_index == 0, "Must be first transaction in group (index 0)"
-
-        # second_txn = gtxn.ApplicationCallTransaction(group_index=1)
-
-        # assert second_txn.app_id == Global.current_application_id
-        # assert second_txn.sender == Txn.sender
-        # assert second_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void")
-        # assert second_txn.app_args(1) == Txn.application_args(1), "game id's must match"
-
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
         assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
         assert (
             self.box_game_state[game_id].staking_finalized == True  # noqa: E712
         ), err.STAKING_FINAL
-
         assert (
             srt.check_acc_in_game(  # noqa: E712, RUF100
                 game_id=game_id,
@@ -369,56 +363,80 @@ class Pieout(ARC4Contract):
             == True
         ), err.INVALID_PLAYER
 
-
+        # Get box commit rand values
         commit_rand = self.box_commit_rand[
             Txn.sender
         ].copy()  # Make a copy of the game state else immutable
 
+        # Fail transaction unless the assertion below evaluates True
         assert commit_rand.commit_round.native == 0, err.COMMIT_RAND_ROUND_FOUND
 
-        # Define commit rand commit round by adding round offset to current round
+        # Update commit rand commit round and game id fields with new values
         commit_rand.commit_round = arc4.UInt64(Global.round + 4)
         commit_rand.game_id = arc4.UInt64(game_id)
 
         # Copy the modified game state and store it as new value of box
         self.box_commit_rand[Txn.sender] = commit_rand.copy()
 
-        # # Use a pseudo-random operation to select a round offset
-        # round_offset = (
-        #     op.btoi(op.extract(op.sha256(Txn.tx_id + op.itob(Global.round)), 16, 2)) % 3
-        #     + 4
-        # )  # Default: + 3
-
-    # Allow caller to delete box commit rand and refund the box MBR fee
+    # Allow caller to alter box commit rand tied to their own account
     @arc4.abimethod
-    def del_box_commit_rand_player(self) -> None:
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
-
-        assert self.box_commit_rand[Txn.sender].commit_round.native == 0,  err.COMMIT_RAND_ROUND_FOUND
-
-        # Delete sender box commit rand box from contract storage
-        del self.box_commit_rand[Txn.sender]
-
-        # Submit inner transaction that refunds box commit MBR to sender address
-        srt.payout_itxn(
-            receiver=Txn.sender,
-            amount=UInt64(cst.BOX_C_FEE),
-            note=String(
-                "sender:app_address,receiver:sender_address,concern:box_commit_rand_deletion"
-            ),
-        )
-
-    # Allow admin account to delete box commit rand for any account no longer active in games they admin for
-    @arc4.abimethod
-    def del_box_commit_rand_admin(self, game_id: UInt64, account: Account) -> None:
+    def alt_box_commit_rand_for_self(
+        self, game_id: UInt64, delete_box: bool  # noqa: FBT001
+    ) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
-        assert Txn.sender == self.box_game_state[game_id].admin_address.native, err.INVALID_ADMIN
-        assert account in self.box_commit_rand, err.BOX_NOT_FOUND
 
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert (
+            self.box_commit_rand[Txn.sender].game_id.native == game_id
+        ), err.GAME_ID_MISMATCH
+
+        assert (
+            srt.check_acc_in_game(  # noqa: E712, RUF100
+                game_id=game_id,
+                account=Txn.sender,
+                box_game_players=self.box_game_players,
+                player_count=self.box_game_state[game_id].max_players.native,
+                clear_player=False,
+            )
+            == False
+        ), err.PLAYER_ACTIVE
+
+        # assert self.box_commit_rand[Txn.sender].commit_round.native != 0
+
+        # If delete box boolean is True, delete box
+        if delete_box:
+            # Delete sender box commit rand from the smart contract storage
+            del self.box_commit_rand[Txn.sender]
+
+            # Issue MBR refund for box commit rand deletion via a payment inner transaction
+            srt.payout_itxn(
+                receiver=Txn.sender,
+                amount=UInt64(cst.BOX_C_FEE),
+                note=String(
+                    "sender:app_address,receiver:sender_address,concern:box_commit_rand_deletion"
+                ),
+            )
+        # If delete box boolean is False, reset box
+        else:
+            # Reset box commit rand fields back to their original start values
+            self.box_commit_rand[Txn.sender] = stc.CommitRand(
+                game_id=arc4.UInt64(0),
+                commit_round=arc4.UInt64(0),
+            )
+
+    # Allow caller to alter box commit rand tied to another account
+    @arc4.abimethod
+    def alt_box_commit_rand_for_other(self, game_id: UInt64, account: Account) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.INVALID_GAME_ID
+        assert account in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert (
+            Txn.sender == self.box_game_state[game_id].admin_address.native
+            or Txn.sender == Global.creator_address
+        ), err.INVALID_CALLER
         assert (
             srt.check_acc_in_game(  # noqa: E712, RUF100
                 game_id=game_id,
@@ -433,12 +451,19 @@ class Pieout(ARC4Contract):
         # Delete sender box commit rand box from contract storage
         del self.box_commit_rand[account]
 
-        # Submit inner transaction that refunds box commit MBR to sender address
+        # Resolve box commit rand deletion MBR refund receiver by priority
+        receiver = srt.resolve_receiver_by_prio(
+            acc1=account,
+            acc2=self.box_game_state[game_id].admin_address.native,
+            acc3=Global.creator_address,
+        )
+
+        # Issue MBR refund for box commit rand deletion via a payment inner transaction
         srt.payout_itxn(
-            receiver=account,
+            receiver=receiver,
             amount=UInt64(cst.BOX_C_FEE),
             note=String(
-                "sender:app_address,receiver:account_address,concern:box_commit_rand_deletion"
+                "sender:app_address,receiver:reciever_address,concern:box_commit_rand_deletion"
             ),
         )
 
@@ -483,7 +508,9 @@ class Pieout(ARC4Contract):
         assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
         assert game_state.expiry_ts >= Global.latest_timestamp, err.DEADLINE_EXPIRED
 
-        assert self.box_commit_rand[Txn.sender].commit_round != 0, "Invalid commit rand round. Can't be zero"
+        assert (
+            self.box_commit_rand[Txn.sender].commit_round != 0
+        ), "Invalid commit rand round. Can't be zero"
         assert self.box_commit_rand[Txn.sender].game_id != 0
 
         assert (
@@ -503,7 +530,9 @@ class Pieout(ARC4Contract):
             score_id=self.score_id,
             game_state=game_state,
             player=Txn.sender,
-            seed=op.sha256(op.itob(self.score_id)),  # Use VRF output as seed in TestNet/production case, else use Txn.tx_id
+            seed=op.sha256(
+                op.itob(self.score_id)
+            ),  # Use VRF output as seed in TestNet/production case, else use Txn.tx_id
         )
 
         # Increment commit rand salt id by 1
@@ -515,13 +544,13 @@ class Pieout(ARC4Contract):
             self.ath_score = game_state.first_place_score.native
 
             if self.ath_address != Global.zero_address:
-                balance, did_exist = op.AssetHoldingGet.asset_balance(
+                asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
                     self.box_game_trophy.value.owner_address.native,
                     self.box_game_trophy.value.asset_id.native,
                 )
 
                 # If asset did exist and its balance is one, perform clawback via asset transfer inner transaction
-                if did_exist and balance == 1:
+                if asset_exists and asset_balance == 1:
                     srt.clawback_itxn(
                         asset_id=self.box_game_trophy.value.asset_id.native,
                         asset_sender=self.box_game_trophy.value.owner_address.native,
@@ -545,34 +574,32 @@ class Pieout(ARC4Contract):
 
     # Allow an active player to check for a game event and potentially trigger its progression
     @arc4.abimethod
-    def check_game_event_trigger(self, game_id: UInt64, game_event_id: arc4.UInt8) -> arc4.Bool:
+    def trigger_game_prog(
+        self, game_id: UInt64, game_event_id: arc4.UInt8
+    ) -> arc4.Bool:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.INVALID_GAME_ID
+
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert (
+            self.box_commit_rand[Txn.sender].game_id.native == game_id
+        ), err.GAME_ID_MISMATCH
 
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
 
-        acc_in_game = srt.check_acc_in_game(
-            game_id=game_id,
-            account=Txn.sender,
-            box_game_players=self.box_game_players,
-            player_count=self.box_game_state[game_id].max_players.native,
-            clear_player=True,
-        )
-
         # If Game Event ID corresponds with event: Game Live
         if game_event_id.native == 0:
-            assert acc_in_game, err.INVALID_PLAYER
             is_game_live = srt.is_game_live(game_state)
             return is_game_live
         # If Game Event ID corresponds with event: Game Over
         elif game_event_id.native == 2:
             assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
             assert game_state.expiry_ts < Global.latest_timestamp, err.DEADLINE_EXPIRED
-            assert acc_in_game, err.INVALID_PLAYER
+            # assert not acc_in_game, err.INVALID_PLAYER
             is_game_over = srt.is_game_over(game_id, game_state, self.box_game_players)
             return is_game_over
         # Else, Game Event ID is invalid, fail transaction
@@ -647,6 +674,8 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertion below evaluates True
         assert game_state.admin_address == Txn.sender, err.INVALID_ADMIN
+
+        # NOTE: Make contract creator be able to delete games if admin doesn't want?
 
         # Ensure zero active players OR only player left is the manager
         acc_in_game = False
@@ -1049,3 +1078,13 @@ class Pieout(ARC4Contract):
     #     # Clear total players and prize pool
     #     self.total_players = UInt64(0)
     #     self.prize_pool = UInt64(0)
+
+    # assert Global.group_size > 1, "Also needs to be lesser than itself + max possible txns play_game can produce"
+    # assert Txn.group_index == 0, "Must be first transaction in group (index 0)"
+
+    # second_txn = gtxn.ApplicationCallTransaction(group_index=1)
+
+    # assert second_txn.app_id == Global.current_application_id
+    # assert second_txn.sender == Txn.sender
+    # assert second_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void")
+    # assert second_txn.app_args(1) == Txn.application_args(1), "game id's must match"
