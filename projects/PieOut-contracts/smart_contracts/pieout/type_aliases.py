@@ -1,4 +1,4 @@
-# smart_contracts/pieout/contract.py
+# smart_contracts/pieout/type_aliases.py
 from typing import TypeAlias
 
 from algopy import arc4
@@ -21,5 +21,13 @@ GameStateTuple: TypeAlias = arc4.Tuple[
     arc4.Address,
 ]
 
+CommitRandTuple: TypeAlias = arc4.Tuple[
+    arc4.UInt64,
+    arc4.UInt64,
+    arc4.UInt64,
+]
+
 # Type alias from arc4 dynamic array data type
 GamePlayersArr: TypeAlias = arc4.DynamicArray[arc4.Address]
+
+

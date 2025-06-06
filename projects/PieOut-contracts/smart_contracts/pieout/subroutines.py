@@ -20,20 +20,34 @@ from . import constants as cst
 from . import structs as stc
 
 
+# Execute burn asset config inner transaction
+@subroutine
+def burn_itxn(
+    asset_id: UInt64,
+    note: String,
+) -> None:
+    itxn.AssetConfig(
+        config_asset=asset_id,
+        note=note,
+    ).submit()
+
+# Execute clawback asset transfer inner transaction of single amount
 @subroutine
 def clawback_itxn(
     asset_id: UInt64,
     asset_sender: Account,
     asset_receiver: Account,
+    note: String,
 ) -> None:
     itxn.AssetTransfer(
         asset_receiver=asset_receiver,
         xfer_asset=asset_id,
         asset_sender=asset_sender,
         asset_amount=1,
+        note=note,
     ).submit()
 
-
+# Execute a payout payment inner transaction
 @subroutine
 def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
     itxn.Payment(
@@ -42,7 +56,7 @@ def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
         note=note,
     ).submit()
 
-
+# Resolve reciever account address by priority
 @subroutine
 def resolve_receiver_by_prio(
     acc1: Account,
@@ -63,8 +77,20 @@ def resolve_receiver_by_prio(
     else:
         return Global.current_application_address
 
+# Reset box commit rand values back to its initial default state
+@subroutine
+def reset_box_commit_rand(
+    box_commit_rand: BoxMap[Account, stc.CommitRand],
+    account: Account,
+    round_delta: UInt64
+    ) -> None:
+    box_commit_rand[account] = stc.CommitRand(
+        game_id=arc4.UInt64(0),
+        commit_round=arc4.UInt64(0),
+        expiry_round=arc4.UInt64(Global.round + round_delta),
+    )
 
-# Check if transaction sender is active player in a valid game instance
+# Check if account is an active player of a valid game instance
 @subroutine
 def check_acc_in_game(
     game_id: UInt64,
@@ -90,8 +116,8 @@ def check_acc_in_game(
 
             # Optionally clear this player from the box by replacing their address with zero bytes
             if clear_player:
-                players_ref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
-                players_ref.replace(i, cst.ZERO_ADDR_BYTES)
+                game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
+                game_players_bref.replace(i, cst.ZERO_ADDR_BYTES)
 
             # Exit loop early since sender was found
             break
@@ -99,8 +125,7 @@ def check_acc_in_game(
     # Return True if account was found in the game, else False
     return acc_in_game
 
-
-# Use the PCG AVM library to generate a sequence of rolls and compute a score
+# Use the PCG AVM library to generate a sequence of numbers and compute the final score and placement
 @subroutine
 def calc_score_get_place(
     game_id: UInt64,
@@ -179,7 +204,6 @@ def calc_score_get_place(
         game_state.third_place_score = arc4.UInt8(score)
         game_state.third_place_address = arc4.Address(player)
 
-
 # Check if game is live and execute its conditional logic
 @subroutine
 def is_game_live(game_state: stc.GameState) -> arc4.Bool:
@@ -207,17 +231,33 @@ def is_game_live(game_state: stc.GameState) -> arc4.Bool:
     else:
         return arc4.Bool(False)  # noqa: FBT003
 
-
 # Check if game is over and execute its conditional logic
 @subroutine
 def is_game_over(
-    game_id: UInt64, game_state: stc.GameState, box_game_players: BoxMap[UInt64, Bytes]
+    game_id: UInt64,
+    game_state: stc.GameState,
+    box_game_players: BoxMap[UInt64, Bytes],
+    box_commit_rand: BoxMap[Account, stc.CommitRand],
 ) -> arc4.Bool:
     # Check game over criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
         or game_state.active_players.native == 0  # If no more active players
     ):
+        # Reset box commit rand fields to default start values for any remaining players
+        game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
+        for i in urange(0, game_players_bref.length, 32):
+            player_addr_bytes = game_players_bref.extract(i, 32)
+            if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
+                player = Account.from_bytes(player_addr_bytes)
+                # Reset box commit rand fields back to their original start values
+                reset_box_commit_rand(
+                    box_commit_rand=box_commit_rand,
+                    account=player,
+                    round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA)
+                )
+
+
         # Clear box game players data by setting its value to all zeroes
         box_game_players[game_id] = op.bzero(
             cst.ADDRESS_SIZE * game_state.max_players.native
@@ -278,7 +318,7 @@ def is_game_over(
                 receiver=first_place_receiver,
                 amount=first_prize_share,
                 note=String(
-                    "sender:app_address,receiver:first_place_address,concern:first_prize_share_payout"
+                    'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;first_prize_share"}'
                 ),
             )
         if second_prize_share > UInt64(0):
@@ -286,7 +326,7 @@ def is_game_over(
                 receiver=second_place_receiver,
                 amount=second_prize_share,
                 note=String(
-                    "sender:app_address,receiver:second_place_address,concern:second_prize_share_payout"
+                    'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;second_prize_share"}'
                 ),
             )
         if third_prize_share > UInt64(0):
@@ -294,7 +334,7 @@ def is_game_over(
                 receiver=third_place_receiver,
                 amount=third_prize_share,
                 note=String(
-                    "sender:app_address,receiver:third_place_address,concern:third_prize_share_payout"
+                    'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;third_prize_share"}'
                 ),
             )
 
