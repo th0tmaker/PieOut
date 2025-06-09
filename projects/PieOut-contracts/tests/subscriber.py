@@ -25,7 +25,7 @@ pieout_events = {
             "name": "player_score",
             "args": [
                 {"name": "game_id", "type": "uint64"},
-                {"name": "commit_rand_salt_id", "type": "uint64"},
+                {"name": "score_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
                 {"name": "score", "type": "uint8"},
             ]
@@ -84,7 +84,7 @@ def log_subbed_arc28_events(
     # Define expected args per event name
     event_arg_keys: dict[str, list[str]] = {
         "game_live": ["game_id", "staking_finalized", "expiry_ts"],
-        "player_score": ["game_id", "commit_rand_salt_id", "player", "score"],
+        "player_score": ["game_id", "score_id", "player", "score"],
         "game_over": ["game_id", "high_score", "first_place_address", "second_place_address", "third_place_address"]
     }
 
