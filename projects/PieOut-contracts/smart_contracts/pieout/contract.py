@@ -44,7 +44,7 @@ class Pieout(ARC4Contract):
         self.box_commit_rand = BoxMap(Account, stc.CommitRand, key_prefix="c_")
         self.box_game_trophy = Box(stc.GameTrophy, key="t_")
 
-    # Add extra app call to increase the resource reference budget, must be called together with play game
+    # Add extra app call to increase the resource reference budget, must be grouped w/ play game abimethod
     @arc4.abimethod
     def add_resource_budget_play_game(self, game_id: UInt64) -> None:
         # Get the first transaction in the group
@@ -538,13 +538,14 @@ class Pieout(ARC4Contract):
             app_id=600011887,  # TestNet VRF Beacon Application ID
         )[0]
 
+        # Calculate player score and assign placement if their score qualifies
         srt.calc_score_get_place(
             game_id=game_id,
             score_id=self.score_id,
             game_state=game_state,
             player=Txn.sender,
-            seed=seed,
-        )  # Use VRF output as seed in TestNet/production case, else use Txn.tx_id
+            seed=seed,  # Use VRF output as seed outside LocalNet env
+        )
 
         # Increment score id by 1
         self.score_id += 1
