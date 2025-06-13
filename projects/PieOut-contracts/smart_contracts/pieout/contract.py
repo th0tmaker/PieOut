@@ -44,21 +44,6 @@ class Pieout(ARC4Contract):
         self.box_commit_rand = BoxMap(Account, stc.CommitRand, key_prefix="c_")
         self.box_game_trophy = Box(stc.GameTrophy, key="t_")
 
-    # Add extra app call to increase the resource reference budget, must be grouped w/ play game abimethod
-    @arc4.abimethod
-    def add_resource_budget_play_game(self, game_id: UInt64) -> None:
-        # Get the first transaction in the group
-        first_txn = gtxn.ApplicationCallTransaction(group_index=0)
-
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert Txn.group_index == 1, err.INVALID_GROUP_IDX
-
-        assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
-        assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
-        assert first_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
-        assert first_txn.app_args(1) == op.itob(game_id), err.INVALID_GAME_ID
-
     # Calculate the minimum balance requirement (MBR) cost for storing a single box unit
     @arc4.abimethod(readonly=True)
     def calc_single_box_cost(
@@ -80,7 +65,7 @@ class Pieout(ARC4Contract):
 
     # Read the smart contract application game state box for given game id
     @arc4.abimethod(readonly=True)
-    def read_game_state(self, game_id: UInt64) -> ta.GameStateTuple:
+    def read_box_game_state(self, game_id: UInt64) -> ta.GameStateTuple:
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
@@ -108,7 +93,7 @@ class Pieout(ARC4Contract):
 
     # Read the smart contract application game players box for given game id
     @arc4.abimethod(readonly=True)
-    def read_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
+    def read_box_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
         # Retrieve current game players from box using the game id parameter
         game_players = self.box_game_players[game_id]
 
@@ -129,12 +114,12 @@ class Pieout(ARC4Contract):
 
     # Read the smart contract application commit round box for given account
     @arc4.abimethod(readonly=True)
-    def read_commit_rand(self, owner: Account) -> ta.CommitRandTuple:
+    def read_box_commit_rand(self, player: Account) -> ta.CommitRandTuple:
         # Fail transaction unless the assertion below evaluates True
-        assert owner in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert player in self.box_commit_rand, err.BOX_NOT_FOUND
 
         # Create a copy of the box commit rand contents
-        commit_rand = self.box_commit_rand[owner].copy()
+        commit_rand = self.box_commit_rand[player].copy()
 
         # Return a tuple containing commit rand game id, commit round and expiry round
         return ta.CommitRandTuple((commit_rand.game_id, commit_rand.commit_round, commit_rand.expiry_round))
@@ -482,12 +467,9 @@ class Pieout(ARC4Contract):
             ),
         )
 
-    # Resolve the player's score associated with the specified game ID, updating game state accordingly
+    # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     @arc4.abimethod
-    def play_game(self, game_id: UInt64) -> None:
-        # Ensure transaction has sufficient opcode budget
-        ensure_budget(required_budget=19600, fee_source=OpUpFeeSource.GroupCredit)
-
+    def up_ref_budget_for_play_game(self, game_id: UInt64) -> None:
         # Get the second transaction in the group
         second_txn = gtxn.ApplicationCallTransaction(group_index=1)
 
@@ -497,9 +479,32 @@ class Pieout(ARC4Contract):
 
         assert second_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
         assert second_txn.sender == Txn.sender, err.SENDER_MISMATCH
-        assert second_txn.app_args(0) == arc4.arc4_signature(
-            "add_resource_budget_play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
-        assert second_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
+        assert second_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
+
+        assert second_txn.app_args(1) == op.itob(game_id), err.INVALID_GAME_ID
+        assert second_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
+        assert self.box_commit_rand[Txn.sender].game_id.native == game_id
+
+    # Resolve the player's score associated with the specified game ID, updating game state accordingly
+    @arc4.abimethod
+    def play_game(self, game_id: UInt64) -> None:
+        # Ensure transaction has sufficient opcode budget
+        ensure_budget(required_budget=19600, fee_source=OpUpFeeSource.GroupCredit)
+
+        # Get the first transaction in the group
+        first_txn = gtxn.ApplicationCallTransaction(group_index=0)
+
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+        assert Txn.group_index == 1, err.INVALID_GROUP_IDX
+
+        assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
+        assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
+        assert first_txn.app_args(0) == arc4.arc4_signature(
+            "up_ref_budget_for_play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
+
+        assert first_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
+        assert first_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
 
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND

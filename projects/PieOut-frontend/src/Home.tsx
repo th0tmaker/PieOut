@@ -4,6 +4,11 @@ import React, { useState } from 'react'
 import ConnectWallet from './components/ConnectWallet'
 import Transact from './components/Transact'
 import AppCalls from './components/AppCalls'
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+
+// Extract once, possibly from environment
+// const algorand = AlgorandClient.defaultLocalNet()
 
 interface HomeProps {}
 

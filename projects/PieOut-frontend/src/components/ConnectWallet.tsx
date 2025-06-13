@@ -1,5 +1,6 @@
 import { useWallet, Wallet, WalletId } from '@txnlab/use-wallet-react'
 import Account from './Account'
+// import { useEffect } from 'react'
 
 interface ConnectWalletInterface {
   openModal: boolean
