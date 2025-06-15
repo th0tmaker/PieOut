@@ -1,14 +1,9 @@
 // src/components/Home.tsx
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useState } from 'react'
+import AppCalls from './components/AppCalls'
 import ConnectWallet from './components/ConnectWallet'
 import Transact from './components/Transact'
-import AppCalls from './components/AppCalls'
-import { AlgorandClient } from '@algorandfoundation/algokit-utils'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-
-// Extract once, possibly from environment
-// const algorand = AlgorandClient.defaultLocalNet()
 
 interface HomeProps {}
 
@@ -31,49 +26,93 @@ const Home: React.FC<HomeProps> = () => {
   }
 
   return (
-    <div className="hero min-h-screen bg-teal-400">
-      <div className="hero-content text-center rounded-lg p-6 max-w-md bg-white mx-auto">
-        <div className="max-w-md">
-          <h1 className="text-4xl">
-            Welcome to <div className="font-bold">AlgoKit 🙂</div>
-          </h1>
-          <p className="py-6">
-            This starter has been generated using official AlgoKit React template. Refer to the resource below for next steps.
-          </p>
-
-          <div className="grid">
-            <a
-              data-test-id="getting-started"
-              className="btn btn-primary m-2"
-              target="_blank"
-              href="https://github.com/algorandfoundation/algokit-cli"
-            >
-              Getting started
-            </a>
-
-            <div className="divider" />
-            <button data-test-id="connect-wallet" className="btn m-2" onClick={toggleWalletModal}>
-              Wallet Connection
-            </button>
-
-            {activeAddress && (
-              <button data-test-id="transactions-demo" className="btn m-2" onClick={toggleDemoModal}>
-                Transactions Demo
-              </button>
-            )}
-
-            {activeAddress && (
-              <button data-test-id="appcalls-demo" className="btn m-2" onClick={toggleAppCallsModal}>
-                Contract Interactions Demo
-              </button>
-            )}
-          </div>
-
-          <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} />
-          <Transact openModal={openDemoModal} setModalState={setOpenDemoModal} />
-          <AppCalls openModal={appCallsDemoModal} setModalState={setAppCallsDemoModal} />
-        </div>
+    <div className="min-h-screen flex flex-col font-sans" style={{ backgroundColor: '#fce5cd' }}>
+      <h1 className="text-4xl text-gray-800 font-bold">PieOut Smart Contract Game Test Page— by Ogrpn</h1>
+      <div className="flex items-center space-x-2">
+        <span className="text-3xl text-gray-800 font-bold">Wallet —</span>
+        <button
+          data-test-id="connect-wallet"
+          onClick={toggleWalletModal}
+          className="
+            relative
+            px-2 py-1
+            text-2xl font-bold
+            text-gray-800
+            border-4 border-gray-700
+            rounded-md
+            hover:border-teal-600
+            hover:text-teal-600
+            transition-colors
+            transform
+            skew-x-[-20deg]
+            shadow-lg
+            translate-y-0.5
+            hover:shadow-2xl
+          "
+        >
+          connect
+        </button>
       </div>
+
+      {activeAddress && (
+        <div className="flex items-center space-x-2">
+          <span className="text-3xl text-gray-800 font-bold">Payment —</span>
+          <button
+            data-test-id="transactions-demo"
+            onClick={toggleDemoModal}
+            className="
+            relative
+            px-2 py-1
+            text-2xl font-bold
+            text-gray-800
+            border-4 border-gray-700
+            rounded-md
+            hover:border-teal-600
+            hover:text-teal-600
+            transition-colors
+            transform
+            skew-x-[-20deg]
+            shadow-lg
+            translate-y-0.5
+            hover:shadow-2xl
+          "
+          >
+            make
+          </button>
+        </div>
+      )}
+
+      {activeAddress && (
+        <div className="flex items-center space-x-2">
+          <span className="text-3xl text-gray-800 font-bold">App Call —</span>
+          <button
+            data-test-id="appcalls-demo"
+            onClick={toggleAppCallsModal}
+            className="
+            relative
+            px-2 py-1
+            text-2xl font-bold
+            text-gray-800
+            border-4 border-gray-700
+            rounded-md
+            hover:border-teal-600
+            hover:text-teal-600
+            transition-colors
+            transform
+            skew-x-[-20deg]
+            shadow-lg
+            translate-y-0.5
+            hover:shadow-2xl
+          "
+          >
+            make
+          </button>
+        </div>
+      )}
+
+      <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} />
+      <Transact openModal={openDemoModal} setModalState={setOpenDemoModal} />
+      <AppCalls openModal={appCallsDemoModal} setModalState={setAppCallsDemoModal} />
     </div>
   )
 }
