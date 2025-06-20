@@ -5,7 +5,7 @@ module.exports = {
     extend: {
       fontFamily: {
         // kaisei: ['"Kaisei Decol"', 'serif'],
-        sans: ['Amatic SC', 'cursive'],
+        // sans: ['Amatic SC', 'cursive'],
         // sans: ['"Kaisei Decol"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },

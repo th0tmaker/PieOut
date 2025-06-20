@@ -28,6 +28,5 @@ class GameTrophy(arc4.Struct):
 # Struct containing commit randomness values
 class CommitRand(arc4.Struct):
     game_id: arc4.UInt64
-    # prev_game_id: arc4.UInt64
     commit_round: arc4.UInt64
     expiry_round: arc4.UInt64

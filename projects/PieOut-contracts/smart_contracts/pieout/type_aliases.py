@@ -4,22 +4,22 @@ from typing import TypeAlias
 from algopy import arc4
 
 # Type alias from arc4 tuple data type
-GameStateTuple: TypeAlias = arc4.Tuple[
-    arc4.UInt64,
-    arc4.Bool,
-    arc4.UInt8,
-    arc4.UInt8,
-    arc4.UInt8,
-    arc4.UInt8,
-    arc4.UInt8,
-    arc4.UInt16,
-    arc4.UInt64,
-    arc4.UInt64,
-    arc4.Address,
-    arc4.Address,
-    arc4.Address,
-    arc4.Address,
-]
+# GameStateTuple: TypeAlias = arc4.Tuple[
+#     arc4.UInt64,
+#     arc4.Bool,
+#     arc4.UInt8,
+#     arc4.UInt8,
+#     arc4.UInt8,
+#     arc4.UInt8,
+#     arc4.UInt8,
+#     arc4.UInt16,
+#     arc4.UInt64,
+#     arc4.UInt64,
+#     arc4.Address,
+#     arc4.Address,
+#     arc4.Address,
+#     arc4.Address,
+# ]
 
 CommitRandTuple: TypeAlias = arc4.Tuple[
     arc4.UInt64,

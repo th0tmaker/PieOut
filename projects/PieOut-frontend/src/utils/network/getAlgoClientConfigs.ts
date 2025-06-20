@@ -1,3 +1,4 @@
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
 import { AlgoViteClientConfig, AlgoViteKMDConfig } from '../../interfaces/network'
 
 export function getAlgodConfigFromViteEnvironment(): AlgoViteClientConfig {
@@ -38,4 +39,12 @@ export function getKmdConfigFromViteEnvironment(): AlgoViteKMDConfig {
     wallet: import.meta.env.VITE_KMD_WALLET,
     password: import.meta.env.VITE_KMD_PASSWORD,
   }
+}
+
+export function getAlgorandClient(): AlgorandClient {
+  const algodConfig = getAlgodConfigFromViteEnvironment()
+  const indexerConfig = getIndexerConfigFromViteEnvironment()
+  const kmdConfig = getKmdConfigFromViteEnvironment()
+
+  return AlgorandClient.fromConfig({ algodConfig, indexerConfig, kmdConfig })
 }

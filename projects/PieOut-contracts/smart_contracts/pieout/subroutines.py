@@ -206,7 +206,7 @@ def calc_score_get_place(
 
 # Check if game is live and execute its conditional logic
 @subroutine
-def is_game_live(game_state: stc.GameState) -> arc4.Bool:
+def is_game_live(game_state: stc.GameState) -> None:
     # Check game live criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
@@ -227,9 +227,6 @@ def is_game_live(game_state: stc.GameState) -> arc4.Bool:
             game_state.expiry_ts,
         )
 
-        return arc4.Bool(True)  # noqa: FBT003
-    else:
-        return arc4.Bool(False)  # noqa: FBT003
 
 # Check if game is over and execute its conditional logic
 @subroutine
@@ -238,7 +235,7 @@ def is_game_over(
     game_state: stc.GameState,
     box_game_players: BoxMap[UInt64, Bytes],
     box_commit_rand: BoxMap[Account, stc.CommitRand],
-) -> arc4.Bool:
+) -> None:
     # Check game over criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
@@ -341,6 +338,3 @@ def is_game_over(
         # Set prize pool amount to zero after making payouts
         game_state.prize_pool = arc4.UInt64(0)
 
-        return arc4.Bool(True)  # noqa: FBT003
-    else:
-        return arc4.Bool(False)  # noqa: FBT003

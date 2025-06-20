@@ -2,7 +2,7 @@
 
 import { AlgorandClient, microAlgo } from '@algorandfoundation/algokit-utils'
 import { PieoutClient, PieoutFactory } from './contracts/Pieout'
-import algosdk, { makeApplicationCallTxnFromObject } from 'algosdk'
+import { ABIMethod } from 'algosdk'
 
 export class PieOutMethods {
   private readonly algorand: AlgorandClient
@@ -47,11 +47,7 @@ export class PieOutMethods {
   }
 
   // Factory create the smart contract application by calling the generate method
-  async generateContract(
-    sender: string,
-    noteGenContract?: string | Uint8Array,
-    noteFundAppMbr?: string | Uint8Array,
-  ): Promise<PieoutClient> {
+  async genContract(sender: string, noteGenContract?: string | Uint8Array, noteFundAppMbr?: string | Uint8Array): Promise<PieoutClient> {
     const { appClient } = await this.factory.send.create.generate({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
@@ -90,56 +86,55 @@ export class PieOutMethods {
   async readGenUnix(appId: bigint, sender: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const genUnix = await client.send.readGenUnix({
+    const genUnix = await client.readGenUnix({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: [],
       note: note,
     })
 
-    return genUnix.return
+    return genUnix
   }
 
   // Read game state box data
-  async readGameState(appId: bigint, sender: string, gameId: bigint, note?: string | Uint8Array) {
+  async readGameState(appId: bigint, sender: string, gameId: bigint) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxGameState = await client.send.readBoxGameState({
+    const readBoxGameState = await client.readBoxGameState({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
-      note: note,
     })
 
-    return readBoxGameState.return
+    return readBoxGameState
   }
 
   // Read game players box data
   async readGamePlayers(appId: bigint, sender: string, gameId: bigint, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxGamePlayers = await client.send.readBoxGamePlayers({
+    const readBoxGamePlayers = await client.readBoxGamePlayers({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
       note: note,
     })
 
-    return readBoxGamePlayers.return
+    return readBoxGamePlayers
   }
 
   // Read commit rand box data
   async readBoxCommitRand(appId: bigint, sender: string, player: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxCommitRand = await client.send.readBoxCommitRand({
+    const readBoxCommitRand = await client.readBoxCommitRand({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { player: player },
       note: note,
     })
 
-    return readBoxCommitRand.return
+    return readBoxCommitRand
   }
 
   // Mint game trophy asset
@@ -173,7 +168,8 @@ export class PieOutMethods {
       signer: this.algorand.account.getSigner(sender),
       args: { boxTPay: boxTPay, mintPay: mintPay },
       note: noteMintTrophy,
-      // populateAppCallResources: true,
+      maxFee: microAlgo(100_000),
+      coverAppCallInnerTransactionFees: true,
     })
   }
 
@@ -230,7 +226,7 @@ export class PieOutMethods {
         sender: sender,
         signer: this.algorand.account.getSigner(sender),
         receiver: client.appAddress,
-        amount: microAlgo(11_100), // current arbitrary stake pay amount
+        amount: microAlgo(11_000), // current arbitrary stake pay amount
         note: noteStakePay,
       }),
     ])
@@ -253,7 +249,7 @@ export class PieOutMethods {
       sender,
       signer: this.algorand.account.getSigner(sender),
       receiver: client.appAddress,
-      amount: microAlgo(11_100), // current arbitrary stake pay amount
+      amount: microAlgo(11_000), // current arbitrary stake pay amount
       note: noteStakePay,
     })
 
@@ -284,8 +280,6 @@ export class PieOutMethods {
       signer: this.algorand.account.getSigner(sender),
       args: { boxCPay: boxCPay },
       note: noteGetBoxCommitRand,
-      // maxFee: microAlgo(100_000),
-      // populateAppCallResources: true,
     })
   }
 
@@ -348,7 +342,8 @@ export class PieOutMethods {
         signer: this.algorand.account.getSigner(sender),
         appId: client.appId,
         maxFee: microAlgo(100_000),
-        method: algosdk.ABIMethod.fromSignature('up_ref_budget_for_play_game(uint64)void'),
+        method: ABIMethod.fromSignature('up_ref_budget_for_play_game(uint64)void'),
+        args: [gameId],
         note: noteUpRefBudgetForPlayGame,
       })
       .addAppCallMethodCall({
@@ -356,7 +351,7 @@ export class PieOutMethods {
         signer: this.algorand.account.getSigner(sender),
         appId: client.appId,
         maxFee: microAlgo(100_000),
-        method: algosdk.ABIMethod.fromSignature('play_game(uint64)void'),
+        method: ABIMethod.fromSignature('play_game(uint64)void'),
         args: [gameId],
         note: notePlayGame,
       })
@@ -368,7 +363,7 @@ export class PieOutMethods {
   async triggerGameProg(appId: bigint, sender: string, gameId: bigint, triggerId: bigint, noteTriggerGameProg?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    await client.send.triggerGameProg({
+    const triggerGameProgTxn = await client.send.triggerGameProg({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId, triggerId: triggerId },
@@ -376,6 +371,8 @@ export class PieOutMethods {
       maxFee: microAlgo(100_000),
       populateAppCallResources: true,
     })
+
+    return triggerGameProgTxn.return
   }
 
   // Reset existing game

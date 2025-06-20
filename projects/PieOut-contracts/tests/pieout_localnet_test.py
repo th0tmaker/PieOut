@@ -173,7 +173,6 @@ def apps(
 def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
     # Get smart contract application client from from apps dict
     app_client = apps["pieout_client_1"].app_client
-
     # Send a payment transaction to make the app account operable by funding its base minimum balance requirement
     fund_app_txn = app_client.fund_app_account(
         FundAppAccountParams(

@@ -3,19 +3,19 @@
 
 // smart_contracts.pieout.contract.Pieout.__algopy_entrypoint_with_init() -> uint64:
 main:
-    intcblock 1 0 2 32 1000 3600 32000 28900 6364136223846793005 1442695040888963407 4294967295 67300 65535 TMPL_GEN_UNIX TMPL_DELETABLE
-    bytecblock "c_" 0x00 "t_" "p_" "s_" 0x151f7c75 "score_id" "ath_address" 0x0000000000000000000000000000000000000000000000000000000000000000 "game_id" "ath_score" 0x0020 0xdbdf4f77 0x1a789ed0 0x068101
+    intcblock 1 0 2 32 11000 300 32000 28900 6364136223846793005 1442695040888963407 4294967295 67300 65535 TMPL_GEN_UNIX TMPL_DELETABLE
+    bytecblock "c_" "t_" 0x00 "p_" "s_" 0x151f7c75 "score_id" "ath_address" 0x0000000000000000000000000000000000000000000000000000000000000000 "game_id" "ath_score" 0xdbdf4f77 0x1a789ed0 0x0020 0x068101
     // smart_contracts/pieout/contract.py:31-32
     // # Smart contract class
     // class Pieout(ARC4Contract):
     txn NumAppArgs
     bz main_after_if_else@25
-    pushbytess 0x6333cd9d 0xb66d2f56 0x6e760e75 0xb16aa971 0xfff84048 0x5be219f0 0xb2460ef6 0x3ae74f74 0xda7b6785 0x71af966e 0x74c7e053 0x9650d5ce 0x32e16398 0xa0ecbe13 // method "calc_single_box_cost(uint8,uint16)uint64", method "read_gen_unix()uint64", method "read_box_game_state(uint64)(uint64,bool,uint8,uint8,uint8,uint8,uint8,uint16,uint64,uint64,address,address,address,address)", method "read_box_game_players(uint64)address[]", method "read_box_commit_rand(account)(uint64,uint64,uint64)", method "generate()void", method "mint_trophy(pay,pay)void", method "claim_trophy()void", method "new_game(uint64,pay,pay,pay)void", method "join_game(uint64,pay)void", method "get_box_commit_rand(pay)void", method "set_box_commit_rand(uint64)void", method "del_box_commit_rand_for_self(uint64)void", method "del_box_commit_rand_for_other(account)void"
-    bytec 12 // method "up_ref_budget_for_play_game(uint64)void"
-    bytec 13 // method "play_game(uint64)void"
-    pushbytess 0x2c3a2192 0x102875e7 0x1898a02e 0x5ff16da4 // method "trigger_game_prog(uint64,uint8)bool", method "reset_game(uint64,pay)void", method "delete_game(uint64)void", method "terminate()void"
+    pushbytess 0x6333cd9d 0xb66d2f56 0x0e8631ab 0xb16aa971 0xfff84048 0x5be219f0 0xb2460ef6 0x3ae74f74 0x74c7e053 0xda7b6785 0x71af966e 0x9650d5ce 0x32e16398 0xa0ecbe13 // method "calc_single_box_cost(uint8,uint16)uint64", method "read_gen_unix()uint64", method "read_box_game_state(uint64)(bool,uint8,uint8,uint8,uint8,uint8,uint16,uint64,uint64,address,address,address,address)", method "read_box_game_players(uint64)address[]", method "read_box_commit_rand(account)(uint64,uint64,uint64)", method "generate()void", method "mint_trophy(pay,pay)void", method "claim_trophy()void", method "get_box_commit_rand(pay)void", method "new_game(uint64,pay,pay,pay)void", method "join_game(uint64,pay)void", method "set_box_commit_rand(uint64)void", method "del_box_commit_rand_for_self(uint64)void", method "del_box_commit_rand_for_other(account)void"
+    bytec 11 // method "up_ref_budget_for_play_game(uint64)void"
+    bytec 12 // method "play_game(uint64)void"
+    pushbytess 0x4c4480f2 0x102875e7 0x1898a02e 0x5ff16da4 // method "trigger_game_prog(uint64,uint8)void", method "reset_game(uint64,pay)void", method "delete_game(uint64)void", method "terminate()void"
     txna ApplicationArgs 0
-    match main_calc_single_box_cost_route@5 main_read_gen_unix_route@6 main_read_box_game_state_route@7 main_read_box_game_players_route@8 main_read_box_commit_rand_route@9 main_generate_route@10 main_mint_trophy_route@11 main_claim_trophy_route@12 main_new_game_route@13 main_join_game_route@14 main_get_box_commit_rand_route@15 main_set_box_commit_rand_route@16 main_del_box_commit_rand_for_self_route@17 main_del_box_commit_rand_for_other_route@18 main_up_ref_budget_for_play_game_route@19 main_play_game_route@20 main_trigger_game_prog_route@21 main_reset_game_route@22 main_delete_game_route@23 main_terminate_route@24
+    match main_calc_single_box_cost_route@5 main_read_gen_unix_route@6 main_read_box_game_state_route@7 main_read_box_game_players_route@8 main_read_box_commit_rand_route@9 main_generate_route@10 main_mint_trophy_route@11 main_claim_trophy_route@12 main_get_box_commit_rand_route@13 main_new_game_route@14 main_join_game_route@15 main_set_box_commit_rand_route@16 main_del_box_commit_rand_for_self_route@17 main_del_box_commit_rand_for_other_route@18 main_up_ref_budget_for_play_game_route@19 main_play_game_route@20 main_trigger_game_prog_route@21 main_reset_game_route@22 main_delete_game_route@23 main_terminate_route@24
 
 main_after_if_else@25:
     // smart_contracts/pieout/contract.py:31-32
@@ -25,7 +25,7 @@ main_after_if_else@25:
     return
 
 main_terminate_route@24:
-    // smart_contracts/pieout/contract.py:763-764
+    // smart_contracts/pieout/contract.py:787-788
     // # Allow application creator to delete the smart contract application
     // @arc4.abimethod(allow_actions=["DeleteApplication"])
     txn OnCompletion
@@ -39,7 +39,7 @@ main_terminate_route@24:
     return
 
 main_delete_game_route@23:
-    // smart_contracts/pieout/contract.py:697-698
+    // smart_contracts/pieout/contract.py:719-720
     // # Allow application creator or admin to delete existing game instance
     // @arc4.abimethod
     txn OnCompletion
@@ -52,7 +52,7 @@ main_delete_game_route@23:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:697-698
+    // smart_contracts/pieout/contract.py:719-720
     // # Allow application creator or admin to delete existing game instance
     // @arc4.abimethod
     callsub delete_game
@@ -60,7 +60,7 @@ main_delete_game_route@23:
     return
 
 main_reset_game_route@22:
-    // smart_contracts/pieout/contract.py:643-644
+    // smart_contracts/pieout/contract.py:665-666
     // # Allow admin to reset existing game instance
     // @arc4.abimethod
     txn OnCompletion
@@ -81,7 +81,7 @@ main_reset_game_route@22:
     intc_0 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/pieout/contract.py:643-644
+    // smart_contracts/pieout/contract.py:665-666
     // # Allow admin to reset existing game instance
     // @arc4.abimethod
     callsub reset_game
@@ -89,7 +89,7 @@ main_reset_game_route@22:
     return
 
 main_trigger_game_prog_route@21:
-    // smart_contracts/pieout/contract.py:609-610
+    // smart_contracts/pieout/contract.py:624-625
     // # Allow an active player to check for a game event and trigger its progression
     // @arc4.abimethod
     txn OnCompletion
@@ -103,19 +103,15 @@ main_trigger_game_prog_route@21:
     txna ApplicationArgs 1
     btoi
     txna ApplicationArgs 2
-    // smart_contracts/pieout/contract.py:609-610
+    // smart_contracts/pieout/contract.py:624-625
     // # Allow an active player to check for a game event and trigger its progression
     // @arc4.abimethod
     callsub trigger_game_prog
-    bytec 5 // 0x151f7c75
-    swap
-    concat
-    log
     intc_0 // 1
     return
 
 main_play_game_route@20:
-    // smart_contracts/pieout/contract.py:488-489
+    // smart_contracts/pieout/contract.py:502-503
     // # Resolve the player's score associated with the specified game ID, updating game state accordingly
     // @arc4.abimethod
     txn OnCompletion
@@ -128,7 +124,7 @@ main_play_game_route@20:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:488-489
+    // smart_contracts/pieout/contract.py:502-503
     // # Resolve the player's score associated with the specified game ID, updating game state accordingly
     // @arc4.abimethod
     callsub play_game
@@ -136,7 +132,7 @@ main_play_game_route@20:
     return
 
 main_up_ref_budget_for_play_game_route@19:
-    // smart_contracts/pieout/contract.py:470-471
+    // smart_contracts/pieout/contract.py:483-484
     // # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     // @arc4.abimethod
     txn OnCompletion
@@ -149,7 +145,7 @@ main_up_ref_budget_for_play_game_route@19:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:470-471
+    // smart_contracts/pieout/contract.py:483-484
     // # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     // @arc4.abimethod
     callsub up_ref_budget_for_play_game
@@ -157,7 +153,7 @@ main_up_ref_budget_for_play_game_route@19:
     return
 
 main_del_box_commit_rand_for_other_route@18:
-    // smart_contracts/pieout/contract.py:439-440
+    // smart_contracts/pieout/contract.py:452-453
     // # Allow caller to delete box commit rand contents for another account
     // @arc4.abimethod
     txn OnCompletion
@@ -171,7 +167,7 @@ main_del_box_commit_rand_for_other_route@18:
     txna ApplicationArgs 1
     btoi
     txnas Accounts
-    // smart_contracts/pieout/contract.py:439-440
+    // smart_contracts/pieout/contract.py:452-453
     // # Allow caller to delete box commit rand contents for another account
     // @arc4.abimethod
     callsub del_box_commit_rand_for_other
@@ -179,7 +175,7 @@ main_del_box_commit_rand_for_other_route@18:
     return
 
 main_del_box_commit_rand_for_self_route@17:
-    // smart_contracts/pieout/contract.py:398-399
+    // smart_contracts/pieout/contract.py:411-412
     // # Allow caller to delete box commit rand contents for their own account
     // @arc4.abimethod
     txn OnCompletion
@@ -192,7 +188,7 @@ main_del_box_commit_rand_for_self_route@17:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:398-399
+    // smart_contracts/pieout/contract.py:411-412
     // # Allow caller to delete box commit rand contents for their own account
     // @arc4.abimethod
     callsub del_box_commit_rand_for_self
@@ -200,7 +196,7 @@ main_del_box_commit_rand_for_self_route@17:
     return
 
 main_set_box_commit_rand_route@16:
-    // smart_contracts/pieout/contract.py:359-360
+    // smart_contracts/pieout/contract.py:372-373
     // # Set box commit rand contents used for obtaining on-chain randomness and playing the game
     // @arc4.abimethod
     txn OnCompletion
@@ -213,42 +209,15 @@ main_set_box_commit_rand_route@16:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:359-360
+    // smart_contracts/pieout/contract.py:372-373
     // # Set box commit rand contents used for obtaining on-chain randomness and playing the game
     // @arc4.abimethod
     callsub set_box_commit_rand
     intc_0 // 1
     return
 
-main_get_box_commit_rand_route@15:
-    // smart_contracts/pieout/contract.py:338-339
-    // # Get box commit rand contents with default start values
-    // @arc4.abimethod
-    txn OnCompletion
-    !
-    assert // OnCompletion is not NoOp
-    txn ApplicationID
-    assert // can only call when not creating
-    // smart_contracts/pieout/contract.py:31-32
-    // # Smart contract class
-    // class Pieout(ARC4Contract):
-    txn GroupIndex
-    intc_0 // 1
-    -
-    dup
-    gtxns TypeEnum
-    intc_0 // pay
-    ==
-    assert // transaction type is pay
-    // smart_contracts/pieout/contract.py:338-339
-    // # Get box commit rand contents with default start values
-    // @arc4.abimethod
-    callsub get_box_commit_rand
-    intc_0 // 1
-    return
-
-main_join_game_route@14:
-    // smart_contracts/pieout/contract.py:272-273
+main_join_game_route@15:
+    // smart_contracts/pieout/contract.py:303-304
     // # Join existing game instance
     // @arc4.abimethod
     txn OnCompletion
@@ -269,15 +238,15 @@ main_join_game_route@14:
     intc_0 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/pieout/contract.py:272-273
+    // smart_contracts/pieout/contract.py:303-304
     // # Join existing game instance
     // @arc4.abimethod
     callsub join_game
     intc_0 // 1
     return
 
-main_new_game_route@13:
-    // smart_contracts/pieout/contract.py:205-206
+main_new_game_route@14:
+    // smart_contracts/pieout/contract.py:234-235
     // # Create new game instance with a unique ID
     // @arc4.abimethod
     txn OnCompletion
@@ -314,15 +283,42 @@ main_new_game_route@13:
     intc_0 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/pieout/contract.py:205-206
+    // smart_contracts/pieout/contract.py:234-235
     // # Create new game instance with a unique ID
     // @arc4.abimethod
     callsub new_game
     intc_0 // 1
     return
 
+main_get_box_commit_rand_route@13:
+    // smart_contracts/pieout/contract.py:213-214
+    // # Get box commit rand contents with default start values
+    // @arc4.abimethod
+    txn OnCompletion
+    !
+    assert // OnCompletion is not NoOp
+    txn ApplicationID
+    assert // can only call when not creating
+    // smart_contracts/pieout/contract.py:31-32
+    // # Smart contract class
+    // class Pieout(ARC4Contract):
+    txn GroupIndex
+    intc_0 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_0 // pay
+    ==
+    assert // transaction type is pay
+    // smart_contracts/pieout/contract.py:213-214
+    // # Get box commit rand contents with default start values
+    // @arc4.abimethod
+    callsub get_box_commit_rand
+    intc_0 // 1
+    return
+
 main_claim_trophy_route@12:
-    // smart_contracts/pieout/contract.py:187-188
+    // smart_contracts/pieout/contract.py:195-196
     // # Allow the ATH address to add the trophy to their asset balance via an asset transfer inner transaction
     // @arc4.abimethod
     txn OnCompletion
@@ -335,7 +331,7 @@ main_claim_trophy_route@12:
     return
 
 main_mint_trophy_route@11:
-    // smart_contracts/pieout/contract.py:141-142
+    // smart_contracts/pieout/contract.py:149-150
     // # Allow application creator to mint a one-time NFT asset used as trophy token to honor the ATH address
     // @arc4.abimethod
     txn OnCompletion
@@ -362,7 +358,7 @@ main_mint_trophy_route@11:
     intc_0 // pay
     ==
     assert // transaction type is pay
-    // smart_contracts/pieout/contract.py:141-142
+    // smart_contracts/pieout/contract.py:149-150
     // # Allow application creator to mint a one-time NFT asset used as trophy token to honor the ATH address
     // @arc4.abimethod
     callsub mint_trophy
@@ -370,7 +366,7 @@ main_mint_trophy_route@11:
     return
 
 main_generate_route@10:
-    // smart_contracts/pieout/contract.py:127-128
+    // smart_contracts/pieout/contract.py:135-136
     // # Generate the smart contract application client with default values
     // @arc4.abimethod(create="require")
     txn OnCompletion
@@ -384,7 +380,7 @@ main_generate_route@10:
     return
 
 main_read_box_commit_rand_route@9:
-    // smart_contracts/pieout/contract.py:115-116
+    // smart_contracts/pieout/contract.py:123-124
     // # Read the smart contract application commit round box for given account
     // @arc4.abimethod(readonly=True)
     txn OnCompletion
@@ -398,7 +394,7 @@ main_read_box_commit_rand_route@9:
     txna ApplicationArgs 1
     btoi
     txnas Accounts
-    // smart_contracts/pieout/contract.py:115-116
+    // smart_contracts/pieout/contract.py:123-124
     // # Read the smart contract application commit round box for given account
     // @arc4.abimethod(readonly=True)
     callsub read_box_commit_rand
@@ -410,7 +406,7 @@ main_read_box_commit_rand_route@9:
     return
 
 main_read_box_game_players_route@8:
-    // smart_contracts/pieout/contract.py:94-95
+    // smart_contracts/pieout/contract.py:99-100
     // # Read the smart contract application game players box for given game id
     // @arc4.abimethod(readonly=True)
     txn OnCompletion
@@ -423,7 +419,7 @@ main_read_box_game_players_route@8:
     // class Pieout(ARC4Contract):
     txna ApplicationArgs 1
     btoi
-    // smart_contracts/pieout/contract.py:94-95
+    // smart_contracts/pieout/contract.py:99-100
     // # Read the smart contract application game players box for given game id
     // @arc4.abimethod(readonly=True)
     callsub read_box_game_players
@@ -776,13 +772,14 @@ check_acc_in_game_after_if_else@6:
     b check_acc_in_game_for_header@1
 
 
-// smart_contracts.pieout.subroutines.is_game_live(game_state: bytes) -> bytes, bytes:
+// smart_contracts.pieout.subroutines.is_game_live(game_state: bytes) -> bytes:
 is_game_live:
     // smart_contracts/pieout/subroutines.py:207-209
     // # Check if game is live and execute its conditional logic
     // @subroutine
-    // def is_game_live(game_state: stc.GameState) -> arc4.Bool:
-    proto 1 2
+    // def is_game_live(game_state: stc.GameState) -> None:
+    proto 1 1
+    intc_1 // 0
     // smart_contracts/pieout/subroutines.py:212
     // game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
     frame_dig -1
@@ -801,10 +798,12 @@ is_game_live:
     frame_dig -1
     extract 1 1 // on error: Index access is out of bounds
     b==
+    frame_dig -1
+    frame_bury 0
     // smart_contracts/pieout/subroutines.py:212-213
     // game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
     // or game_state.active_players == game_state.max_players  # If lobby full
-    bz is_game_live_else_body@7
+    bz is_game_live_after_if_else@7
 
 is_game_live_if_body@2:
     // smart_contracts/pieout/subroutines.py:215-216
@@ -818,7 +817,7 @@ is_game_live_if_body@2:
     // smart_contracts/pieout/subroutines.py:220
     // Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
     global LatestTimestamp
-    intc 5 // 3600
+    intc 5 // 300
     +
     // smart_contracts/pieout/subroutines.py:218-221
     // # Establish game play window by setting expiry timestamp
@@ -835,7 +834,7 @@ is_game_live_if_body@2:
     // game_state.staking_finalized,
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -855,23 +854,18 @@ is_game_live_if_body@2:
     swap
     concat
     log
-    // smart_contracts/pieout/subroutines.py:230
-    // return arc4.Bool(True)  # noqa: FBT003
-    pushbytes 0x80
     frame_dig -1
-    retsub
+    frame_bury 0
 
-is_game_live_else_body@7:
-    // smart_contracts/pieout/subroutines.py:232
-    // return arc4.Bool(False)  # noqa: FBT003
-    bytec_1 // 0x00
-    frame_dig -1
+is_game_live_after_if_else@7:
+    frame_dig 0
+    swap
     retsub
 
 
-// smart_contracts.pieout.subroutines.is_game_over(game_id: uint64, game_state: bytes, box_game_players: bytes, box_commit_rand: bytes) -> bytes, bytes:
+// smart_contracts.pieout.subroutines.is_game_over(game_id: uint64, game_state: bytes, box_game_players: bytes, box_commit_rand: bytes) -> bytes:
 is_game_over:
-    // smart_contracts/pieout/subroutines.py:234-241
+    // smart_contracts/pieout/subroutines.py:231-238
     // # Check if game is over and execute its conditional logic
     // @subroutine
     // def is_game_over(
@@ -879,35 +873,37 @@ is_game_over:
     //     game_state: stc.GameState,
     //     box_game_players: BoxMap[UInt64, Bytes],
     //     box_commit_rand: BoxMap[Account, stc.CommitRand],
-    // ) -> arc4.Bool:
-    proto 4 2
+    // ) -> None:
+    proto 4 1
     intc_1 // 0
-    dupn 7
+    dupn 8
     pushbytes ""
     dupn 4
-    // smart_contracts/pieout/subroutines.py:244
+    // smart_contracts/pieout/subroutines.py:241
     // game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
     frame_dig -3
     extract 8 8 // on error: Index access is out of bounds
     global LatestTimestamp
     itob
     b<
-    // smart_contracts/pieout/subroutines.py:244-245
+    // smart_contracts/pieout/subroutines.py:241-242
     // game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
     // or game_state.active_players.native == 0  # If no more active players
     bnz is_game_over_if_body@2
-    // smart_contracts/pieout/subroutines.py:245
+    // smart_contracts/pieout/subroutines.py:242
     // or game_state.active_players.native == 0  # If no more active players
     frame_dig -3
     intc_2 // 2
     getbyte
-    // smart_contracts/pieout/subroutines.py:244-245
+    frame_dig -3
+    frame_bury 2
+    // smart_contracts/pieout/subroutines.py:241-242
     // game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
     // or game_state.active_players.native == 0  # If no more active players
-    bnz is_game_over_else_body@25
+    bnz is_game_over_after_if_else@25
 
 is_game_over_if_body@2:
-    // smart_contracts/pieout/subroutines.py:247-248
+    // smart_contracts/pieout/subroutines.py:244-245
     // # Reset box commit rand fields to default start values for any remaining players
     // game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
     frame_dig -4
@@ -917,36 +913,36 @@ is_game_over_if_body@2:
     concat
     dup
     frame_bury 1
-    // smart_contracts/pieout/subroutines.py:249
+    // smart_contracts/pieout/subroutines.py:246
     // for i in urange(0, game_players_bref.length, 32):
     box_len
     swap
-    frame_bury 12
+    frame_bury 13
     assert // check BoxRef exists
     intc_1 // 0
-    frame_bury 9
+    frame_bury 10
 
 is_game_over_for_header@3:
-    // smart_contracts/pieout/subroutines.py:249
+    // smart_contracts/pieout/subroutines.py:246
     // for i in urange(0, game_players_bref.length, 32):
-    frame_dig 9
-    frame_dig 12
+    frame_dig 10
+    frame_dig 13
     <
     bz is_game_over_after_for@8
-    // smart_contracts/pieout/subroutines.py:250
+    // smart_contracts/pieout/subroutines.py:247
     // player_addr_bytes = game_players_bref.extract(i, 32)
     frame_dig 1
-    frame_dig 9
+    frame_dig 10
     intc_3 // 32
     box_extract
     dup
-    frame_bury 2
-    // smart_contracts/pieout/subroutines.py:251
+    frame_bury 3
+    // smart_contracts/pieout/subroutines.py:248
     // if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
     bytec 8 // 0x0000000000000000000000000000000000000000000000000000000000000000
     !=
     bz is_game_over_after_if_else@6
-    // smart_contracts/pieout/subroutines.py:253-258
+    // smart_contracts/pieout/subroutines.py:250-255
     // # Reset box commit rand fields back to their original start values
     // reset_box_commit_rand(
     //     box_commit_rand=box_commit_rand,
@@ -954,11 +950,11 @@ is_game_over_for_header@3:
     //     round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA)
     // )
     frame_dig -1
-    frame_dig 2
-    // smart_contracts/pieout/subroutines.py:257
+    frame_dig 3
+    // smart_contracts/pieout/subroutines.py:254
     // round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA)
     intc 6 // 32000
-    // smart_contracts/pieout/subroutines.py:253-258
+    // smart_contracts/pieout/subroutines.py:250-255
     // # Reset box commit rand fields back to their original start values
     // reset_box_commit_rand(
     //     box_commit_rand=box_commit_rand,
@@ -968,23 +964,23 @@ is_game_over_for_header@3:
     callsub reset_box_commit_rand
 
 is_game_over_after_if_else@6:
-    // smart_contracts/pieout/subroutines.py:249
+    // smart_contracts/pieout/subroutines.py:246
     // for i in urange(0, game_players_bref.length, 32):
-    frame_dig 9
+    frame_dig 10
     intc_3 // 32
     +
-    frame_bury 9
+    frame_bury 10
     b is_game_over_for_header@3
 
 is_game_over_after_for@8:
-    // smart_contracts/pieout/subroutines.py:263
+    // smart_contracts/pieout/subroutines.py:260
     // cst.ADDRESS_SIZE * game_state.max_players.native
     frame_dig -3
     intc_0 // 1
     getbyte
     intc_3 // 32
     *
-    // smart_contracts/pieout/subroutines.py:261-264
+    // smart_contracts/pieout/subroutines.py:258-261
     // # Clear box game players data by setting its value to all zeroes
     // box_game_players[game_id] = op.bzero(
     //     cst.ADDRESS_SIZE * game_state.max_players.native
@@ -996,38 +992,38 @@ is_game_over_after_for@8:
     pop
     swap
     box_put
-    // smart_contracts/pieout/subroutines.py:266-267
+    // smart_contracts/pieout/subroutines.py:263-264
     // # Mark game as over by setting active players to zero
     // game_state.active_players = arc4.UInt8(0)
     frame_dig -3
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     replace2 2
     dup
     frame_bury -3
-    // smart_contracts/pieout/subroutines.py:272
+    // smart_contracts/pieout/subroutines.py:269
     // game_state.first_place_score,
     extract 3 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/subroutines.py:273
+    // smart_contracts/pieout/subroutines.py:270
     // game_state.first_place_address,
     frame_dig -3
     extract 56 32 // on error: Index access is out of bounds
     dup
-    frame_bury 5
-    // smart_contracts/pieout/subroutines.py:274
+    frame_bury 6
+    // smart_contracts/pieout/subroutines.py:271
     // game_state.second_place_address,
     frame_dig -3
     extract 88 32 // on error: Index access is out of bounds
     dup
     cover 2
-    frame_bury 6
-    // smart_contracts/pieout/subroutines.py:275
+    frame_bury 7
+    // smart_contracts/pieout/subroutines.py:272
     // game_state.third_place_address,
     frame_dig -3
     extract 120 32 // on error: Index access is out of bounds
     dup
     cover 4
-    frame_bury 7
-    // smart_contracts/pieout/subroutines.py:269-276
+    frame_bury 8
+    // smart_contracts/pieout/subroutines.py:266-273
     // # Emit ARC-28 event for off-chain tracking
     // arc4.emit(
     //     "game_over(uint8,address,address,address)",
@@ -1047,52 +1043,38 @@ is_game_over_after_for@8:
     swap
     concat
     log
-    // smart_contracts/pieout/subroutines.py:278-279
+    // smart_contracts/pieout/subroutines.py:275-276
     // # If only 1 player in lobby after game goes live, they get entire prize pool
     // if game_state.prize_pool.native == cst.STAKE_AMOUNT_OTHER:
     frame_dig -3
     pushint 16 // 16
     extract_uint64
     dup
-    frame_bury 8
+    frame_bury 9
     pushint 258400 // 258400
     ==
     bz is_game_over_else_body@12
-    // smart_contracts/pieout/subroutines.py:281
+    // smart_contracts/pieout/subroutines.py:278
     // second_prize_share = UInt64(0)
     intc_1 // 0
-    frame_bury 10
-    // smart_contracts/pieout/subroutines.py:282
+    frame_bury 11
+    // smart_contracts/pieout/subroutines.py:279
     // third_prize_share = UInt64(0)
     intc_1 // 0
-    frame_bury 11
+    frame_bury 12
 
 is_game_over_after_if_else@16:
-    // smart_contracts/pieout/subroutines.py:301
+    // smart_contracts/pieout/subroutines.py:298
     // acc2=game_state.admin_address.native,
     frame_dig -3
     extract 24 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/subroutines.py:302
+    // smart_contracts/pieout/subroutines.py:299
     // acc3=Global.creator_address,
     global CreatorAddress
-    // smart_contracts/pieout/subroutines.py:298-303
+    // smart_contracts/pieout/subroutines.py:295-300
     // # Resolve prize pool win share receivers by priority
     // first_place_receiver = resolve_receiver_by_prio(
     //     acc1=game_state.first_place_address.native,
-    //     acc2=game_state.admin_address.native,
-    //     acc3=Global.creator_address,
-    // )
-    frame_dig 5
-    dig 2
-    uncover 2
-    callsub resolve_receiver_by_prio
-    frame_bury 0
-    // smart_contracts/pieout/subroutines.py:307
-    // acc3=Global.creator_address,
-    global CreatorAddress
-    // smart_contracts/pieout/subroutines.py:304-308
-    // second_place_receiver = resolve_receiver_by_prio(
-    //     acc1=game_state.second_place_address.native,
     //     acc2=game_state.admin_address.native,
     //     acc3=Global.creator_address,
     // )
@@ -1100,26 +1082,40 @@ is_game_over_after_if_else@16:
     dig 2
     uncover 2
     callsub resolve_receiver_by_prio
-    frame_bury 3
-    // smart_contracts/pieout/subroutines.py:312
+    frame_bury 0
+    // smart_contracts/pieout/subroutines.py:304
     // acc3=Global.creator_address,
     global CreatorAddress
-    // smart_contracts/pieout/subroutines.py:309-313
+    // smart_contracts/pieout/subroutines.py:301-305
+    // second_place_receiver = resolve_receiver_by_prio(
+    //     acc1=game_state.second_place_address.native,
+    //     acc2=game_state.admin_address.native,
+    //     acc3=Global.creator_address,
+    // )
+    frame_dig 7
+    dig 2
+    uncover 2
+    callsub resolve_receiver_by_prio
+    frame_bury 4
+    // smart_contracts/pieout/subroutines.py:309
+    // acc3=Global.creator_address,
+    global CreatorAddress
+    // smart_contracts/pieout/subroutines.py:306-310
     // third_place_receiver = resolve_receiver_by_prio(
     //     acc1=game_state.third_place_address.native,
     //     acc2=game_state.admin_address.native,
     //     acc3=Global.creator_address,
     // )
-    frame_dig 7
+    frame_dig 8
     cover 2
     callsub resolve_receiver_by_prio
-    frame_bury 4
-    // smart_contracts/pieout/subroutines.py:315-316
+    frame_bury 5
+    // smart_contracts/pieout/subroutines.py:312-313
     // # Issue prize pool share payouts to first, second and third place accounts if their share is non-zero amount
     // if first_prize_share > UInt64(0):
-    frame_dig 8
+    frame_dig 9
     bz is_game_over_after_if_else@18
-    // smart_contracts/pieout/subroutines.py:317-323
+    // smart_contracts/pieout/subroutines.py:314-320
     // payout_itxn(
     //     receiver=first_place_receiver,
     //     amount=first_prize_share,
@@ -1128,13 +1124,13 @@ is_game_over_after_if_else@16:
     //     ),
     // )
     frame_dig 0
-    frame_dig 8
-    // smart_contracts/pieout/subroutines.py:320-322
+    frame_dig 9
+    // smart_contracts/pieout/subroutines.py:317-319
     // note=String(
     //     'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;first_prize_share"}'
     // ),
     pushbytes "pieout:j{\"method\":\"play_game\",\"subroutine:\"is_game_over\",\"concern\":\"itxn.pay;first_prize_share\"}"
-    // smart_contracts/pieout/subroutines.py:317-323
+    // smart_contracts/pieout/subroutines.py:314-320
     // payout_itxn(
     //     receiver=first_place_receiver,
     //     amount=first_prize_share,
@@ -1145,11 +1141,11 @@ is_game_over_after_if_else@16:
     callsub payout_itxn
 
 is_game_over_after_if_else@18:
-    // smart_contracts/pieout/subroutines.py:324
+    // smart_contracts/pieout/subroutines.py:321
     // if second_prize_share > UInt64(0):
-    frame_dig 10
+    frame_dig 11
     bz is_game_over_after_if_else@20
-    // smart_contracts/pieout/subroutines.py:325-331
+    // smart_contracts/pieout/subroutines.py:322-328
     // payout_itxn(
     //     receiver=second_place_receiver,
     //     amount=second_prize_share,
@@ -1157,14 +1153,14 @@ is_game_over_after_if_else@18:
     //         'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;second_prize_share"}'
     //     ),
     // )
-    frame_dig 3
-    frame_dig 10
-    // smart_contracts/pieout/subroutines.py:328-330
+    frame_dig 4
+    frame_dig 11
+    // smart_contracts/pieout/subroutines.py:325-327
     // note=String(
     //     'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;second_prize_share"}'
     // ),
     pushbytes "pieout:j{\"method\":\"play_game\",\"subroutine:\"is_game_over\",\"concern\":\"itxn.pay;second_prize_share\"}"
-    // smart_contracts/pieout/subroutines.py:325-331
+    // smart_contracts/pieout/subroutines.py:322-328
     // payout_itxn(
     //     receiver=second_place_receiver,
     //     amount=second_prize_share,
@@ -1175,11 +1171,11 @@ is_game_over_after_if_else@18:
     callsub payout_itxn
 
 is_game_over_after_if_else@20:
-    // smart_contracts/pieout/subroutines.py:332
+    // smart_contracts/pieout/subroutines.py:329
     // if third_prize_share > UInt64(0):
-    frame_dig 11
+    frame_dig 12
     bz is_game_over_after_if_else@22
-    // smart_contracts/pieout/subroutines.py:333-339
+    // smart_contracts/pieout/subroutines.py:330-336
     // payout_itxn(
     //     receiver=third_place_receiver,
     //     amount=third_prize_share,
@@ -1187,14 +1183,14 @@ is_game_over_after_if_else@20:
     //         'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;third_prize_share"}'
     //     ),
     // )
-    frame_dig 4
-    frame_dig 11
-    // smart_contracts/pieout/subroutines.py:336-338
+    frame_dig 5
+    frame_dig 12
+    // smart_contracts/pieout/subroutines.py:333-335
     // note=String(
     //     'pieout:j{"method":"play_game","subroutine:"is_game_over","concern":"itxn.pay;third_prize_share"}'
     // ),
     pushbytes "pieout:j{\"method\":\"play_game\",\"subroutine:\"is_game_over\",\"concern\":\"itxn.pay;third_prize_share\"}"
-    // smart_contracts/pieout/subroutines.py:333-339
+    // smart_contracts/pieout/subroutines.py:330-336
     // payout_itxn(
     //     receiver=third_place_receiver,
     //     amount=third_prize_share,
@@ -1205,101 +1201,92 @@ is_game_over_after_if_else@20:
     callsub payout_itxn
 
 is_game_over_after_if_else@22:
-    // smart_contracts/pieout/subroutines.py:341-342
+    // smart_contracts/pieout/subroutines.py:338-339
     // # Set prize pool amount to zero after making payouts
     // game_state.prize_pool = arc4.UInt64(0)
     frame_dig -3
     pushbytes 0x0000000000000000
     replace2 16
+    dup
     frame_bury -3
-    // smart_contracts/pieout/subroutines.py:344
-    // return arc4.Bool(True)  # noqa: FBT003
-    pushbytes 0x80
-    frame_dig -3
-    frame_bury 1
+    frame_bury 2
+
+is_game_over_after_if_else@25:
+    frame_dig 2
     frame_bury 0
     retsub
 
 is_game_over_else_body@12:
-    // smart_contracts/pieout/subroutines.py:283-284
+    // smart_contracts/pieout/subroutines.py:280-281
     // # Elif, only 2 players in lobby after game goes live, split prize pool: 60% / remainder / 0
     // elif game_state.prize_pool.native == 2 * cst.STAKE_AMOUNT_OTHER:
-    frame_dig 8
+    frame_dig 9
     pushint 516800 // 516800
     ==
     bz is_game_over_else_body@14
-    // smart_contracts/pieout/subroutines.py:285
+    // smart_contracts/pieout/subroutines.py:282
     // first_prize_share = game_state.prize_pool.native * UInt64(60) // UInt64(100)
-    frame_dig 8
+    frame_dig 9
     dup
     pushint 60 // 60
     *
     pushint 100 // 100
     /
-    // smart_contracts/pieout/subroutines.py:286
+    // smart_contracts/pieout/subroutines.py:283
     // second_prize_share = game_state.prize_pool.native - first_prize_share
     swap
     dig 1
     -
-    frame_bury 10
-    // smart_contracts/pieout/subroutines.py:287
+    frame_bury 11
+    // smart_contracts/pieout/subroutines.py:284
     // third_prize_share = UInt64(0)  # No third player
     intc_1 // 0
-    frame_bury 11
-    frame_bury 8
+    frame_bury 12
+    frame_bury 9
     b is_game_over_after_if_else@16
 
 is_game_over_else_body@14:
-    // smart_contracts/pieout/subroutines.py:290
+    // smart_contracts/pieout/subroutines.py:287
     // first_prize_share = game_state.prize_pool.native * UInt64(50) // UInt64(100)
-    frame_dig 8
+    frame_dig 9
     dup
     pushint 50 // 50
     *
     pushint 100 // 100
     /
-    // smart_contracts/pieout/subroutines.py:292
+    // smart_contracts/pieout/subroutines.py:289
     // game_state.prize_pool.native * UInt64(30) // UInt64(100)
     dig 1
     pushint 30 // 30
     *
     pushint 100 // 100
     /
-    // smart_contracts/pieout/subroutines.py:291-293
+    // smart_contracts/pieout/subroutines.py:288-290
     // second_prize_share = (
     //     game_state.prize_pool.native * UInt64(30) // UInt64(100)
     // )
     dup
-    frame_bury 10
-    // smart_contracts/pieout/subroutines.py:295
+    frame_bury 11
+    // smart_contracts/pieout/subroutines.py:292
     // game_state.prize_pool.native - first_prize_share - second_prize_share
     uncover 2
     dig 2
     -
-    // smart_contracts/pieout/subroutines.py:294-296
+    // smart_contracts/pieout/subroutines.py:291-293
     // third_prize_share = (
     //     game_state.prize_pool.native - first_prize_share - second_prize_share
     // )
     swap
-    // smart_contracts/pieout/subroutines.py:295
+    // smart_contracts/pieout/subroutines.py:292
     // game_state.prize_pool.native - first_prize_share - second_prize_share
     -
-    // smart_contracts/pieout/subroutines.py:294-296
+    // smart_contracts/pieout/subroutines.py:291-293
     // third_prize_share = (
     //     game_state.prize_pool.native - first_prize_share - second_prize_share
     // )
-    frame_bury 11
-    frame_bury 8
+    frame_bury 12
+    frame_bury 9
     b is_game_over_after_if_else@16
-
-is_game_over_else_body@25:
-    // smart_contracts/pieout/subroutines.py:346
-    // return arc4.Bool(False)  # noqa: FBT003
-    bytec_1 // 0x00
-    frame_dig -3
-    frame_bury 1
-    frame_bury 0
-    retsub
 
 
 // smart_contracts.pieout.contract.Pieout.calc_single_box_cost(key_size: bytes, value_size: bytes) -> uint64:
@@ -1339,146 +1326,55 @@ read_box_game_state:
     // smart_contracts/pieout/contract.py:66-68
     // # Read the smart contract application game state box for given game id
     // @arc4.abimethod(readonly=True)
-    // def read_box_game_state(self, game_id: UInt64) -> ta.GameStateTuple:
+    // def read_box_game_state(self, game_id: UInt64) -> stc.GameState:
     proto 1 1
-    // smart_contracts/pieout/contract.py:71
-    // game_id
+    // smart_contracts/pieout/contract.py:69-70
+    // # Fail transaction unless the assertion below evaluates True
+    // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -1
     itob
-    // smart_contracts/pieout/contract.py:69-70
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
     bytec 4 // "s_"
-    // smart_contracts/pieout/contract.py:69-72
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    assert // Box game state not found. Check if game ID exists.
+    // smart_contracts/pieout/contract.py:72-75
     // # Retrieve current game state from box using the game id parameter
     // game_state = self.box_game_state[
     //     game_id
     // ].copy()  # Make a copy of the game state data else immutable
-    dig 1
-    concat
     box_get
     assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:78
-    // game_state.staking_finalized,
-    dup
-    intc_1 // 0
-    getbit
-    bytec_1 // 0x00
-    intc_1 // 0
-    uncover 2
-    setbit
-    // smart_contracts/pieout/contract.py:79
-    // game_state.max_players,
-    dig 1
-    extract 1 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:80
-    // game_state.active_players,
-    dig 2
-    extract 2 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:81
-    // game_state.first_place_score,
-    dig 3
-    extract 3 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:82
-    // game_state.second_place_score,
-    dig 4
-    extract 4 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:83
-    // game_state.third_place_score,
-    dig 5
-    extract 5 1 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:84
-    // game_state.box_p_start_pos,
-    dig 6
-    extract 6 2 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:85
-    // game_state.expiry_ts,
-    dig 7
-    extract 8 8 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:86
-    // game_state.prize_pool,
-    dig 8
-    extract 16 8 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:87
-    // game_state.admin_address,
-    dig 9
-    extract 24 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:88
-    // game_state.first_place_address,
-    dig 10
-    extract 56 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:89
-    // game_state.second_place_address,
-    dig 11
-    extract 88 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:90
-    // game_state.third_place_address,
-    uncover 12
-    extract 120 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:74-92
-    // # Return the game state as a tuple
-    // return ta.GameStateTuple(
-    //     (
-    //         arc4.UInt64(game_id),
-    //         game_state.staking_finalized,
-    //         game_state.max_players,
-    //         game_state.active_players,
-    //         game_state.first_place_score,
-    //         game_state.second_place_score,
-    //         game_state.third_place_score,
-    //         game_state.box_p_start_pos,
-    //         game_state.expiry_ts,
-    //         game_state.prize_pool,
-    //         game_state.admin_address,
-    //         game_state.first_place_address,
-    //         game_state.second_place_address,
-    //         game_state.third_place_address,
-    //     )
-    // )
-    uncover 13
-    uncover 13
-    concat
-    uncover 12
-    concat
-    uncover 11
-    concat
-    uncover 10
-    concat
-    uncover 9
-    concat
-    uncover 8
-    concat
-    uncover 7
-    concat
-    uncover 6
-    concat
-    uncover 5
-    concat
-    uncover 4
-    concat
-    uncover 3
-    concat
-    uncover 2
-    concat
-    swap
-    concat
+    // smart_contracts/pieout/contract.py:77
+    // return game_state
     retsub
 
 
 // smart_contracts.pieout.contract.Pieout.read_box_game_players(game_id: uint64) -> bytes:
 read_box_game_players:
-    // smart_contracts/pieout/contract.py:94-96
+    // smart_contracts/pieout/contract.py:99-101
     // # Read the smart contract application game players box for given game id
     // @arc4.abimethod(readonly=True)
     // def read_box_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
     proto 1 1
     intc_1 // 0
     dup
-    // smart_contracts/pieout/contract.py:97-98
-    // # Retrieve current game players from box using the game id parameter
-    // game_players = self.box_game_players[game_id]
+    // smart_contracts/pieout/contract.py:102-103
+    // # Fail transaction unless the assertion below evaluates True
+    // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -1
     itob
+    bytec 4 // "s_"
+    dig 1
+    concat
+    box_len
+    bury 1
+    assert // Box game state not found. Check if game ID exists.
+    // smart_contracts/pieout/contract.py:105-106
+    // # Retrieve current game players from box using the game id parameter
+    // game_players = self.box_game_players[game_id]
     bytec_3 // "p_"
     swap
     concat
@@ -1487,26 +1383,26 @@ read_box_game_players:
     dup
     uncover 2
     assert // check self.box_game_players entry exists
-    // smart_contracts/pieout/contract.py:100-101
+    // smart_contracts/pieout/contract.py:108-109
     // # Define a dynamic array to append all remaining players
     // players = ta.GamePlayersArr()
     pushbytes 0x0000
     swap
-    // smart_contracts/pieout/contract.py:103-104
+    // smart_contracts/pieout/contract.py:111-112
     // # Iterate through the game players byte array
     // for i in urange(0, game_players.length, cst.ADDRESS_SIZE):
     len
     intc_1 // 0
 
 read_box_game_players_for_header@1:
-    // smart_contracts/pieout/contract.py:103-104
+    // smart_contracts/pieout/contract.py:111-112
     // # Iterate through the game players byte array
     // for i in urange(0, game_players.length, cst.ADDRESS_SIZE):
     frame_dig 5
     frame_dig 4
     <
     bz read_box_game_players_after_for@6
-    // smart_contracts/pieout/contract.py:105-106
+    // smart_contracts/pieout/contract.py:113-114
     // # Extract the bytes representing the player address
     // player_addr_bytes = op.extract(game_players, i, cst.ADDRESS_SIZE)
     frame_dig 2
@@ -1515,7 +1411,7 @@ read_box_game_players_for_header@1:
     extract3
     dup
     frame_bury 0
-    // smart_contracts/pieout/contract.py:107-108
+    // smart_contracts/pieout/contract.py:115-116
     // # Only append address if its bytes do NOT equal to a zeroed byte array of size 32
     // if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
     bytec 8 // 0x0000000000000000000000000000000000000000000000000000000000000000
@@ -1523,7 +1419,7 @@ read_box_game_players_for_header@1:
     frame_dig 3
     frame_bury 1
     bz read_box_game_players_after_if_else@4
-    // smart_contracts/pieout/contract.py:110
+    // smart_contracts/pieout/contract.py:118
     // players.append(arc4.Address(player_account))
     frame_dig 3
     extract 2 0
@@ -1542,7 +1438,7 @@ read_box_game_players_for_header@1:
 read_box_game_players_after_if_else@4:
     frame_dig 1
     frame_bury 3
-    // smart_contracts/pieout/contract.py:103-104
+    // smart_contracts/pieout/contract.py:111-112
     // # Iterate through the game players byte array
     // for i in urange(0, game_players.length, cst.ADDRESS_SIZE):
     frame_dig 5
@@ -1552,7 +1448,7 @@ read_box_game_players_after_if_else@4:
     b read_box_game_players_for_header@1
 
 read_box_game_players_after_for@6:
-    // smart_contracts/pieout/contract.py:112-113
+    // smart_contracts/pieout/contract.py:120-121
     // # Return the array containing the remaining players
     // return players
     frame_dig 3
@@ -1562,12 +1458,12 @@ read_box_game_players_after_for@6:
 
 // smart_contracts.pieout.contract.Pieout.read_box_commit_rand(player: bytes) -> bytes:
 read_box_commit_rand:
-    // smart_contracts/pieout/contract.py:115-117
+    // smart_contracts/pieout/contract.py:123-125
     // # Read the smart contract application commit round box for given account
     // @arc4.abimethod(readonly=True)
     // def read_box_commit_rand(self, player: Account) -> ta.CommitRandTuple:
     proto 1 1
-    // smart_contracts/pieout/contract.py:118-119
+    // smart_contracts/pieout/contract.py:126-127
     // # Fail transaction unless the assertion below evaluates True
     // assert player in self.box_commit_rand, err.BOX_NOT_FOUND
     bytec_0 // "c_"
@@ -1577,12 +1473,12 @@ read_box_commit_rand:
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:121-122
+    // smart_contracts/pieout/contract.py:129-130
     // # Create a copy of the box commit rand contents
     // commit_rand = self.box_commit_rand[player].copy()
     box_get
     assert // check self.box_commit_rand entry exists
-    // smart_contracts/pieout/contract.py:124-125
+    // smart_contracts/pieout/contract.py:132-133
     // # Return a tuple containing commit rand game id, commit round and expiry round
     // return ta.CommitRandTuple((commit_rand.game_id, commit_rand.commit_round, commit_rand.expiry_round))
     dup
@@ -1600,30 +1496,30 @@ read_box_commit_rand:
 
 // smart_contracts.pieout.contract.Pieout.generate() -> void:
 generate:
-    // smart_contracts/pieout/contract.py:132-133
+    // smart_contracts/pieout/contract.py:140-141
     // # Fail transaction unless the assertion below evaluates True
     // assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
     txn Sender
     global CreatorAddress
     ==
     assert // Account must match application creator address.
-    // smart_contracts/pieout/contract.py:135-136
+    // smart_contracts/pieout/contract.py:143-144
     // # Assign Global State variables with their default starting value
     // self.game_id = UInt64(1)
     bytec 9 // "game_id"
     intc_0 // 1
     app_global_put
-    // smart_contracts/pieout/contract.py:137
+    // smart_contracts/pieout/contract.py:145
     // self.score_id = UInt64(1)
     bytec 6 // "score_id"
     intc_0 // 1
     app_global_put
-    // smart_contracts/pieout/contract.py:138
+    // smart_contracts/pieout/contract.py:146
     // self.ath_score = UInt64(0)
     bytec 10 // "ath_score"
     intc_1 // 0
     app_global_put
-    // smart_contracts/pieout/contract.py:139
+    // smart_contracts/pieout/contract.py:147
     // self.ath_address = Global.zero_address
     bytec 7 // "ath_address"
     global ZeroAddress
@@ -1633,7 +1529,7 @@ generate:
 
 // smart_contracts.pieout.contract.Pieout.mint_trophy(box_t_pay: uint64, mint_pay: uint64) -> void:
 mint_trophy:
-    // smart_contracts/pieout/contract.py:141-147
+    // smart_contracts/pieout/contract.py:149-155
     // # Allow application creator to mint a one-time NFT asset used as trophy token to honor the ATH address
     // @arc4.abimethod
     // def mint_trophy(
@@ -1642,75 +1538,75 @@ mint_trophy:
     //     mint_pay: gtxn.PaymentTransaction,
     // ) -> None:
     proto 2 0
-    // smart_contracts/pieout/contract.py:148-149
+    // smart_contracts/pieout/contract.py:156-157
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 3, err.INVALID_GROUP_SIZE
     global GroupSize
     pushint 3 // 3
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:150
+    // smart_contracts/pieout/contract.py:158
     // assert not self.box_game_trophy, err.BOX_FOUND
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_len
     bury 1
     !
     assert // Box found. Ensure the box you are trying to access does not exist already.
-    // smart_contracts/pieout/contract.py:152
+    // smart_contracts/pieout/contract.py:160
     // assert box_t_pay.amount >= cst.BOX_T_COST, err.INVALID_BOX_PAY_FEE
     frame_dig -2
     gtxns Amount
     pushint 19300 // 19300
     >=
     assert // Insufficient funds. Box pay amount is not enough to cover application MBR.
-    // smart_contracts/pieout/contract.py:153
+    // smart_contracts/pieout/contract.py:161
     // assert box_t_pay.sender == Global.creator_address, err.INVALID_BOX_PAY_SENDER
     frame_dig -2
     gtxns Sender
     global CreatorAddress
     ==
     assert // Box payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:155
+    // smart_contracts/pieout/contract.py:163
     // box_t_pay.receiver == Global.current_application_address
     frame_dig -2
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:154-156
+    // smart_contracts/pieout/contract.py:162-164
     // assert (
     //     box_t_pay.receiver == Global.current_application_address
     // ), err.INVALID_BOX_PAY_RECEIVER
     assert // Box payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:159
+    // smart_contracts/pieout/contract.py:167
     // mint_pay.amount >= Global.asset_create_min_balance
     frame_dig -1
     gtxns Amount
     global AssetCreateMinBalance
     >=
-    // smart_contracts/pieout/contract.py:158-160
+    // smart_contracts/pieout/contract.py:166-168
     // assert (
     //     mint_pay.amount >= Global.asset_create_min_balance
     // ), err.INVALID_MINT_PAY_FEE
     assert // Insufficient funds. Mint pay amount is not enough to cover asset creation cost.
-    // smart_contracts/pieout/contract.py:161
+    // smart_contracts/pieout/contract.py:169
     // assert mint_pay.sender == Global.creator_address, err.INVALID_MINT_PAY_SENDER
     frame_dig -1
     gtxns Sender
     global CreatorAddress
     ==
     assert // Mint payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:163
+    // smart_contracts/pieout/contract.py:171
     // mint_pay.receiver == Global.current_application_address
     frame_dig -1
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:162-164
+    // smart_contracts/pieout/contract.py:170-172
     // assert (
     //     mint_pay.receiver == Global.current_application_address
     // ), err.INVALID_MINT_PAY_RECEIVER
     assert // Mint payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:166-178
+    // smart_contracts/pieout/contract.py:174-186
     // # Mint a new unique asset representing the game trophy by making an asset config inner transaction
     // acfg_itxn = itxn.AssetConfig(
     //     total=1,
@@ -1725,15 +1621,15 @@ mint_trophy:
     //     note=b'pieout:j{"method":"mint_trophy","concern":"itxn.asset_config;create_trophy_asset"}',
     // ).submit()
     itxn_begin
-    // smart_contracts/pieout/contract.py:173
+    // smart_contracts/pieout/contract.py:181
     // manager=Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/pieout/contract.py:174-176
+    // smart_contracts/pieout/contract.py:182-184
     // reserve=Global.current_application_address,
     // freeze=Global.current_application_address,
     // clawback=Global.current_application_address,
     dupn 3
-    // smart_contracts/pieout/contract.py:177
+    // smart_contracts/pieout/contract.py:185
     // note=b'pieout:j{"method":"mint_trophy","concern":"itxn.asset_config;create_trophy_asset"}',
     pushbytes 0x7069656f75743a6a7b226d6574686f64223a226d696e745f74726f706879222c22636f6e6365726e223a226974786e2e61737365745f636f6e6669673b6372656174655f74726f7068795f6173736574227d
     itxn_field Note
@@ -1741,34 +1637,34 @@ mint_trophy:
     itxn_field ConfigAssetFreeze
     itxn_field ConfigAssetReserve
     itxn_field ConfigAssetManager
-    // smart_contracts/pieout/contract.py:172
+    // smart_contracts/pieout/contract.py:180
     // default_frozen=False,
     intc_1 // 0
     itxn_field ConfigAssetDefaultFrozen
-    // smart_contracts/pieout/contract.py:171
+    // smart_contracts/pieout/contract.py:179
     // decimals=0,
     intc_1 // 0
     itxn_field ConfigAssetDecimals
-    // smart_contracts/pieout/contract.py:170
+    // smart_contracts/pieout/contract.py:178
     // asset_name="Gamename-ATH-Trophy",
     pushbytes "Gamename-ATH-Trophy"
     itxn_field ConfigAssetName
-    // smart_contracts/pieout/contract.py:169
+    // smart_contracts/pieout/contract.py:177
     // unit_name="TRFY",
     pushbytes "TRFY"
     itxn_field ConfigAssetUnitName
-    // smart_contracts/pieout/contract.py:168
+    // smart_contracts/pieout/contract.py:176
     // total=1,
     intc_0 // 1
     itxn_field ConfigAssetTotal
-    // smart_contracts/pieout/contract.py:166-167
+    // smart_contracts/pieout/contract.py:174-175
     // # Mint a new unique asset representing the game trophy by making an asset config inner transaction
     // acfg_itxn = itxn.AssetConfig(
     pushint 3 // acfg
     itxn_field TypeEnum
     intc_1 // 0
     itxn_field Fee
-    // smart_contracts/pieout/contract.py:166-178
+    // smart_contracts/pieout/contract.py:174-186
     // # Mint a new unique asset representing the game trophy by making an asset config inner transaction
     // acfg_itxn = itxn.AssetConfig(
     //     total=1,
@@ -1784,29 +1680,29 @@ mint_trophy:
     // ).submit()
     itxn_submit
     itxn CreatedAssetID
-    // smart_contracts/pieout/contract.py:180-181
+    // smart_contracts/pieout/contract.py:188-189
     // # Create the box game trophy and assign its default starting values
     // self.box_game_trophy.create()
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     pushint 40 // 40
     box_create
     pop
-    // smart_contracts/pieout/contract.py:183
+    // smart_contracts/pieout/contract.py:191
     // asset_id=arc4.UInt64(acfg_itxn.created_asset.id),
     itob
-    // smart_contracts/pieout/contract.py:184
+    // smart_contracts/pieout/contract.py:192
     // owner_address=arc4.Address(Global.zero_address),
     global ZeroAddress
-    // smart_contracts/pieout/contract.py:182-185
+    // smart_contracts/pieout/contract.py:190-193
     // self.box_game_trophy.value = stc.GameTrophy(
     //     asset_id=arc4.UInt64(acfg_itxn.created_asset.id),
     //     owner_address=arc4.Address(Global.zero_address),
     // )
     concat
-    // smart_contracts/pieout/contract.py:182
+    // smart_contracts/pieout/contract.py:190
     // self.box_game_trophy.value = stc.GameTrophy(
-    bytec_2 // "t_"
-    // smart_contracts/pieout/contract.py:182-185
+    bytec_1 // "t_"
+    // smart_contracts/pieout/contract.py:190-193
     // self.box_game_trophy.value = stc.GameTrophy(
     //     asset_id=arc4.UInt64(acfg_itxn.created_asset.id),
     //     owner_address=arc4.Address(Global.zero_address),
@@ -1818,14 +1714,14 @@ mint_trophy:
 
 // smart_contracts.pieout.contract.Pieout.claim_trophy() -> void:
 claim_trophy:
-    // smart_contracts/pieout/contract.py:190-191
+    // smart_contracts/pieout/contract.py:198-199
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:192
+    // smart_contracts/pieout/contract.py:200
     // assert Txn.sender == self.ath_address, err.INVALID_TROPHY_RECEIVER
     txn Sender
     intc_1 // 0
@@ -1834,17 +1730,17 @@ claim_trophy:
     assert // check self.ath_address exists
     ==
     assert // Asset trophy receiver must match application ATH address.
-    // smart_contracts/pieout/contract.py:193
+    // smart_contracts/pieout/contract.py:201
     // assert Txn.sender.is_opted_in(
     txn Sender
-    // smart_contracts/pieout/contract.py:194
+    // smart_contracts/pieout/contract.py:202
     // Asset(self.box_game_trophy.value.asset_id.native)
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     intc_1 // 0
     extract_uint64
-    // smart_contracts/pieout/contract.py:193-195
+    // smart_contracts/pieout/contract.py:201-203
     // assert Txn.sender.is_opted_in(
     //     Asset(self.box_game_trophy.value.asset_id.native)
     // ), err.ASSET_OPT_IN_REQUIRED
@@ -1853,7 +1749,7 @@ claim_trophy:
     asset_holding_get AssetBalance
     bury 1
     assert // Account must be opted in to asset in order to perform this action.
-    // smart_contracts/pieout/contract.py:197-203
+    // smart_contracts/pieout/contract.py:205-211
     // # Transfer game trophy to sender by making an asset transfer inner transaction
     // itxn.AssetTransfer(
     //     xfer_asset=self.box_game_trophy.value.asset_id.native,
@@ -1862,27 +1758,27 @@ claim_trophy:
     //     note=b'pieout:j{"method":"claim_trophy","concern":"itxn.asset_transfer;transfer_trophy_asset"}',
     // ).submit()
     itxn_begin
-    // smart_contracts/pieout/contract.py:200
+    // smart_contracts/pieout/contract.py:208
     // asset_receiver=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:202
+    // smart_contracts/pieout/contract.py:210
     // note=b'pieout:j{"method":"claim_trophy","concern":"itxn.asset_transfer;transfer_trophy_asset"}',
     pushbytes 0x7069656f75743a6a7b226d6574686f64223a22636c61696d5f74726f706879222c22636f6e6365726e223a226974786e2e61737365745f7472616e736665723b7472616e736665725f74726f7068795f6173736574227d
     itxn_field Note
-    // smart_contracts/pieout/contract.py:201
+    // smart_contracts/pieout/contract.py:209
     // asset_amount=1,
     intc_0 // 1
     itxn_field AssetAmount
     itxn_field AssetReceiver
     itxn_field XferAsset
-    // smart_contracts/pieout/contract.py:197-198
+    // smart_contracts/pieout/contract.py:205-206
     // # Transfer game trophy to sender by making an asset transfer inner transaction
     // itxn.AssetTransfer(
     pushint 4 // axfer
     itxn_field TypeEnum
     intc_1 // 0
     itxn_field Fee
-    // smart_contracts/pieout/contract.py:197-203
+    // smart_contracts/pieout/contract.py:205-211
     // # Transfer game trophy to sender by making an asset transfer inner transaction
     // itxn.AssetTransfer(
     //     xfer_asset=self.box_game_trophy.value.asset_id.native,
@@ -1894,9 +1790,83 @@ claim_trophy:
     retsub
 
 
+// smart_contracts.pieout.contract.Pieout.get_box_commit_rand(box_c_pay: uint64) -> void:
+get_box_commit_rand:
+    // smart_contracts/pieout/contract.py:213-215
+    // # Get box commit rand contents with default start values
+    // @arc4.abimethod
+    // def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
+    proto 1 0
+    // smart_contracts/pieout/contract.py:216-217
+    // # Fail transaction unless the assertion below evaluates True
+    // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+    global GroupSize
+    intc_2 // 2
+    ==
+    assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
+    // smart_contracts/pieout/contract.py:218
+    // assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
+    bytec_0 // "c_"
+    txn Sender
+    concat
+    box_len
+    bury 1
+    !
+    assert // Box found. Ensure the box you are trying to access does not exist already.
+    // smart_contracts/pieout/contract.py:219
+    // assert self.box_game_trophy, err.BOX_NOT_FOUND
+    bytec_1 // "t_"
+    box_len
+    bury 1
+    assert // Box not found. Ensure the box you are trying to access was created and still exists.
+    // smart_contracts/pieout/contract.py:221
+    // assert box_c_pay.amount == cst.BOX_C_COST, err.INVALID_BOX_PAY_FEE
+    frame_dig -1
+    gtxns Amount
+    intc 7 // 28900
+    ==
+    assert // Insufficient funds. Box pay amount is not enough to cover application MBR.
+    // smart_contracts/pieout/contract.py:222
+    // assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+    frame_dig -1
+    gtxns Sender
+    txn Sender
+    ==
+    assert // Box payment sender address must match transaction sender address.
+    // smart_contracts/pieout/contract.py:224
+    // box_c_pay.receiver == Global.current_application_address
+    frame_dig -1
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    // smart_contracts/pieout/contract.py:223-225
+    // assert (
+    //     box_c_pay.receiver == Global.current_application_address
+    // ), err.INVALID_BOX_PAY_RECEIVER
+    assert // Box payment receiver address must match application address.
+    // smart_contracts/pieout/contract.py:229
+    // box_commit_rand=self.box_commit_rand,
+    bytec_0 // "c_"
+    // smart_contracts/pieout/contract.py:230
+    // account=Txn.sender,
+    txn Sender
+    // smart_contracts/pieout/contract.py:231
+    // round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
+    intc 6 // 32000
+    // smart_contracts/pieout/contract.py:227-232
+    // # Initialize box commit rand w/ default start value
+    // srt.reset_box_commit_rand(
+    //     box_commit_rand=self.box_commit_rand,
+    //     account=Txn.sender,
+    //     round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
+    // )
+    callsub reset_box_commit_rand
+    retsub
+
+
 // smart_contracts.pieout.contract.Pieout.new_game(max_players: uint64, box_s_pay: uint64, box_p_pay: uint64, stake_pay: uint64) -> void:
 new_game:
-    // smart_contracts/pieout/contract.py:205-213
+    // smart_contracts/pieout/contract.py:234-242
     // # Create new game instance with a unique ID
     // @arc4.abimethod
     // def new_game(
@@ -1907,66 +1877,74 @@ new_game:
     //     stake_pay: gtxn.PaymentTransaction,
     // ) -> None:
     proto 4 0
-    // smart_contracts/pieout/contract.py:214-215
+    // smart_contracts/pieout/contract.py:243-244
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 4, err.INVALID_GROUP_SIZE
     global GroupSize
     pushint 4 // 4
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:216
+    // smart_contracts/pieout/contract.py:245
     // assert self.box_game_trophy, err.BOX_NOT_FOUND
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:218
+    // smart_contracts/pieout/contract.py:246
+    // assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+    bytec_0 // "c_"
+    txn Sender
+    concat
+    box_len
+    bury 1
+    assert // Box not found. Ensure the box you are trying to access was created and still exists.
+    // smart_contracts/pieout/contract.py:249
     // max_players >= cst.MAX_PLAYERS_BOT_BOUND
     frame_dig -4
-    pushint 4 // 4
+    pushint 3 // 3
     >=
-    // smart_contracts/pieout/contract.py:218-219
+    // smart_contracts/pieout/contract.py:249-250
     // max_players >= cst.MAX_PLAYERS_BOT_BOUND
     // and max_players <= cst.MAX_PLAYERS_TOP_BOUND
     bz new_game_bool_false@3
-    // smart_contracts/pieout/contract.py:219
+    // smart_contracts/pieout/contract.py:250
     // and max_players <= cst.MAX_PLAYERS_TOP_BOUND
     frame_dig -4
     pushint 16 // 16
     <=
-    // smart_contracts/pieout/contract.py:218-219
+    // smart_contracts/pieout/contract.py:249-250
     // max_players >= cst.MAX_PLAYERS_BOT_BOUND
     // and max_players <= cst.MAX_PLAYERS_TOP_BOUND
     bz new_game_bool_false@3
     intc_0 // 1
 
 new_game_bool_merge@4:
-    // smart_contracts/pieout/contract.py:217-220
+    // smart_contracts/pieout/contract.py:248-251
     // assert (
     //     max_players >= cst.MAX_PLAYERS_BOT_BOUND
     //     and max_players <= cst.MAX_PLAYERS_TOP_BOUND
     // ), err.INVALID_MAX_PLAYERS
     assert // The number of max players must be within bounds.
-    // smart_contracts/pieout/contract.py:222
+    // smart_contracts/pieout/contract.py:253
     // assert stake_pay.amount == cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
     frame_dig -1
     gtxns Amount
     dup
-    intc 4 // 1000
+    intc 4 // 11000
     ==
     assert // Insufficient funds. Stake pay amount is not enough to cover staking requirements.
-    // smart_contracts/pieout/contract.py:223
+    // smart_contracts/pieout/contract.py:254
     // assert box_s_pay.amount == cst.BOX_S_COST, err.INVALID_BOX_PAY_FEE
     frame_dig -3
     gtxns Amount
     intc 11 // 67300
     ==
     assert // Insufficient funds. Box pay amount is not enough to cover application MBR.
-    // smart_contracts/pieout/contract.py:224
+    // smart_contracts/pieout/contract.py:255
     // assert box_p_pay.amount == self.calc_single_box_cost(
     frame_dig -2
     gtxns Amount
-    // smart_contracts/pieout/contract.py:226
+    // smart_contracts/pieout/contract.py:257
     // value_size=arc4.UInt16(cst.ADDRESS_SIZE * max_players),
     intc_3 // 32
     frame_dig -4
@@ -1979,10 +1957,10 @@ new_game_bool_merge@4:
     <=
     assert // overflow
     extract 6 2
-    // smart_contracts/pieout/contract.py:225
+    // smart_contracts/pieout/contract.py:256
     // key_size=arc4.UInt8(10),
     pushbytes 0x0a
-    // smart_contracts/pieout/contract.py:224-227
+    // smart_contracts/pieout/contract.py:255-258
     // assert box_p_pay.amount == self.calc_single_box_cost(
     //     key_size=arc4.UInt8(10),
     //     value_size=arc4.UInt16(cst.ADDRESS_SIZE * max_players),
@@ -1992,61 +1970,61 @@ new_game_bool_merge@4:
     uncover 2
     ==
     assert // Insufficient funds. Box pay amount is not enough to cover application MBR.
-    // smart_contracts/pieout/contract.py:229
+    // smart_contracts/pieout/contract.py:260
     // assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
     frame_dig -1
     gtxns Sender
     txn Sender
     ==
     assert // Stake payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:230
+    // smart_contracts/pieout/contract.py:261
     // assert box_s_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
     frame_dig -3
     gtxns Sender
     txn Sender
     ==
     assert // Box payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:231
+    // smart_contracts/pieout/contract.py:262
     // assert box_p_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
     frame_dig -2
     gtxns Sender
     txn Sender
     ==
     assert // Box payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:234
+    // smart_contracts/pieout/contract.py:265
     // stake_pay.receiver == Global.current_application_address
     frame_dig -1
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:233-235
+    // smart_contracts/pieout/contract.py:264-266
     // assert (
     //     stake_pay.receiver == Global.current_application_address
     // ), err.INVALID_STAKE_PAY_RECEIVER
     assert // Stake payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:237
+    // smart_contracts/pieout/contract.py:268
     // box_s_pay.receiver == Global.current_application_address
     frame_dig -3
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:236-238
+    // smart_contracts/pieout/contract.py:267-269
     // assert (
     //     box_s_pay.receiver == Global.current_application_address
     // ), err.INVALID_BOX_PAY_RECEIVER
     assert // Box payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:240
+    // smart_contracts/pieout/contract.py:271
     // box_p_pay.receiver == Global.current_application_address
     frame_dig -2
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:239-241
+    // smart_contracts/pieout/contract.py:270-272
     // assert (
     //     box_p_pay.receiver == Global.current_application_address
     // ), err.INVALID_BOX_PAY_RECEIVER
     assert // Box payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:246
+    // smart_contracts/pieout/contract.py:277
     // max_players=arc4.UInt8(max_players),
     frame_dig -4
     itob
@@ -2056,30 +2034,30 @@ new_game_bool_merge@4:
     <=
     assert // overflow
     extract 7 1
-    // smart_contracts/pieout/contract.py:252
+    // smart_contracts/pieout/contract.py:283
     // expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL),
     global LatestTimestamp
-    intc 5 // 3600
+    intc 5 // 300
     +
     itob
-    // smart_contracts/pieout/contract.py:253
+    // smart_contracts/pieout/contract.py:284
     // prize_pool=arc4.UInt64(stake_pay.amount),
     uncover 3
     itob
-    // smart_contracts/pieout/contract.py:254
+    // smart_contracts/pieout/contract.py:285
     // admin_address=arc4.Address(Txn.sender),
     txn Sender
-    // smart_contracts/pieout/contract.py:255
+    // smart_contracts/pieout/contract.py:286
     // first_place_address=arc4.Address(Global.zero_address),
     global ZeroAddress
-    // smart_contracts/pieout/contract.py:256-257
+    // smart_contracts/pieout/contract.py:287-288
     // second_place_address=arc4.Address(Global.zero_address),
     // third_place_address=arc4.Address(Global.zero_address),
     dupn 2
-    // smart_contracts/pieout/contract.py:245
+    // smart_contracts/pieout/contract.py:276
     // staking_finalized=arc4.Bool(False),  # noqa: FBT003
-    bytec_1 // 0x00
-    // smart_contracts/pieout/contract.py:243-258
+    bytec_2 // 0x00
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2098,10 +2076,10 @@ new_game_bool_merge@4:
     // )
     uncover 7
     concat
-    // smart_contracts/pieout/contract.py:247
+    // smart_contracts/pieout/contract.py:278
     // active_players=arc4.UInt8(1),
     pushbytes 0x01
-    // smart_contracts/pieout/contract.py:243-258
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2119,10 +2097,10 @@ new_game_bool_merge@4:
     //     third_place_address=arc4.Address(Global.zero_address),
     // )
     concat
-    // smart_contracts/pieout/contract.py:248
+    // smart_contracts/pieout/contract.py:279
     // first_place_score=arc4.UInt8(0),
-    bytec_1 // 0x00
-    // smart_contracts/pieout/contract.py:243-258
+    bytec_2 // 0x00
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2140,10 +2118,10 @@ new_game_bool_merge@4:
     //     third_place_address=arc4.Address(Global.zero_address),
     // )
     concat
-    // smart_contracts/pieout/contract.py:249
+    // smart_contracts/pieout/contract.py:280
     // second_place_score=arc4.UInt8(0),
-    bytec_1 // 0x00
-    // smart_contracts/pieout/contract.py:243-258
+    bytec_2 // 0x00
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2161,10 +2139,10 @@ new_game_bool_merge@4:
     //     third_place_address=arc4.Address(Global.zero_address),
     // )
     concat
-    // smart_contracts/pieout/contract.py:250
+    // smart_contracts/pieout/contract.py:281
     // third_place_score=arc4.UInt8(0),
-    bytec_1 // 0x00
-    // smart_contracts/pieout/contract.py:243-258
+    bytec_2 // 0x00
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2182,10 +2160,10 @@ new_game_bool_merge@4:
     //     third_place_address=arc4.Address(Global.zero_address),
     // )
     concat
-    // smart_contracts/pieout/contract.py:251
+    // smart_contracts/pieout/contract.py:282
     // box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
-    bytec 11 // 0x0020
-    // smart_contracts/pieout/contract.py:243-258
+    bytec 13 // 0x0020
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2215,7 +2193,7 @@ new_game_bool_merge@4:
     concat
     swap
     concat
-    // smart_contracts/pieout/contract.py:243-244
+    // smart_contracts/pieout/contract.py:274-275
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     intc_1 // 0
@@ -2227,7 +2205,7 @@ new_game_bool_merge@4:
     bytec 4 // "s_"
     dig 1
     concat
-    // smart_contracts/pieout/contract.py:243-258
+    // smart_contracts/pieout/contract.py:274-289
     // # Initialize a new game state box with unique game IQ and write the default starting values inside
     // self.box_game_state[self.game_id] = stc.GameState(
     //     staking_finalized=arc4.Bool(False),  # noqa: FBT003
@@ -2246,7 +2224,7 @@ new_game_bool_merge@4:
     // )
     uncover 3
     box_put
-    // smart_contracts/pieout/contract.py:260-261
+    // smart_contracts/pieout/contract.py:291-292
     // # Initialize box game players with zeroed bytes to store all player addresses (32 bytes per player)
     // self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * max_players)
     uncover 2
@@ -2260,12 +2238,12 @@ new_game_bool_merge@4:
     dup
     uncover 2
     box_put
-    // smart_contracts/pieout/contract.py:267
+    // smart_contracts/pieout/contract.py:298
     // game_players_bref.replace(0, Txn.sender.bytes)
     intc_1 // 0
     txn Sender
     box_replace
-    // smart_contracts/pieout/contract.py:269-270
+    // smart_contracts/pieout/contract.py:300-301
     // # Increment game id by 1 for next new game instance
     // self.game_id += 1
     intc_0 // 1
@@ -2282,7 +2260,7 @@ new_game_bool_false@3:
 
 // smart_contracts.pieout.contract.Pieout.join_game(game_id: uint64, stake_pay: uint64) -> void:
 join_game:
-    // smart_contracts/pieout/contract.py:272-278
+    // smart_contracts/pieout/contract.py:303-309
     // # Join existing game instance
     // @arc4.abimethod
     // def join_game(
@@ -2291,78 +2269,82 @@ join_game:
     //     stake_pay: gtxn.PaymentTransaction,
     // ) -> None:
     proto 2 0
-    // smart_contracts/pieout/contract.py:281
-    // game_id
-    frame_dig -2
-    itob
-    // smart_contracts/pieout/contract.py:279-280
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    bytec 4 // "s_"
-    // smart_contracts/pieout/contract.py:279-282
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    //     game_id
-    // ].copy()  # Make a copy of the game state else immutable
-    dig 1
-    concat
-    dup
-    box_get
-    assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:284-285
+    // smart_contracts/pieout/contract.py:310-311
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
     global GroupSize
     intc_2 // 2
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:286
+    // smart_contracts/pieout/contract.py:312
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+    frame_dig -2
+    itob
+    bytec 4 // "s_"
     dig 1
+    concat
+    dup
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:287
+    // smart_contracts/pieout/contract.py:314-317
+    // # Retrieve current game state from box using the game id parameter
+    // game_state = self.box_game_state[
+    //     game_id
+    // ].copy()  # Make a copy of the game state else immutable
+    dup
+    box_get
+    assert // check self.box_game_state entry exists
+    // smart_contracts/pieout/contract.py:319-320
+    // # Fail transaction unless the assertion below evaluates True
     // assert self.box_game_trophy, err.BOX_NOT_FOUND
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:289
+    // smart_contracts/pieout/contract.py:321
+    // assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+    bytec_0 // "c_"
+    txn Sender
+    concat
+    box_len
+    bury 1
+    assert // Box not found. Ensure the box you are trying to access was created and still exists.
+    // smart_contracts/pieout/contract.py:323
     // assert stake_pay.amount == cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
     frame_dig -1
     gtxns Amount
     dup
-    intc 4 // 1000
+    intc 4 // 11000
     ==
     assert // Insufficient funds. Stake pay amount is not enough to cover staking requirements.
-    // smart_contracts/pieout/contract.py:290
+    // smart_contracts/pieout/contract.py:324
     // assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
     frame_dig -1
     gtxns Sender
     txn Sender
     ==
     assert // Stake payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:292
+    // smart_contracts/pieout/contract.py:326
     // stake_pay.receiver == Global.current_application_address
     frame_dig -1
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:291-293
+    // smart_contracts/pieout/contract.py:325-327
     // assert (
     //     stake_pay.receiver == Global.current_application_address
     // ), err.INVALID_STAKE_PAY_RECEIVER
     assert // Stake payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:297
+    // smart_contracts/pieout/contract.py:331
     // account=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:299
+    // smart_contracts/pieout/contract.py:333
     // player_count=self.box_game_state[game_id].active_players.native,
     dig 2
     intc_2 // 2
     getbyte
-    // smart_contracts/pieout/contract.py:295-301
+    // smart_contracts/pieout/contract.py:329-335
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2372,10 +2354,10 @@ join_game:
     // )
     frame_dig -2
     uncover 2
-    // smart_contracts/pieout/contract.py:298
+    // smart_contracts/pieout/contract.py:332
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:295-301
+    // smart_contracts/pieout/contract.py:329-335
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2384,10 +2366,10 @@ join_game:
     //     clear_player=False,
     // )
     dig 3
-    // smart_contracts/pieout/contract.py:300
+    // smart_contracts/pieout/contract.py:334
     // clear_player=False,
     intc_1 // 0
-    // smart_contracts/pieout/contract.py:295-301
+    // smart_contracts/pieout/contract.py:329-335
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2396,7 +2378,7 @@ join_game:
     //     clear_player=False,
     // )
     callsub check_acc_in_game
-    // smart_contracts/pieout/contract.py:295-302
+    // smart_contracts/pieout/contract.py:329-336
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2406,7 +2388,7 @@ join_game:
     // )
     // == False
     !
-    // smart_contracts/pieout/contract.py:294-303
+    // smart_contracts/pieout/contract.py:328-337
     // assert (
     //     srt.check_acc_in_game(  # noqa: E712, RUF100
     //         game_id=game_id,
@@ -2418,12 +2400,12 @@ join_game:
     //     == False
     // ), err.PLAYER_ACTIVE
     assert // Player with this address must not be an active game participant in the game.
-    // smart_contracts/pieout/contract.py:305
+    // smart_contracts/pieout/contract.py:339
     // assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
     dig 2
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -2431,7 +2413,7 @@ join_game:
     getbit
     !
     assert // Game state staking finalized value mismatch.
-    // smart_contracts/pieout/contract.py:306
+    // smart_contracts/pieout/contract.py:340
     // assert game_state.expiry_ts >= Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
     dig 2
     extract 8 8 // on error: Index access is out of bounds
@@ -2439,7 +2421,7 @@ join_game:
     itob
     b>=
     assert // Invalid time frame. Call made outside the permitted block or timestamp range.
-    // smart_contracts/pieout/contract.py:307
+    // smart_contracts/pieout/contract.py:341
     // assert game_state.active_players <= game_state.max_players, err.FULL_GAME_LOBBY
     dig 2
     extract 2 1 // on error: Index access is out of bounds
@@ -2447,48 +2429,48 @@ join_game:
     extract 1 1 // on error: Index access is out of bounds
     b<=
     assert // Number of active players must not exceed number of max players.
-    // smart_contracts/pieout/contract.py:309
+    // smart_contracts/pieout/contract.py:343
     // game_state.box_p_start_pos.native
     dig 2
     pushint 6 // 6
     extract_uint16
-    // smart_contracts/pieout/contract.py:310
+    // smart_contracts/pieout/contract.py:344
     // < cst.ADDRESS_SIZE * game_state.max_players.native
     dig 3
     intc_0 // 1
     getbyte
     intc_3 // 32
     *
-    // smart_contracts/pieout/contract.py:309-310
+    // smart_contracts/pieout/contract.py:343-344
     // game_state.box_p_start_pos.native
     // < cst.ADDRESS_SIZE * game_state.max_players.native
     dig 1
     >
-    // smart_contracts/pieout/contract.py:308-311
+    // smart_contracts/pieout/contract.py:342-345
     // assert (
     //     game_state.box_p_start_pos.native
     //     < cst.ADDRESS_SIZE * game_state.max_players.native
     // ), err.BOX_P_START_POS_OVERFLOW
     assert // Players box start position index overflow. Can not store more addresses.
-    // smart_contracts/pieout/contract.py:315
+    // smart_contracts/pieout/contract.py:349
     // key=self.box_game_players.key_prefix + op.itob(game_id)
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:313-316
+    // smart_contracts/pieout/contract.py:347-350
     // # For game players box, store the sender's address at the current game state box p_ start position
     // game_players_bref = BoxRef(
     //     key=self.box_game_players.key_prefix + op.itob(game_id)
     // )
     uncover 6
-    // smart_contracts/pieout/contract.py:315
+    // smart_contracts/pieout/contract.py:349
     // key=self.box_game_players.key_prefix + op.itob(game_id)
     concat
-    // smart_contracts/pieout/contract.py:317
+    // smart_contracts/pieout/contract.py:351
     // game_players_bref.replace(game_state.box_p_start_pos.native, Txn.sender.bytes)
     txn Sender
     swap
     cover 2
     box_replace
-    // smart_contracts/pieout/contract.py:319-320
+    // smart_contracts/pieout/contract.py:353-354
     // # Increment number of active players by 1
     // game_state.active_players = arc4.UInt8(game_state.active_players.native + 1)
     intc_0 // 1
@@ -2503,14 +2485,14 @@ join_game:
     uncover 2
     swap
     replace2 2
-    // smart_contracts/pieout/contract.py:324
+    // smart_contracts/pieout/contract.py:358
     // game_state.box_p_start_pos.native + cst.ADDRESS_SIZE
     dup
     pushint 6 // 6
     extract_uint16
     intc_3 // 32
     +
-    // smart_contracts/pieout/contract.py:322-325
+    // smart_contracts/pieout/contract.py:356-359
     // # Increment current game players box offset by 32 so that next player address can be stored
     // game_state.box_p_start_pos = arc4.UInt16(
     //     game_state.box_p_start_pos.native + cst.ADDRESS_SIZE
@@ -2523,109 +2505,34 @@ join_game:
     assert // overflow
     extract 6 2
     replace2 6
-    // smart_contracts/pieout/contract.py:329
+    // smart_contracts/pieout/contract.py:363
     // game_state.prize_pool.native + stake_pay.amount
     dup
     pushint 16 // 16
     extract_uint64
     uncover 2
     +
-    // smart_contracts/pieout/contract.py:327-330
+    // smart_contracts/pieout/contract.py:361-364
     // # Increment prize pool by stake payment amount
     // game_state.prize_pool = arc4.UInt64(
     //     game_state.prize_pool.native + stake_pay.amount
     // )
     itob
     replace2 16
-    // smart_contracts/pieout/contract.py:332-333
+    // smart_contracts/pieout/contract.py:366-367
     // # Check if game is live on every call
     // srt.is_game_live(game_state)
     callsub is_game_live
-    bury 1
-    // smart_contracts/pieout/contract.py:335-336
+    // smart_contracts/pieout/contract.py:369-370
     // # Copy the modified game state and store it as new value of box
     // self.box_game_state[game_id] = game_state.copy()
     box_put
     retsub
 
 
-// smart_contracts.pieout.contract.Pieout.get_box_commit_rand(box_c_pay: uint64) -> void:
-get_box_commit_rand:
-    // smart_contracts/pieout/contract.py:338-340
-    // # Get box commit rand contents with default start values
-    // @arc4.abimethod
-    // def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
-    proto 1 0
-    // smart_contracts/pieout/contract.py:341-342
-    // # Fail transaction unless the assertion below evaluates True
-    // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-    global GroupSize
-    intc_2 // 2
-    ==
-    assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:343
-    // assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
-    bytec_0 // "c_"
-    txn Sender
-    concat
-    box_len
-    bury 1
-    !
-    assert // Box found. Ensure the box you are trying to access does not exist already.
-    // smart_contracts/pieout/contract.py:344
-    // assert self.box_game_trophy, err.BOX_NOT_FOUND
-    bytec_2 // "t_"
-    box_len
-    bury 1
-    assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:346
-    // assert box_c_pay.amount == cst.BOX_C_COST, err.INVALID_BOX_PAY_FEE
-    frame_dig -1
-    gtxns Amount
-    intc 7 // 28900
-    ==
-    assert // Insufficient funds. Box pay amount is not enough to cover application MBR.
-    // smart_contracts/pieout/contract.py:347
-    // assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-    frame_dig -1
-    gtxns Sender
-    txn Sender
-    ==
-    assert // Box payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:349
-    // box_c_pay.receiver == Global.current_application_address
-    frame_dig -1
-    gtxns Receiver
-    global CurrentApplicationAddress
-    ==
-    // smart_contracts/pieout/contract.py:348-350
-    // assert (
-    //     box_c_pay.receiver == Global.current_application_address
-    // ), err.INVALID_BOX_PAY_RECEIVER
-    assert // Box payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:354
-    // box_commit_rand=self.box_commit_rand,
-    bytec_0 // "c_"
-    // smart_contracts/pieout/contract.py:355
-    // account=Txn.sender,
-    txn Sender
-    // smart_contracts/pieout/contract.py:356
-    // round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
-    intc 6 // 32000
-    // smart_contracts/pieout/contract.py:352-357
-    // # Initialize box commit rand w/ default start value
-    // srt.reset_box_commit_rand(
-    //     box_commit_rand=self.box_commit_rand,
-    //     account=Txn.sender,
-    //     round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
-    // )
-    callsub reset_box_commit_rand
-    retsub
-
-
 // smart_contracts.pieout.contract.Pieout.set_box_commit_rand(game_id: uint64) -> void:
 set_box_commit_rand:
-    // smart_contracts/pieout/contract.py:359-364
+    // smart_contracts/pieout/contract.py:372-377
     // # Set box commit rand contents used for obtaining on-chain randomness and playing the game
     // @arc4.abimethod
     // def set_box_commit_rand(
@@ -2633,14 +2540,14 @@ set_box_commit_rand:
     //     game_id: UInt64,
     // ) -> None:
     proto 1 0
-    // smart_contracts/pieout/contract.py:365-366
+    // smart_contracts/pieout/contract.py:378-379
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:367
+    // smart_contracts/pieout/contract.py:380
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -1
     itob
@@ -2651,7 +2558,7 @@ set_box_commit_rand:
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:368
+    // smart_contracts/pieout/contract.py:381
     // assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
     bytec_0 // "c_"
     txn Sender
@@ -2659,14 +2566,14 @@ set_box_commit_rand:
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:370
+    // smart_contracts/pieout/contract.py:383
     // self.box_game_state[game_id].staking_finalized == True  # noqa: E712
     box_get
     assert // check self.box_game_state entry exists
     dup
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -2674,20 +2581,20 @@ set_box_commit_rand:
     getbit
     intc_0 // 1
     ==
-    // smart_contracts/pieout/contract.py:369-371
+    // smart_contracts/pieout/contract.py:382-384
     // assert (
     //     self.box_game_state[game_id].staking_finalized == True  # noqa: E712
     // ), err.STAKING_FINAL
     assert // Game state staking finalized value mismatch.
-    // smart_contracts/pieout/contract.py:375
+    // smart_contracts/pieout/contract.py:388
     // account=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:377
+    // smart_contracts/pieout/contract.py:390
     // player_count=self.box_game_state[game_id].max_players.native,
     swap
     intc_0 // 1
     getbyte
-    // smart_contracts/pieout/contract.py:373-379
+    // smart_contracts/pieout/contract.py:386-392
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2697,10 +2604,10 @@ set_box_commit_rand:
     // )
     frame_dig -1
     uncover 2
-    // smart_contracts/pieout/contract.py:376
+    // smart_contracts/pieout/contract.py:389
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:373-379
+    // smart_contracts/pieout/contract.py:386-392
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2709,10 +2616,10 @@ set_box_commit_rand:
     //     clear_player=False,
     // )
     uncover 3
-    // smart_contracts/pieout/contract.py:378
+    // smart_contracts/pieout/contract.py:391
     // clear_player=False,
     intc_1 // 0
-    // smart_contracts/pieout/contract.py:373-379
+    // smart_contracts/pieout/contract.py:386-392
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2721,10 +2628,10 @@ set_box_commit_rand:
     //     clear_player=False,
     // )
     callsub check_acc_in_game
-    // smart_contracts/pieout/contract.py:380
+    // smart_contracts/pieout/contract.py:393
     // == True
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:373-380
+    // smart_contracts/pieout/contract.py:386-393
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2734,7 +2641,7 @@ set_box_commit_rand:
     // )
     // == True
     ==
-    // smart_contracts/pieout/contract.py:372-381
+    // smart_contracts/pieout/contract.py:385-394
     // assert (
     //     srt.check_acc_in_game(  # noqa: E712, RUF100
     //         game_id=game_id,
@@ -2746,14 +2653,14 @@ set_box_commit_rand:
     //     == True
     // ), err.PLAYER_NOT_FOUND
     assert // Account is not recognized as an active player for this game.
-    // smart_contracts/pieout/contract.py:383-384
+    // smart_contracts/pieout/contract.py:396-397
     // # Get box commit rand values
     // commit_rand = self.box_commit_rand[
     bytec_0 // "c_"
-    // smart_contracts/pieout/contract.py:385
+    // smart_contracts/pieout/contract.py:398
     // Txn.sender
     txn Sender
-    // smart_contracts/pieout/contract.py:383-386
+    // smart_contracts/pieout/contract.py:396-399
     // # Get box commit rand values
     // commit_rand = self.box_commit_rand[
     //     Txn.sender
@@ -2761,7 +2668,7 @@ set_box_commit_rand:
     concat
     box_get
     assert // check self.box_commit_rand entry exists
-    // smart_contracts/pieout/contract.py:388-389
+    // smart_contracts/pieout/contract.py:401-402
     // # Fail transaction unless the assertion below evaluates True
     // assert commit_rand.commit_round.native == 0, err.NON_ZERO_COMMIT_ROUND
     dup
@@ -2769,7 +2676,7 @@ set_box_commit_rand:
     extract_uint64
     !
     assert // Box Commit Rand round not empty. Round value must be zero to obtain a valid one.
-    // smart_contracts/pieout/contract.py:391-392
+    // smart_contracts/pieout/contract.py:404-405
     // # Update commit rand commit round and game id fields with new values
     // commit_rand.commit_round = arc4.UInt64(Global.round + 4)
     global Round
@@ -2777,11 +2684,11 @@ set_box_commit_rand:
     +
     itob
     replace2 8
-    // smart_contracts/pieout/contract.py:393
+    // smart_contracts/pieout/contract.py:406
     // commit_rand.game_id = arc4.UInt64(game_id)
     swap
     replace2 0
-    // smart_contracts/pieout/contract.py:395-396
+    // smart_contracts/pieout/contract.py:408-409
     // # Copy the modified game state and store it as new value of box
     // self.box_commit_rand[Txn.sender] = commit_rand.copy()
     bytec_0 // "c_"
@@ -2794,7 +2701,7 @@ set_box_commit_rand:
 
 // smart_contracts.pieout.contract.Pieout.del_box_commit_rand_for_self(game_id: uint64) -> void:
 del_box_commit_rand_for_self:
-    // smart_contracts/pieout/contract.py:398-403
+    // smart_contracts/pieout/contract.py:411-416
     // # Allow caller to delete box commit rand contents for their own account
     // @arc4.abimethod
     // def del_box_commit_rand_for_self(
@@ -2802,14 +2709,14 @@ del_box_commit_rand_for_self:
     //     game_id: UInt64,
     // ) -> None:
     proto 1 0
-    // smart_contracts/pieout/contract.py:404-405
+    // smart_contracts/pieout/contract.py:417-418
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:406
+    // smart_contracts/pieout/contract.py:419
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -1
     itob
@@ -2820,7 +2727,7 @@ del_box_commit_rand_for_self:
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:407
+    // smart_contracts/pieout/contract.py:420
     // assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
     bytec_0 // "c_"
     txn Sender
@@ -2828,7 +2735,7 @@ del_box_commit_rand_for_self:
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:409
+    // smart_contracts/pieout/contract.py:422
     // assert (self.box_commit_rand[Txn.sender].game_id.native == 0 or
     bytec_0 // "c_"
     txn Sender
@@ -2837,11 +2744,11 @@ del_box_commit_rand_for_self:
     assert // check self.box_commit_rand entry exists
     intc_1 // 0
     extract_uint64
-    // smart_contracts/pieout/contract.py:409-410
+    // smart_contracts/pieout/contract.py:422-423
     // assert (self.box_commit_rand[Txn.sender].game_id.native == 0 or
     //     self.box_commit_rand[Txn.sender].game_id.native == game_id
     bz del_box_commit_rand_for_self_bool_true@2
-    // smart_contracts/pieout/contract.py:410
+    // smart_contracts/pieout/contract.py:423
     // self.box_commit_rand[Txn.sender].game_id.native == game_id
     bytec_0 // "c_"
     txn Sender
@@ -2852,7 +2759,7 @@ del_box_commit_rand_for_self:
     extract_uint64
     frame_dig -1
     ==
-    // smart_contracts/pieout/contract.py:409-410
+    // smart_contracts/pieout/contract.py:422-423
     // assert (self.box_commit_rand[Txn.sender].game_id.native == 0 or
     //     self.box_commit_rand[Txn.sender].game_id.native == game_id
     bz del_box_commit_rand_for_self_bool_false@3
@@ -2861,12 +2768,12 @@ del_box_commit_rand_for_self_bool_true@2:
     intc_0 // 1
 
 del_box_commit_rand_for_self_bool_merge@4:
-    // smart_contracts/pieout/contract.py:409-411
+    // smart_contracts/pieout/contract.py:422-424
     // assert (self.box_commit_rand[Txn.sender].game_id.native == 0 or
     //     self.box_commit_rand[Txn.sender].game_id.native == game_id
     // ), err.INVALID_GAME_ID
     assert // Invalid Game ID. Box Commit Rand Game ID must be a certain value or match Game ID arg.
-    // smart_contracts/pieout/contract.py:413-414
+    // smart_contracts/pieout/contract.py:426-427
     // # Check if box commit rand game id is not equal to zero
     // if self.box_commit_rand[Txn.sender].game_id.native != 0:
     bytec_0 // "c_"
@@ -2877,17 +2784,17 @@ del_box_commit_rand_for_self_bool_merge@4:
     intc_1 // 0
     extract_uint64
     bz del_box_commit_rand_for_self_after_if_else@6
-    // smart_contracts/pieout/contract.py:419
+    // smart_contracts/pieout/contract.py:432
     // account=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:421
+    // smart_contracts/pieout/contract.py:434
     // player_count=self.box_game_state[game_id].max_players.native,
     frame_dig 0
     box_get
     assert // check self.box_game_state entry exists
     intc_0 // 1
     getbyte
-    // smart_contracts/pieout/contract.py:417-423
+    // smart_contracts/pieout/contract.py:430-436
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2897,10 +2804,10 @@ del_box_commit_rand_for_self_bool_merge@4:
     // )
     frame_dig -1
     uncover 2
-    // smart_contracts/pieout/contract.py:420
+    // smart_contracts/pieout/contract.py:433
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:417-423
+    // smart_contracts/pieout/contract.py:430-436
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2909,10 +2816,10 @@ del_box_commit_rand_for_self_bool_merge@4:
     //     clear_player=False,
     // )
     uncover 3
-    // smart_contracts/pieout/contract.py:422
+    // smart_contracts/pieout/contract.py:435
     // clear_player=False,
     intc_1 // 0
-    // smart_contracts/pieout/contract.py:417-423
+    // smart_contracts/pieout/contract.py:430-436
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2921,7 +2828,7 @@ del_box_commit_rand_for_self_bool_merge@4:
     //     clear_player=False,
     // )
     callsub check_acc_in_game
-    // smart_contracts/pieout/contract.py:417-424
+    // smart_contracts/pieout/contract.py:430-437
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -2931,7 +2838,7 @@ del_box_commit_rand_for_self_bool_merge@4:
     // )
     // == False
     !
-    // smart_contracts/pieout/contract.py:415-425
+    // smart_contracts/pieout/contract.py:428-438
     // # Fail transaction unless the assertion below evaluates True
     // assert (
     //     srt.check_acc_in_game(  # noqa: E712, RUF100
@@ -2946,7 +2853,7 @@ del_box_commit_rand_for_self_bool_merge@4:
     assert // Player with this address must not be an active game participant in the game.
 
 del_box_commit_rand_for_self_after_if_else@6:
-    // smart_contracts/pieout/contract.py:427-428
+    // smart_contracts/pieout/contract.py:440-441
     // # Delete sender box commit rand from the smart contract storage
     // del self.box_commit_rand[Txn.sender]
     bytec_0 // "c_"
@@ -2954,18 +2861,18 @@ del_box_commit_rand_for_self_after_if_else@6:
     concat
     box_del
     pop
-    // smart_contracts/pieout/contract.py:432
+    // smart_contracts/pieout/contract.py:445
     // receiver=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:433
+    // smart_contracts/pieout/contract.py:446
     // amount=UInt64(cst.BOX_C_COST),
     intc 7 // 28900
-    // smart_contracts/pieout/contract.py:434-436
+    // smart_contracts/pieout/contract.py:447-449
     // note=String(
     //     'pieout:j{"method":"del_box_commit_rand_for_self","concern":"txn.app_c;mbr_box_c_refund"}'
     // ),
     pushbytes "pieout:j{\"method\":\"del_box_commit_rand_for_self\",\"concern\":\"txn.app_c;mbr_box_c_refund\"}"
-    // smart_contracts/pieout/contract.py:430-437
+    // smart_contracts/pieout/contract.py:443-450
     // # Issue MBR refund for box commit rand deletion via a payment inner transaction
     // srt.payout_itxn(
     //     receiver=Txn.sender,
@@ -2984,19 +2891,19 @@ del_box_commit_rand_for_self_bool_false@3:
 
 // smart_contracts.pieout.contract.Pieout.del_box_commit_rand_for_other(player: bytes) -> void:
 del_box_commit_rand_for_other:
-    // smart_contracts/pieout/contract.py:439-441
+    // smart_contracts/pieout/contract.py:452-454
     // # Allow caller to delete box commit rand contents for another account
     // @arc4.abimethod
     // def del_box_commit_rand_for_other(self, player: Account) -> None:
     proto 1 0
-    // smart_contracts/pieout/contract.py:442-443
+    // smart_contracts/pieout/contract.py:455-456
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:445
+    // smart_contracts/pieout/contract.py:458
     // assert player in self.box_commit_rand, err.BOX_NOT_FOUND
     bytec_0 // "c_"
     frame_dig -1
@@ -3005,13 +2912,13 @@ del_box_commit_rand_for_other:
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:446
+    // smart_contracts/pieout/contract.py:459
     // assert player != Txn.sender, err.INVALID_CALLER
     frame_dig -1
     txn Sender
     !=
     assert // Account is not authorized to make this call.
-    // smart_contracts/pieout/contract.py:448
+    // smart_contracts/pieout/contract.py:461
     // assert self.box_commit_rand[player].commit_round.native == 0, err.NON_ZERO_COMMIT_ROUND
     dup
     box_get
@@ -3021,19 +2928,19 @@ del_box_commit_rand_for_other:
     extract_uint64
     !
     assert // Box Commit Rand round not empty. Round value must be zero to obtain a valid one.
-    // smart_contracts/pieout/contract.py:449
+    // smart_contracts/pieout/contract.py:462
     // assert self.box_commit_rand[player].expiry_round.native < Global.round, err.TIME_CONSTRAINT_VIOLATION
     pushint 16 // 16
     extract_uint64
     global Round
     <
     assert // Invalid time frame. Call made outside the permitted block or timestamp range.
-    // smart_contracts/pieout/contract.py:451-452
+    // smart_contracts/pieout/contract.py:464-465
     // # Delete sender box commit rand box from contract storage
     // del self.box_commit_rand[player]
     box_del
     pop
-    // smart_contracts/pieout/contract.py:454-459
+    // smart_contracts/pieout/contract.py:467-472
     // # Resolve box commit rand deletion MBR refund receiver by priority
     // receiver = srt.resolve_receiver_by_prio(
     //     acc1=player,
@@ -3041,13 +2948,13 @@ del_box_commit_rand_for_other:
     //     acc3=Global.creator_address,
     // )
     frame_dig -1
-    // smart_contracts/pieout/contract.py:457
+    // smart_contracts/pieout/contract.py:470
     // acc2=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:458
+    // smart_contracts/pieout/contract.py:471
     // acc3=Global.creator_address,
     global CreatorAddress
-    // smart_contracts/pieout/contract.py:454-459
+    // smart_contracts/pieout/contract.py:467-472
     // # Resolve box commit rand deletion MBR refund receiver by priority
     // receiver = srt.resolve_receiver_by_prio(
     //     acc1=player,
@@ -3055,15 +2962,15 @@ del_box_commit_rand_for_other:
     //     acc3=Global.creator_address,
     // )
     callsub resolve_receiver_by_prio
-    // smart_contracts/pieout/contract.py:464
+    // smart_contracts/pieout/contract.py:477
     // amount=UInt64(cst.BOX_C_COST),
     intc 7 // 28900
-    // smart_contracts/pieout/contract.py:465-467
+    // smart_contracts/pieout/contract.py:478-480
     // note=String(
     //     'pieout:j{"method":"del_box_commit_rand_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
     // ),
     pushbytes "pieout:j{\"method\":\"del_box_commit_rand_for_other\",\"concern\":\"itxn.pay;mbr_box_c_refund\"}"
-    // smart_contracts/pieout/contract.py:461-468
+    // smart_contracts/pieout/contract.py:474-481
     // # Issue MBR refund for box commit rand deletion via a payment inner transaction
     // srt.payout_itxn(
     //     receiver=receiver,
@@ -3078,12 +2985,12 @@ del_box_commit_rand_for_other:
 
 // smart_contracts.pieout.contract.Pieout.up_ref_budget_for_play_game(game_id: uint64) -> void:
 up_ref_budget_for_play_game:
-    // smart_contracts/pieout/contract.py:470-472
+    // smart_contracts/pieout/contract.py:483-485
     // # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     // @arc4.abimethod
     // def up_ref_budget_for_play_game(self, game_id: UInt64) -> None:
     proto 1 0
-    // smart_contracts/pieout/contract.py:473-474
+    // smart_contracts/pieout/contract.py:486-487
     // # Get the second transaction in the group
     // second_txn = gtxn.ApplicationCallTransaction(group_index=1)
     intc_0 // 1
@@ -3091,63 +2998,72 @@ up_ref_budget_for_play_game:
     pushint 6 // appl
     ==
     assert // transaction type is appl
-    // smart_contracts/pieout/contract.py:476-477
+    // smart_contracts/pieout/contract.py:489-490
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
     global GroupSize
     intc_2 // 2
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:478
+    // smart_contracts/pieout/contract.py:491
+    // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+    frame_dig -1
+    itob
+    bytec 4 // "s_"
+    dig 1
+    concat
+    box_len
+    bury 1
+    assert // Box game state not found. Check if game ID exists.
+    // smart_contracts/pieout/contract.py:492
     // assert Txn.group_index == 0, err.INVALID_GROUP_IDX
     txn GroupIndex
     !
     assert // Invalid group index. Ensure transaction group index matches the expected value. 
-    // smart_contracts/pieout/contract.py:473-474
+    // smart_contracts/pieout/contract.py:486-487
     // # Get the second transaction in the group
     // second_txn = gtxn.ApplicationCallTransaction(group_index=1)
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:480
+    // smart_contracts/pieout/contract.py:494
     // assert second_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
     gtxns ApplicationID
     global CurrentApplicationID
     ==
     assert // Application ID mismatch. App ID must be same across all transactions in group.
-    // smart_contracts/pieout/contract.py:473-474
+    // smart_contracts/pieout/contract.py:486-487
     // # Get the second transaction in the group
     // second_txn = gtxn.ApplicationCallTransaction(group_index=1)
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:481
+    // smart_contracts/pieout/contract.py:495
     // assert second_txn.sender == Txn.sender, err.SENDER_MISMATCH
     gtxns Sender
     txn Sender
     ==
     assert // Sender mismatch. Sender must be same address across all transactions in group.
-    // smart_contracts/pieout/contract.py:473-474
+    // smart_contracts/pieout/contract.py:486-487
     // # Get the second transaction in the group
     // second_txn = gtxn.ApplicationCallTransaction(group_index=1)
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:482
+    // smart_contracts/pieout/contract.py:496
     // assert second_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
     intc_1 // 0
     gtxnsas ApplicationArgs
-    bytec 13 // method "play_game(uint64)void"
+    bytec 12 // method "play_game(uint64)void"
     ==
     assert // Transaction at this group index must have exact required method selector.
-    // smart_contracts/pieout/contract.py:473-474
+    // smart_contracts/pieout/contract.py:486-487
     // # Get the second transaction in the group
     // second_txn = gtxn.ApplicationCallTransaction(group_index=1)
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:484
+    // smart_contracts/pieout/contract.py:498
     // assert second_txn.app_args(1) == op.itob(game_id), err.INVALID_GAME_ID
     dup
     gtxnsas ApplicationArgs
-    frame_dig -1
-    itob
-    dig 1
+    dup
+    uncover 2
     ==
     assert // Invalid Game ID. Box Commit Rand Game ID must be a certain value or match Game ID arg.
-    // smart_contracts/pieout/contract.py:485
+    // smart_contracts/pieout/contract.py:499
     // assert second_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
     bytec_0 // "c_"
     txn Sender
@@ -3159,7 +3075,7 @@ up_ref_budget_for_play_game:
     itob
     ==
     assert
-    // smart_contracts/pieout/contract.py:486
+    // smart_contracts/pieout/contract.py:500
     // assert self.box_commit_rand[Txn.sender].game_id.native == game_id
     bytec_0 // "c_"
     txn Sender
@@ -3176,7 +3092,7 @@ up_ref_budget_for_play_game:
 
 // smart_contracts.pieout.contract.Pieout.play_game(game_id: uint64) -> void:
 play_game:
-    // smart_contracts/pieout/contract.py:488-490
+    // smart_contracts/pieout/contract.py:502-504
     // # Resolve the player's score associated with the specified game ID, updating game state accordingly
     // @arc4.abimethod
     // def play_game(self, game_id: UInt64) -> None:
@@ -3186,11 +3102,11 @@ play_game:
     pushbytes ""
     dupn 8
 
-play_game_while_top@37:
+play_game_while_top@11:
     pushint 19610 // 19610
     global OpcodeBudget
     >
-    bz play_game_after_while@42
+    bz play_game_after_while@16
     itxn_begin
     pushint 6 // appl
     itxn_field TypeEnum
@@ -3203,10 +3119,10 @@ play_game_while_top@37:
     intc_1 // 0
     itxn_field Fee
     itxn_submit
-    b play_game_while_top@37
+    b play_game_while_top@11
 
-play_game_after_while@42:
-    // smart_contracts/pieout/contract.py:494-495
+play_game_after_while@16:
+    // smart_contracts/pieout/contract.py:508-509
     // # Get the first transaction in the group
     // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
     intc_1 // 0
@@ -3214,78 +3130,20 @@ play_game_after_while@42:
     pushint 6 // appl
     ==
     assert // transaction type is appl
-    // smart_contracts/pieout/contract.py:497-498
+    // smart_contracts/pieout/contract.py:511-512
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
     global GroupSize
     intc_2 // 2
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:499
+    // smart_contracts/pieout/contract.py:513
     // assert Txn.group_index == 1, err.INVALID_GROUP_IDX
     txn GroupIndex
     intc_0 // 1
     ==
     assert // Invalid group index. Ensure transaction group index matches the expected value. 
-    // smart_contracts/pieout/contract.py:494-495
-    // # Get the first transaction in the group
-    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
-    intc_1 // 0
-    // smart_contracts/pieout/contract.py:501
-    // assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
-    gtxns ApplicationID
-    global CurrentApplicationID
-    ==
-    assert // Application ID mismatch. App ID must be same across all transactions in group.
-    // smart_contracts/pieout/contract.py:494-495
-    // # Get the first transaction in the group
-    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
-    intc_1 // 0
-    // smart_contracts/pieout/contract.py:502
-    // assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
-    gtxns Sender
-    txn Sender
-    ==
-    assert // Sender mismatch. Sender must be same address across all transactions in group.
-    // smart_contracts/pieout/contract.py:494-495
-    // # Get the first transaction in the group
-    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
-    intc_1 // 0
-    // smart_contracts/pieout/contract.py:503
-    // assert first_txn.app_args(0) == arc4.arc4_signature(
-    dup
-    gtxnsas ApplicationArgs
-    // smart_contracts/pieout/contract.py:503-504
-    // assert first_txn.app_args(0) == arc4.arc4_signature(
-    //     "up_ref_budget_for_play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
-    bytec 12 // method "up_ref_budget_for_play_game(uint64)void"
-    ==
-    assert // Transaction at this group index must have exact required method selector.
-    // smart_contracts/pieout/contract.py:494-495
-    // # Get the first transaction in the group
-    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
-    intc_1 // 0
-    // smart_contracts/pieout/contract.py:506
-    // assert first_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
-    intc_0 // 1
-    gtxnsas ApplicationArgs
-    dup
-    txna ApplicationArgs 1
-    ==
-    assert // Invalid Game ID. Box Commit Rand Game ID must be a certain value or match Game ID arg.
-    // smart_contracts/pieout/contract.py:507
-    // assert first_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
-    bytec_0 // "c_"
-    txn Sender
-    concat
-    box_get
-    assert // check self.box_commit_rand entry exists
-    intc_1 // 0
-    extract_uint64
-    itob
-    ==
-    assert
-    // smart_contracts/pieout/contract.py:509
+    // smart_contracts/pieout/contract.py:515
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -1
     itob
@@ -3300,7 +3158,7 @@ play_game_after_while@42:
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:510
+    // smart_contracts/pieout/contract.py:516
     // assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
     bytec_0 // "c_"
     txn Sender
@@ -3308,23 +3166,81 @@ play_game_after_while@42:
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:511
+    // smart_contracts/pieout/contract.py:517
     // assert self.box_game_trophy, err.BOX_NOT_FOUND
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_len
     bury 1
     assert // Box not found. Ensure the box you are trying to access was created and still exists.
-    // smart_contracts/pieout/contract.py:515
+    // smart_contracts/pieout/contract.py:508-509
+    // # Get the first transaction in the group
+    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
+    intc_1 // 0
+    // smart_contracts/pieout/contract.py:519
+    // assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
+    gtxns ApplicationID
+    global CurrentApplicationID
+    ==
+    assert // Application ID mismatch. App ID must be same across all transactions in group.
+    // smart_contracts/pieout/contract.py:508-509
+    // # Get the first transaction in the group
+    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
+    intc_1 // 0
+    // smart_contracts/pieout/contract.py:520
+    // assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
+    gtxns Sender
+    txn Sender
+    ==
+    assert // Sender mismatch. Sender must be same address across all transactions in group.
+    // smart_contracts/pieout/contract.py:508-509
+    // # Get the first transaction in the group
+    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
+    intc_1 // 0
+    // smart_contracts/pieout/contract.py:521
+    // assert first_txn.app_args(0) == arc4.arc4_signature(
+    dup
+    gtxnsas ApplicationArgs
+    // smart_contracts/pieout/contract.py:521-522
+    // assert first_txn.app_args(0) == arc4.arc4_signature(
+    //     "up_ref_budget_for_play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
+    bytec 11 // method "up_ref_budget_for_play_game(uint64)void"
+    ==
+    assert // Transaction at this group index must have exact required method selector.
+    // smart_contracts/pieout/contract.py:508-509
+    // # Get the first transaction in the group
+    // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
+    intc_1 // 0
+    // smart_contracts/pieout/contract.py:524
+    // assert first_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
+    intc_0 // 1
+    gtxnsas ApplicationArgs
+    dup
+    txna ApplicationArgs 1
+    ==
+    assert // Invalid Game ID. Box Commit Rand Game ID must be a certain value or match Game ID arg.
+    // smart_contracts/pieout/contract.py:525
+    // assert first_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
+    bytec_0 // "c_"
+    txn Sender
+    concat
+    box_get
+    assert // check self.box_commit_rand entry exists
+    intc_1 // 0
+    extract_uint64
+    itob
+    ==
+    assert
+    // smart_contracts/pieout/contract.py:530
     // account=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:517
+    // smart_contracts/pieout/contract.py:532
     // player_count=self.box_game_state[game_id].max_players.native,
     dig 1
     box_get
     assert // check self.box_game_state entry exists
     intc_0 // 1
     getbyte
-    // smart_contracts/pieout/contract.py:513-519
+    // smart_contracts/pieout/contract.py:528-534
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -3334,10 +3250,10 @@ play_game_after_while@42:
     // )
     frame_dig -1
     uncover 2
-    // smart_contracts/pieout/contract.py:516
+    // smart_contracts/pieout/contract.py:531
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:513-519
+    // smart_contracts/pieout/contract.py:528-534
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -3346,10 +3262,10 @@ play_game_after_while@42:
     //     clear_player=True,
     // )
     uncover 3
-    // smart_contracts/pieout/contract.py:518
+    // smart_contracts/pieout/contract.py:533
     // clear_player=True,
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:513-519
+    // smart_contracts/pieout/contract.py:528-534
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -3358,10 +3274,10 @@ play_game_after_while@42:
     //     clear_player=True,
     // )
     callsub check_acc_in_game
-    // smart_contracts/pieout/contract.py:520
+    // smart_contracts/pieout/contract.py:535
     // == True
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:513-520
+    // smart_contracts/pieout/contract.py:528-535
     // srt.check_acc_in_game(  # noqa: E712, RUF100
     //     game_id=game_id,
     //     account=Txn.sender,
@@ -3371,7 +3287,7 @@ play_game_after_while@42:
     // )
     // == True
     ==
-    // smart_contracts/pieout/contract.py:512-521
+    // smart_contracts/pieout/contract.py:527-536
     // assert (
     //     srt.check_acc_in_game(  # noqa: E712, RUF100
     //         game_id=game_id,
@@ -3383,7 +3299,7 @@ play_game_after_while@42:
     //     == True
     // ), err.PLAYER_NOT_FOUND
     assert // Account is not recognized as an active player for this game.
-    // smart_contracts/pieout/contract.py:523-526
+    // smart_contracts/pieout/contract.py:538-541
     // # Retrieve the game state value from its corresponding box using the game id parameter
     // game_state = self.box_game_state[
     //     game_id
@@ -3394,13 +3310,13 @@ play_game_after_while@42:
     cover 2
     frame_bury 2
     assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:528-529
+    // smart_contracts/pieout/contract.py:543-544
     // # Fail transaction unless the assertions below evaluate True
     // assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
     dup
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -3409,14 +3325,14 @@ play_game_after_while@42:
     intc_0 // 1
     ==
     assert // Game state staking finalized value mismatch.
-    // smart_contracts/pieout/contract.py:530
+    // smart_contracts/pieout/contract.py:545
     // assert game_state.expiry_ts >= Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
     extract 8 8 // on error: Index access is out of bounds
     global LatestTimestamp
     itob
     b>=
     assert // Invalid time frame. Call made outside the permitted block or timestamp range.
-    // smart_contracts/pieout/contract.py:532
+    // smart_contracts/pieout/contract.py:547
     // self.box_commit_rand[Txn.sender].game_id.native == game_id
     bytec_0 // "c_"
     txn Sender
@@ -3427,12 +3343,12 @@ play_game_after_while@42:
     extract_uint64
     frame_dig -1
     ==
-    // smart_contracts/pieout/contract.py:531-533
+    // smart_contracts/pieout/contract.py:546-548
     // assert (
     //     self.box_commit_rand[Txn.sender].game_id.native == game_id
     // ), err.INVALID_GAME_ID
     assert // Invalid Game ID. Box Commit Rand Game ID must be a certain value or match Game ID arg.
-    // smart_contracts/pieout/contract.py:535
+    // smart_contracts/pieout/contract.py:550
     // Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
     global Round
     bytec_0 // "c_"
@@ -3443,66 +3359,12 @@ play_game_after_while@42:
     pushint 8 // 8
     extract_uint64
     >=
-    // smart_contracts/pieout/contract.py:534-536
+    // smart_contracts/pieout/contract.py:549-551
     // assert (
     //     Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
     // ), err.COMMIT_ROUND_NOT_REACHED
     assert // Randomness commit round not reached yet.
-    // smart_contracts/pieout/contract.py:538-544
-    // # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-    // seed = arc4.abi_call[Bytes](
-    //     "must_get(uint64,byte[])byte[]",
-    //     self.box_commit_rand[Txn.sender].commit_round.native,
-    //     Txn.sender.bytes,
-    //     app_id=600011887,  # TestNet VRF Beacon Application ID
-    // )[0]
-    itxn_begin
-    // smart_contracts/pieout/contract.py:541
-    // self.box_commit_rand[Txn.sender].commit_round.native,
-    bytec_0 // "c_"
-    txn Sender
-    concat
-    box_get
-    assert // check self.box_commit_rand entry exists
-    pushint 8 // 8
-    extract_uint64
-    itob
-    // smart_contracts/pieout/contract.py:542
-    // Txn.sender.bytes,
-    bytec 11 // 0x0020
-    txn Sender
-    concat
-    // smart_contracts/pieout/contract.py:543
-    // app_id=600011887,  # TestNet VRF Beacon Application ID
-    pushint 600011887 // 600011887
-    itxn_field ApplicationID
-    // smart_contracts/pieout/contract.py:538-544
-    // # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-    // seed = arc4.abi_call[Bytes](
-    //     "must_get(uint64,byte[])byte[]",
-    //     self.box_commit_rand[Txn.sender].commit_round.native,
-    //     Txn.sender.bytes,
-    //     app_id=600011887,  # TestNet VRF Beacon Application ID
-    // )[0]
-    pushbytes 0x47c20c23 // method "must_get(uint64,byte[])byte[]"
-    itxn_field ApplicationArgs
-    swap
-    itxn_field ApplicationArgs
-    itxn_field ApplicationArgs
-    pushint 6 // appl
-    itxn_field TypeEnum
-    intc_1 // 0
-    itxn_field Fee
-    itxn_submit
-    itxn LastLog
-    dup
-    extract 0 4
-    bytec 5 // 0x151f7c75
-    ==
-    assert // application log value is not the result of an ABI return
-    dup
-    extract 6 0
-    // smart_contracts/pieout/contract.py:549
+    // smart_contracts/pieout/contract.py:564
     // score_id=self.score_id,
     intc_1 // 0
     bytec 6 // "score_id"
@@ -3510,15 +3372,18 @@ play_game_after_while@42:
     swap
     frame_bury 11
     assert // check self.score_id exists
-    // smart_contracts/pieout/contract.py:551
+    // smart_contracts/pieout/contract.py:566
     // player=Txn.sender,
     txn Sender
     frame_bury 4
+    // smart_contracts/pieout/contract.py:567
+    // seed=Txn.sender.bytes,  # Use VRF output as seed outside LocalNet env
+    txn Sender
     // smart_contracts/pieout/subroutines.py:137-138
     // # Initialize the PCG pseudo-random generator state using 8 bytes from the given seed
     // state = pcg16_init(seed=op.extract(seed, 16, 8))
-    swap
-    extract 22 8
+    dup
+    extract 16 8
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:21
     // assert seed.length == 8
     len
@@ -3587,7 +3452,7 @@ play_game_after_while@42:
     frame_bury 9
     frame_bury 12
 
-play_game_for_header@13:
+play_game_for_header@20:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:223
     // for i in urange(length):  # noqa: B007
     frame_dig 9
@@ -3597,9 +3462,9 @@ play_game_for_header@13:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:223
     // for i in urange(length):  # noqa: B007
     <
-    bz play_game_after_for@18
+    bz play_game_after_for@25
 
-play_game_while_top@15:
+play_game_while_top@22:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:269
     // _high_mul, low_mul = op.mulw(state, PCG_MULTIPLIER)
     frame_dig 12
@@ -3664,7 +3529,7 @@ play_game_while_top@15:
     // if candidate >= threshold:
     frame_dig 13
     >=
-    bz play_game_after_if_else@17
+    bz play_game_after_if_else@24
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:228
     // op.itob((candidate % absolute_bound) + lower_bound),
     frame_dig 8
@@ -3699,13 +3564,13 @@ play_game_while_top@15:
     +
     frame_bury 9
     frame_bury 12
-    b play_game_for_header@13
+    b play_game_for_header@20
 
-play_game_after_if_else@17:
+play_game_after_if_else@24:
     frame_bury 12
-    b play_game_while_top@15
+    b play_game_while_top@22
 
-play_game_after_for@18:
+play_game_after_for@25:
     // smart_contracts/pieout/subroutines.py:148-149
     // # Initialize the player's score
     // score = UInt64(0)
@@ -3720,14 +3585,14 @@ play_game_after_for@18:
     intc_2 // 2
     frame_bury 9
 
-play_game_for_header@20:
+play_game_for_header@27:
     // smart_contracts/pieout/subroutines.py:151-152
     // # Iterate through the sequence as a byte array starting at byte index 2 (skip array header bytes)
     // for i in urange(2, sequence.bytes.length, 2):
     frame_dig 9
     frame_dig 14
     <
-    bz play_game_after_for@23
+    bz play_game_after_for@30
     // smart_contracts/pieout/subroutines.py:153-154
     // # Extract a 16-bit unsigned integer from the byte sequence
     // roll = op.extract_uint16(sequence.bytes[2:], i)
@@ -3751,7 +3616,7 @@ play_game_for_header@20:
     // if roll <= cst.ELIM_THRESHOLD:
     pushint 10992 // 10992
     <=
-    bnz play_game_after_for@23
+    bnz play_game_after_for@30
     // smart_contracts/pieout/subroutines.py:160-161
     // # Increment score for each roll above the threshold
     // score += 1
@@ -3766,9 +3631,9 @@ play_game_for_header@20:
     intc_2 // 2
     +
     frame_bury 9
-    b play_game_for_header@20
+    b play_game_for_header@27
 
-play_game_after_for@23:
+play_game_after_for@30:
     // smart_contracts/pieout/subroutines.py:167
     // score_id,
     frame_dig 11
@@ -3816,7 +3681,7 @@ play_game_after_for@23:
     // # First Place
     // game_state.first_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.first_place_score.native
-    bnz play_game_if_body@25
+    bnz play_game_if_body@32
     // smart_contracts/pieout/subroutines.py:176
     // or score > game_state.first_place_score.native
     frame_dig 2
@@ -3828,9 +3693,9 @@ play_game_after_for@23:
     // # First Place
     // game_state.first_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.first_place_score.native
-    bz play_game_else_body@26
+    bz play_game_else_body@33
 
-play_game_if_body@25:
+play_game_if_body@32:
     // smart_contracts/pieout/subroutines.py:178-179
     // # Assign: Second -> Third
     // game_state.third_place_score = game_state.second_place_score
@@ -3865,8 +3730,8 @@ play_game_if_body@25:
     replace2 56
     frame_bury 2
 
-play_game_after_if_else@34:
-    // smart_contracts/pieout/contract.py:555-556
+play_game_after_if_else@41:
+    // smart_contracts/pieout/contract.py:570-571
     // # Increment score id by 1
     // self.score_id += 1
     intc_1 // 0
@@ -3878,7 +3743,7 @@ play_game_after_if_else@34:
     bytec 6 // "score_id"
     swap
     app_global_put
-    // smart_contracts/pieout/contract.py:558-559
+    // smart_contracts/pieout/contract.py:573-574
     // # If game state first place score is higher than the ath score
     // if game_state.first_place_score.native > self.ath_score:
     frame_dig 2
@@ -3891,14 +3756,14 @@ play_game_after_if_else@34:
     app_global_get_ex
     assert // check self.ath_score exists
     >
-    bz play_game_after_if_else@8
-    // smart_contracts/pieout/contract.py:560-561
+    bz play_game_after_if_else@7
+    // smart_contracts/pieout/contract.py:575-576
     // # Update ath score, game state first place score is the new ath score
     // self.ath_score = game_state.first_place_score.native
     bytec 10 // "ath_score"
     frame_dig 15
     app_global_put
-    // smart_contracts/pieout/contract.py:563-564
+    // smart_contracts/pieout/contract.py:578-579
     // # If ath address is not empty
     // if self.ath_address != Global.zero_address:
     intc_1 // 0
@@ -3907,20 +3772,20 @@ play_game_after_if_else@34:
     assert // check self.ath_address exists
     global ZeroAddress
     !=
-    bz play_game_after_if_else@7
-    // smart_contracts/pieout/contract.py:567
+    bz play_game_after_if_else@6
+    // smart_contracts/pieout/contract.py:582
     // self.box_game_trophy.value.owner_address.native,
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     dup
     extract 8 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:568
+    // smart_contracts/pieout/contract.py:583
     // self.box_game_trophy.value.asset_id.native,
     swap
     intc_1 // 0
     extract_uint64
-    // smart_contracts/pieout/contract.py:565-569
+    // smart_contracts/pieout/contract.py:580-584
     // # Use box game trophy contents to check account asset balance for trophy
     // asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
     //     self.box_game_trophy.value.owner_address.native,
@@ -3929,27 +3794,27 @@ play_game_after_if_else@34:
     asset_holding_get AssetBalance
     swap
     frame_bury 7
-    // smart_contracts/pieout/contract.py:571-572
+    // smart_contracts/pieout/contract.py:586-587
     // # If asset exists and its balance is 1, perform clawback via asset transfer inner transaction
     // if asset_exists and asset_balance == 1:
-    bz play_game_after_if_else@7
+    bz play_game_after_if_else@6
     frame_dig 7
     intc_0 // 1
     ==
-    bz play_game_after_if_else@7
-    // smart_contracts/pieout/contract.py:574
+    bz play_game_after_if_else@6
+    // smart_contracts/pieout/contract.py:589
     // asset_id=self.box_game_trophy.value.asset_id.native,
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     dup
     intc_1 // 0
     extract_uint64
-    // smart_contracts/pieout/contract.py:575
+    // smart_contracts/pieout/contract.py:590
     // asset_sender=self.box_game_trophy.value.owner_address.native,
     swap
     extract 8 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:576
+    // smart_contracts/pieout/contract.py:591
     // asset_receiver=Global.current_application_address,
     global CurrentApplicationAddress
     // smart_contracts/pieout/subroutines.py:42-48
@@ -3961,7 +3826,7 @@ play_game_after_if_else@34:
     //     note=note,
     // ).submit()
     itxn_begin
-    // smart_contracts/pieout/contract.py:577-579
+    // smart_contracts/pieout/contract.py:592-594
     // note=String(
     //     'pieout:j{"method":"play_game","subroutine:"clawback_itxn","concern":"itxn.asset_transfer;clawback_trophy_asset"}'
     // ),
@@ -3990,28 +3855,28 @@ play_game_after_if_else@34:
     // ).submit()
     itxn_submit
 
-play_game_after_if_else@7:
-    // smart_contracts/pieout/contract.py:582-583
+play_game_after_if_else@6:
+    // smart_contracts/pieout/contract.py:597-598
     // # Update ath address, transaction sender is the new ath address
     // self.ath_address = Txn.sender
     txn Sender
     bytec 7 // "ath_address"
     dig 1
     app_global_put
-    // smart_contracts/pieout/contract.py:585-586
+    // smart_contracts/pieout/contract.py:600-601
     // # Update trophy owner address, ath address is the new trophy asset owner address
     // self.box_game_trophy.value.owner_address = arc4.Address(self.ath_address)
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     swap
     replace2 8
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     swap
     box_put
 
-play_game_after_if_else@8:
-    // smart_contracts/pieout/contract.py:588-589
+play_game_after_if_else@7:
+    // smart_contracts/pieout/contract.py:603-604
     // # Decrement number of active players by 1
     // game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
     frame_dig 2
@@ -4028,16 +3893,16 @@ play_game_after_if_else@8:
     assert // overflow
     extract 7 1
     replace2 2
-    // smart_contracts/pieout/contract.py:593
+    // smart_contracts/pieout/contract.py:608
     // box_commit_rand=self.box_commit_rand,
     bytec_0 // "c_"
-    // smart_contracts/pieout/contract.py:594
+    // smart_contracts/pieout/contract.py:609
     // account=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:595
+    // smart_contracts/pieout/contract.py:610
     // round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
     intc 6 // 32000
-    // smart_contracts/pieout/contract.py:591-596
+    // smart_contracts/pieout/contract.py:606-611
     // # Reset box commit rand for sender after they have done their play
     // srt.reset_box_commit_rand(
     //     box_commit_rand=self.box_commit_rand,
@@ -4045,7 +3910,7 @@ play_game_after_if_else@8:
     //     round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
     // )
     callsub reset_box_commit_rand
-    // smart_contracts/pieout/contract.py:598-604
+    // smart_contracts/pieout/contract.py:613-619
     // # Check if game is over on every call
     // srt.is_game_over(
     //     game_id=game_id,
@@ -4055,13 +3920,13 @@ play_game_after_if_else@8:
     // )
     frame_dig -1
     swap
-    // smart_contracts/pieout/contract.py:602
+    // smart_contracts/pieout/contract.py:617
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:603
+    // smart_contracts/pieout/contract.py:618
     // box_commit_rand=self.box_commit_rand,
     bytec_0 // "c_"
-    // smart_contracts/pieout/contract.py:598-604
+    // smart_contracts/pieout/contract.py:613-619
     // # Check if game is over on every call
     // srt.is_game_over(
     //     game_id=game_id,
@@ -4070,8 +3935,7 @@ play_game_after_if_else@8:
     //     box_commit_rand=self.box_commit_rand,
     // )
     callsub is_game_over
-    bury 1
-    // smart_contracts/pieout/contract.py:606-607
+    // smart_contracts/pieout/contract.py:621-622
     // # Copy the modified game state and store it as new value of box
     // self.box_game_state[game_id] = game_state.copy()
     frame_dig 0
@@ -4079,7 +3943,7 @@ play_game_after_if_else@8:
     box_put
     retsub
 
-play_game_else_body@26:
+play_game_else_body@33:
     // smart_contracts/pieout/subroutines.py:188-189
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
@@ -4091,7 +3955,7 @@ play_game_else_body@26:
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.second_place_score.native
-    bnz play_game_if_body@28
+    bnz play_game_if_body@35
     // smart_contracts/pieout/subroutines.py:190
     // or score > game_state.second_place_score.native
     frame_dig 2
@@ -4103,9 +3967,9 @@ play_game_else_body@26:
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.second_place_score.native
-    bz play_game_else_body@29
+    bz play_game_else_body@36
 
-play_game_if_body@28:
+play_game_if_body@35:
     // smart_contracts/pieout/subroutines.py:192-193
     // # Assign: Second -> Third
     // game_state.third_place_score = game_state.second_place_score
@@ -4129,12 +3993,12 @@ play_game_if_body@28:
     replace2 88
     frame_bury 3
 
-play_game_after_if_else@33:
+play_game_after_if_else@40:
     frame_dig 3
     frame_bury 2
-    b play_game_after_if_else@34
+    b play_game_after_if_else@41
 
-play_game_else_body@29:
+play_game_else_body@36:
     // smart_contracts/pieout/subroutines.py:199-200
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
@@ -4146,7 +4010,7 @@ play_game_else_body@29:
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.third_place_score.native
-    bnz play_game_if_body@31
+    bnz play_game_if_body@38
     // smart_contracts/pieout/subroutines.py:201
     // or score > game_state.third_place_score.native
     frame_dig 2
@@ -4161,9 +4025,9 @@ play_game_else_body@29:
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.third_place_score.native
-    bz play_game_after_if_else@33
+    bz play_game_after_if_else@40
 
-play_game_if_body@31:
+play_game_if_body@38:
     // smart_contracts/pieout/subroutines.py:203-204
     // # Assign: Score -> Third
     // game_state.third_place_score = arc4.UInt8(score)
@@ -4175,51 +4039,44 @@ play_game_if_body@31:
     frame_dig 4
     replace2 120
     frame_bury 3
-    b play_game_after_if_else@33
+    b play_game_after_if_else@40
 
 
-// smart_contracts.pieout.contract.Pieout.trigger_game_prog(game_id: uint64, trigger_id: bytes) -> bytes:
+// smart_contracts.pieout.contract.Pieout.trigger_game_prog(game_id: uint64, trigger_id: bytes) -> void:
 trigger_game_prog:
-    // smart_contracts/pieout/contract.py:609-613
+    // smart_contracts/pieout/contract.py:624-628
     // # Allow an active player to check for a game event and trigger its progression
     // @arc4.abimethod
     // def trigger_game_prog(
     //     self, game_id: UInt64, trigger_id: arc4.UInt8
-    // ) -> arc4.Bool:
-    proto 2 1
-    // smart_contracts/pieout/contract.py:616
-    // game_id
-    frame_dig -2
-    itob
-    // smart_contracts/pieout/contract.py:614-615
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    bytec 4 // "s_"
-    // smart_contracts/pieout/contract.py:614-617
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    //     game_id
-    // ].copy()  # Make a copy of the game state else immutable
-    swap
-    concat
-    dup
-    box_get
-    swap
-    cover 2
-    assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:619-620
+    // ) -> None:
+    proto 2 0
+    // smart_contracts/pieout/contract.py:629-630
     // # Fail transaction unless the assertion below evaluates True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:621
+    // smart_contracts/pieout/contract.py:631
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+    frame_dig -2
+    itob
+    bytec 4 // "s_"
+    swap
+    concat
+    dupn 2
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:623-624
+    // smart_contracts/pieout/contract.py:633-636
+    // # Retrieve current game state from box using the game id parameter
+    // game_state = self.box_game_state[
+    //     game_id
+    // ].copy()  # Make a copy of the game state else immutable
+    box_get
+    assert // check self.box_game_state entry exists
+    // smart_contracts/pieout/contract.py:638-639
     // # If trigger id 0 corresponds w/ event: Game Live
     // if trigger_id.native == 0:
     frame_dig -1
@@ -4227,7 +4084,21 @@ trigger_game_prog:
     dup
     cover 2
     bnz trigger_game_prog_else_body@2
-    // smart_contracts/pieout/contract.py:625
+    // smart_contracts/pieout/contract.py:640-641
+    // # Fail transaction unless the assertion below evaluates True
+    // assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
+    dup
+    intc_1 // 0
+    getbit
+    bytec_2 // 0x00
+    intc_1 // 0
+    uncover 2
+    setbit
+    intc_1 // 0
+    getbit
+    !
+    assert // Game state staking finalized value mismatch.
+    // smart_contracts/pieout/contract.py:642
     // assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
     dup
     extract 8 8 // on error: Index access is out of bounds
@@ -4235,29 +4106,33 @@ trigger_game_prog:
     itob
     b<
     assert // Invalid time frame. Call made outside the permitted block or timestamp range.
-    // smart_contracts/pieout/contract.py:626
-    // is_game_live = srt.is_game_live(game_state)
+    // smart_contracts/pieout/contract.py:644
+    // srt.is_game_live(game_state)
     callsub is_game_live
-    pop
-    // smart_contracts/pieout/contract.py:627
-    // return is_game_live
+
+trigger_game_prog_after_if_else@6:
+    // smart_contracts/pieout/contract.py:663
+    // self.box_game_state[game_id] = game_state.copy()
+    frame_dig 0
     swap
+    box_put
     retsub
 
 trigger_game_prog_else_body@2:
-    // smart_contracts/pieout/contract.py:628-629
-    // # If trigger id 2 corresponds w/ event: Game Over
+    // smart_contracts/pieout/contract.py:646-647
+    // # EIif trigger id 2 corresponds w/ event: Game Over
     // elif trigger_id.native == 2:
-    frame_dig 0
+    frame_dig 1
     intc_2 // 2
     ==
     assert // Game event not found. Check if game event Trigger ID exists
-    // smart_contracts/pieout/contract.py:630
+    // smart_contracts/pieout/contract.py:648-649
+    // # Fail transaction unless the assertion below evaluates True
     // assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
     dup
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -4266,7 +4141,7 @@ trigger_game_prog_else_body@2:
     intc_0 // 1
     ==
     assert // Game state staking finalized value mismatch.
-    // smart_contracts/pieout/contract.py:631
+    // smart_contracts/pieout/contract.py:650
     // assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
     dup
     extract 8 8 // on error: Index access is out of bounds
@@ -4274,8 +4149,8 @@ trigger_game_prog_else_body@2:
     itob
     b<
     assert // Invalid time frame. Call made outside the permitted block or timestamp range.
-    // smart_contracts/pieout/contract.py:632-637
-    // is_game_over = srt.is_game_over(
+    // smart_contracts/pieout/contract.py:652-657
+    // srt.is_game_over(
     //     game_id=game_id,
     //     game_state=game_state,
     //     box_game_players=self.box_game_players,
@@ -4283,30 +4158,26 @@ trigger_game_prog_else_body@2:
     // )
     frame_dig -2
     swap
-    // smart_contracts/pieout/contract.py:635
+    // smart_contracts/pieout/contract.py:655
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:636
+    // smart_contracts/pieout/contract.py:656
     // box_commit_rand=self.box_commit_rand,
     bytec_0 // "c_"
-    // smart_contracts/pieout/contract.py:632-637
-    // is_game_over = srt.is_game_over(
+    // smart_contracts/pieout/contract.py:652-657
+    // srt.is_game_over(
     //     game_id=game_id,
     //     game_state=game_state,
     //     box_game_players=self.box_game_players,
     //     box_commit_rand=self.box_commit_rand,
     // )
     callsub is_game_over
-    pop
-    // smart_contracts/pieout/contract.py:638
-    // return is_game_over
-    swap
-    retsub
+    b trigger_game_prog_after_if_else@6
 
 
 // smart_contracts.pieout.contract.Pieout.reset_game(game_id: uint64, stake_pay: uint64) -> void:
 reset_game:
-    // smart_contracts/pieout/contract.py:643-649
+    // smart_contracts/pieout/contract.py:665-671
     // # Allow admin to reset existing game instance
     // @arc4.abimethod
     // def reset_game(
@@ -4315,14 +4186,14 @@ reset_game:
     //     stake_pay: gtxn.PaymentTransaction,
     // ) -> None:
     proto 2 0
-    // smart_contracts/pieout/contract.py:650-651
+    // smart_contracts/pieout/contract.py:672-673
     // # Fail transaction unless the assertions below evaluate True
     // assert Global.group_size == 2, err.INVALID_GROUP_SIZE
     global GroupSize
     intc_2 // 2
     ==
     assert // Invalid group size. Ensure number of transaction in group is within valid bounds.
-    // smart_contracts/pieout/contract.py:652
+    // smart_contracts/pieout/contract.py:674
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
     frame_dig -2
     itob
@@ -4333,32 +4204,32 @@ reset_game:
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:654
+    // smart_contracts/pieout/contract.py:676
     // assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
     frame_dig -1
     gtxns Sender
     txn Sender
     ==
     assert // Stake payment sender address must match transaction sender address.
-    // smart_contracts/pieout/contract.py:656
+    // smart_contracts/pieout/contract.py:678
     // stake_pay.receiver == Global.current_application_address
     frame_dig -1
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/pieout/contract.py:655-657
+    // smart_contracts/pieout/contract.py:677-679
     // assert (
     //     stake_pay.receiver == Global.current_application_address
     // ), err.INVALID_STAKE_PAY_RECEIVER
     assert // Stake payment receiver address must match application address.
-    // smart_contracts/pieout/contract.py:658
+    // smart_contracts/pieout/contract.py:680
     // assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
     frame_dig -1
     gtxns Amount
-    intc 4 // 1000
+    intc 4 // 11000
     >=
     assert // Insufficient funds. Stake pay amount is not enough to cover staking requirements.
-    // smart_contracts/pieout/contract.py:660-663
+    // smart_contracts/pieout/contract.py:682-685
     // # Retrieve current game state from box using the game id parameter
     // game_state = self.box_game_state[
     //     game_id
@@ -4366,13 +4237,13 @@ reset_game:
     dup
     box_get
     assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:665-666
+    // smart_contracts/pieout/contract.py:687-688
     // # Fail transaction unless the assertion below evaluates True
     // assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
     dup
     intc_1 // 0
     getbit
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     intc_1 // 0
     uncover 2
     setbit
@@ -4381,107 +4252,107 @@ reset_game:
     intc_0 // 1
     ==
     assert // Game state staking finalized value mismatch.
-    // smart_contracts/pieout/contract.py:667
+    // smart_contracts/pieout/contract.py:689
     // assert game_state.admin_address == Txn.sender, err.INVALID_ADMIN
     dup
     extract 24 32 // on error: Index access is out of bounds
     txn Sender
     ==
     assert // Account is not recognized as the admin address for this game.
-    // smart_contracts/pieout/contract.py:668
+    // smart_contracts/pieout/contract.py:690
     // assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
     dup
     pushint 16 // 16
     extract_uint64
     !
     assert // Prize pool not empty. Amount in prize pool must be zero.
-    // smart_contracts/pieout/contract.py:669
+    // smart_contracts/pieout/contract.py:691
     // assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
     dup
     intc_2 // 2
     getbyte
     !
     assert // Game lobby not empty. Number of active players must be zero.
-    // smart_contracts/pieout/contract.py:673
+    // smart_contracts/pieout/contract.py:695
     // key=self.box_game_players.key_prefix + op.itob(game_id)
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:671-674
+    // smart_contracts/pieout/contract.py:693-696
     // # For game players box, replace the sender's address at start index 0
     // game_players_bref = BoxRef(
     //     key=self.box_game_players.key_prefix + op.itob(game_id)
     // )
     uncover 3
-    // smart_contracts/pieout/contract.py:673
+    // smart_contracts/pieout/contract.py:695
     // key=self.box_game_players.key_prefix + op.itob(game_id)
     concat
-    // smart_contracts/pieout/contract.py:675
+    // smart_contracts/pieout/contract.py:697
     // game_players_bref.replace(0, Txn.sender.bytes)
     intc_1 // 0
     txn Sender
     box_replace
-    // smart_contracts/pieout/contract.py:677-678
+    // smart_contracts/pieout/contract.py:699-700
     // # Reset game state fields back to their new game values
     // game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
     intc_1 // 0
     dup
     setbit
-    // smart_contracts/pieout/contract.py:679
+    // smart_contracts/pieout/contract.py:701
     // game_state.active_players = arc4.UInt8(1)
     pushbytes 0x01
     replace2 2
-    // smart_contracts/pieout/contract.py:680
+    // smart_contracts/pieout/contract.py:702
     // game_state.first_place_score = arc4.UInt8(0)
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     replace2 3
-    // smart_contracts/pieout/contract.py:681
+    // smart_contracts/pieout/contract.py:703
     // game_state.second_place_score = arc4.UInt8(0)
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     replace2 4
-    // smart_contracts/pieout/contract.py:682
+    // smart_contracts/pieout/contract.py:704
     // game_state.third_place_score = arc4.UInt8(0)
-    bytec_1 // 0x00
+    bytec_2 // 0x00
     replace2 5
-    // smart_contracts/pieout/contract.py:683
+    // smart_contracts/pieout/contract.py:705
     // game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
-    bytec 11 // 0x0020
+    bytec 13 // 0x0020
     replace2 6
-    // smart_contracts/pieout/contract.py:685
+    // smart_contracts/pieout/contract.py:707
     // Global.latest_timestamp + cst.EXPIRY_INTERVAL
     global LatestTimestamp
-    intc 5 // 3600
+    intc 5 // 300
     +
-    // smart_contracts/pieout/contract.py:684-686
+    // smart_contracts/pieout/contract.py:706-708
     // game_state.expiry_ts = arc4.UInt64(
     //     Global.latest_timestamp + cst.EXPIRY_INTERVAL
     // )
     itob
     replace2 8
-    // smart_contracts/pieout/contract.py:688
+    // smart_contracts/pieout/contract.py:710
     // game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER
     dup
     pushint 16 // 16
     extract_uint64
-    intc 4 // 1000
+    intc 4 // 11000
     +
-    // smart_contracts/pieout/contract.py:687-689
+    // smart_contracts/pieout/contract.py:709-711
     // game_state.prize_pool = arc4.UInt64(
     //     game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER
     // )
     itob
     replace2 16
-    // smart_contracts/pieout/contract.py:690
+    // smart_contracts/pieout/contract.py:712
     // game_state.first_place_address = arc4.Address(Global.zero_address)
     global ZeroAddress
     replace2 56
-    // smart_contracts/pieout/contract.py:691
+    // smart_contracts/pieout/contract.py:713
     // game_state.second_place_address = arc4.Address(Global.zero_address)
     global ZeroAddress
     replace2 88
-    // smart_contracts/pieout/contract.py:692
+    // smart_contracts/pieout/contract.py:714
     // game_state.third_place_address = arc4.Address(Global.zero_address)
     global ZeroAddress
     replace2 120
-    // smart_contracts/pieout/contract.py:694-695
+    // smart_contracts/pieout/contract.py:716-717
     // # Copy the modified game state and store it as new value of box
     // self.box_game_state[game_id] = game_state.copy()
     box_put
@@ -4490,7 +4361,7 @@ reset_game:
 
 // smart_contracts.pieout.contract.Pieout.delete_game(game_id: uint64) -> void:
 delete_game:
-    // smart_contracts/pieout/contract.py:697-702
+    // smart_contracts/pieout/contract.py:719-724
     // # Allow application creator or admin to delete existing game instance
     // @arc4.abimethod
     // def delete_game(
@@ -4499,57 +4370,51 @@ delete_game:
     // ) -> None:
     proto 1 0
     pushbytes ""
-    // smart_contracts/pieout/contract.py:705
-    // game_id
-    frame_dig -1
-    itob
-    dup
-    // smart_contracts/pieout/contract.py:703-704
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    bytec 4 // "s_"
-    // smart_contracts/pieout/contract.py:703-706
-    // # Retrieve current game state from box using the game id parameter
-    // game_state = self.box_game_state[
-    //     game_id
-    // ].copy()  # Make a copy of the game state else immutable
-    swap
-    concat
-    dupn 2
-    box_get
-    swap
-    dup
-    cover 3
-    cover 3
-    assert // check self.box_game_state entry exists
-    // smart_contracts/pieout/contract.py:708-709
+    // smart_contracts/pieout/contract.py:725-726
     // # Fail transaction unless the assertions below evaluate True
     // assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
     global GroupSize
     intc_0 // 1
     ==
     assert // Invalid group size. This app call can only take standalone transactions.
-    // smart_contracts/pieout/contract.py:710
+    // smart_contracts/pieout/contract.py:727
     // assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+    frame_dig -1
+    itob
+    dup
+    bytec 4 // "s_"
+    swap
+    concat
+    dupn 2
     box_len
     bury 1
     assert // Box game state not found. Check if game ID exists.
-    // smart_contracts/pieout/contract.py:712
+    // smart_contracts/pieout/contract.py:729-732
+    // # Retrieve current game state from box using the game id parameter
+    // game_state = self.box_game_state[
+    //     game_id
+    // ].copy()  # Make a copy of the game state else immutable
+    box_get
+    swap
+    dup
+    uncover 2
+    assert // check self.box_game_state entry exists
+    // smart_contracts/pieout/contract.py:736
     // Txn.sender == self.box_game_state[game_id].admin_address.native
     txn Sender
     swap
     extract 24 32 // on error: Index access is out of bounds
     ==
-    // smart_contracts/pieout/contract.py:712-713
+    // smart_contracts/pieout/contract.py:736-737
     // Txn.sender == self.box_game_state[game_id].admin_address.native
     // or Txn.sender == Global.creator_address
     bnz delete_game_bool_true@2
-    // smart_contracts/pieout/contract.py:713
+    // smart_contracts/pieout/contract.py:737
     // or Txn.sender == Global.creator_address
     txn Sender
     global CreatorAddress
     ==
-    // smart_contracts/pieout/contract.py:712-713
+    // smart_contracts/pieout/contract.py:736-737
     // Txn.sender == self.box_game_state[game_id].admin_address.native
     // or Txn.sender == Global.creator_address
     bz delete_game_bool_false@3
@@ -4558,13 +4423,14 @@ delete_game_bool_true@2:
     intc_0 // 1
 
 delete_game_bool_merge@4:
-    // smart_contracts/pieout/contract.py:711-714
+    // smart_contracts/pieout/contract.py:734-738
+    // # Fail transaction unless the assertions below evaluate True
     // assert (
     //     Txn.sender == self.box_game_state[game_id].admin_address.native
     //     or Txn.sender == Global.creator_address
     // ), err.INVALID_CALLER
     assert // Account is not authorized to make this call.
-    // smart_contracts/pieout/contract.py:718
+    // smart_contracts/pieout/contract.py:742
     // if game_state.active_players.native == 1:
     frame_dig 3
     intc_2 // 2
@@ -4574,13 +4440,13 @@ delete_game_bool_merge@4:
     intc_0 // 1
     ==
     bz delete_game_else_body@6
-    // smart_contracts/pieout/contract.py:721
+    // smart_contracts/pieout/contract.py:745
     // account=self.box_game_state[game_id].admin_address.native,
     frame_dig 2
     box_get
     assert // check self.box_game_state entry exists
     extract 24 32 // on error: Index access is out of bounds
-    // smart_contracts/pieout/contract.py:719-725
+    // smart_contracts/pieout/contract.py:743-749
     // acc_in_game = srt.check_acc_in_game(
     //     game_id=game_id,
     //     account=self.box_game_state[game_id].admin_address.native,
@@ -4590,16 +4456,16 @@ delete_game_bool_merge@4:
     // )
     frame_dig -1
     swap
-    // smart_contracts/pieout/contract.py:722
+    // smart_contracts/pieout/contract.py:746
     // box_game_players=self.box_game_players,
     bytec_3 // "p_"
-    // smart_contracts/pieout/contract.py:723
+    // smart_contracts/pieout/contract.py:747
     // player_count=UInt64(1),
     intc_0 // 1
-    // smart_contracts/pieout/contract.py:724
+    // smart_contracts/pieout/contract.py:748
     // clear_player=False,
     intc_1 // 0
-    // smart_contracts/pieout/contract.py:719-725
+    // smart_contracts/pieout/contract.py:743-749
     // acc_in_game = srt.check_acc_in_game(
     //     game_id=game_id,
     //     account=self.box_game_state[game_id].admin_address.native,
@@ -4608,26 +4474,26 @@ delete_game_bool_merge@4:
     //     clear_player=False,
     // )
     callsub check_acc_in_game
-    // smart_contracts/pieout/contract.py:727-728
+    // smart_contracts/pieout/contract.py:751-752
     // # Fail transaction unless the assertion below evaluates True
     // assert acc_in_game == True, err.ADMIN_SOLE_PLAYER  # noqa: E712
     intc_0 // 1
     ==
     assert // Game admin address must be sole remaining active player in the game.
-    // smart_contracts/pieout/contract.py:732
+    // smart_contracts/pieout/contract.py:756
     // receiver=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:733
+    // smart_contracts/pieout/contract.py:757
     // amount=game_state.prize_pool.native,
     frame_dig 3
     pushint 16 // 16
     extract_uint64
-    // smart_contracts/pieout/contract.py:734-736
+    // smart_contracts/pieout/contract.py:758-760
     // note=String(
     //     'pieout:j{"method":"delete_game","concern":"itxn.pay;prize_pool_admin_stake"}'
     // ),
     pushbytes "pieout:j{\"method\":\"delete_game\",\"concern\":\"itxn.pay;prize_pool_admin_stake\"}"
-    // smart_contracts/pieout/contract.py:730-737
+    // smart_contracts/pieout/contract.py:754-761
     // # Issue prize pool payouts of admin stake if they delete a game where they the sole player
     // srt.payout_itxn(
     //     receiver=Txn.sender,
@@ -4639,20 +4505,20 @@ delete_game_bool_merge@4:
     callsub payout_itxn
 
 delete_game_after_if_else@7:
-    // smart_contracts/pieout/contract.py:744-745
+    // smart_contracts/pieout/contract.py:768-769
     // # Delete box game state and box game players from contract storage
     // del self.box_game_state[game_id]
     frame_dig 2
     box_del
     pop
-    // smart_contracts/pieout/contract.py:746
+    // smart_contracts/pieout/contract.py:770
     // del self.box_game_players[game_id]
     bytec_3 // "p_"
     frame_dig 1
     concat
     box_del
     pop
-    // smart_contracts/pieout/contract.py:751
+    // smart_contracts/pieout/contract.py:775
     // value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native),
     frame_dig 3
     intc_0 // 1
@@ -4666,10 +4532,10 @@ delete_game_after_if_else@7:
     <=
     assert // overflow
     extract 6 2
-    // smart_contracts/pieout/contract.py:750
+    // smart_contracts/pieout/contract.py:774
     // key_size=arc4.UInt8(10),
     pushbytes 0x0a
-    // smart_contracts/pieout/contract.py:748-752
+    // smart_contracts/pieout/contract.py:772-776
     // # Calculate box game players fee
     // box_p_cost = self.calc_single_box_cost(
     //     key_size=arc4.UInt8(10),
@@ -4677,20 +4543,20 @@ delete_game_after_if_else@7:
     // )
     swap
     callsub calc_single_box_cost
-    // smart_contracts/pieout/contract.py:756
+    // smart_contracts/pieout/contract.py:780
     // receiver=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:757
+    // smart_contracts/pieout/contract.py:781
     // amount=cst.BOX_S_COST + box_p_cost,
     intc 11 // 67300
     uncover 2
     +
-    // smart_contracts/pieout/contract.py:758-760
+    // smart_contracts/pieout/contract.py:782-784
     // note=String(
     //     'pieout:j{"method":"delete_game","concern":"itxn.pay;box_s_mbr_refund+box_p_mbr_refund"}'
     // ),
     pushbytes "pieout:j{\"method\":\"delete_game\",\"concern\":\"itxn.pay;box_s_mbr_refund+box_p_mbr_refund\"}"
-    // smart_contracts/pieout/contract.py:754-761
+    // smart_contracts/pieout/contract.py:778-785
     // # Issue MBR refund for box game state and box game players deletion via a payment inner transaction
     // srt.payout_itxn(
     //     receiver=Txn.sender,
@@ -4703,13 +4569,13 @@ delete_game_after_if_else@7:
     retsub
 
 delete_game_else_body@6:
-    // smart_contracts/pieout/contract.py:740-741
+    // smart_contracts/pieout/contract.py:764-765
     // # Fail transaction unless the assertion below evaluates True
     // assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
     frame_dig 0
     !
     assert // Game lobby not empty. Number of active players must be zero.
-    // smart_contracts/pieout/contract.py:742
+    // smart_contracts/pieout/contract.py:766
     // assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
     frame_dig 3
     pushint 16 // 16
@@ -4725,41 +4591,41 @@ delete_game_bool_false@3:
 
 // smart_contracts.pieout.contract.Pieout.terminate() -> void:
 terminate:
-    // smart_contracts/pieout/contract.py:763-765
+    // smart_contracts/pieout/contract.py:787-789
     // # Allow application creator to delete the smart contract application
     // @arc4.abimethod(allow_actions=["DeleteApplication"])
     // def terminate(self) -> None:
     proto 0 0
     pushbytes ""
-    // smart_contracts/pieout/contract.py:766-767
+    // smart_contracts/pieout/contract.py:790-791
     // # Fail transaction unless the assertions below evaluate True
     // assert TemplateVar[bool]("DELETABLE"), err.DELETEABLE_NOT_TRUE
     intc 14 // TMPL_DELETABLE
     assert // Template variable 'DELETABLE' needs to be 'True' at deploy-time.
-    // smart_contracts/pieout/contract.py:768
+    // smart_contracts/pieout/contract.py:792
     // assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
     txn Sender
     global CreatorAddress
     ==
     assert // Account must match application creator address.
-    // smart_contracts/pieout/contract.py:770-771
+    // smart_contracts/pieout/contract.py:794-795
     // # Check if box game trophy exists
     // if self.box_game_trophy:
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_len
     bury 1
     bz terminate_after_if_else@5
-    // smart_contracts/pieout/contract.py:774
+    // smart_contracts/pieout/contract.py:798
     // Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/pieout/contract.py:775
+    // smart_contracts/pieout/contract.py:799
     // self.box_game_trophy.value.asset_id.native,
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     intc_1 // 0
     extract_uint64
-    // smart_contracts/pieout/contract.py:772-776
+    // smart_contracts/pieout/contract.py:796-800
     // # Use box game trophy contents to check app account asset balance for trophy
     // asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
     //     Global.current_application_address,
@@ -4768,7 +4634,7 @@ terminate:
     asset_holding_get AssetBalance
     swap
     frame_bury 0
-    // smart_contracts/pieout/contract.py:777-778
+    // smart_contracts/pieout/contract.py:801-802
     // # If asset exists and its balance is 1, perform burn via asset config inner transaction
     // if asset_exists and asset_balance == 1:
     bz terminate_after_if_else@4
@@ -4776,9 +4642,9 @@ terminate:
     intc_0 // 1
     ==
     bz terminate_after_if_else@4
-    // smart_contracts/pieout/contract.py:780
+    // smart_contracts/pieout/contract.py:804
     // asset_id=self.box_game_trophy.value.asset_id.native,
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_get
     assert // check self.box_game_trophy exists
     intc_1 // 0
@@ -4789,7 +4655,7 @@ terminate:
     //     note=note,
     // ).submit()
     itxn_begin
-    // smart_contracts/pieout/contract.py:781-782
+    // smart_contracts/pieout/contract.py:805-806
     // note=String(
     //     'pieout:j{"method":"terminate","concern":"itxn.asset_config;burn_trophy_asset"}'),
     pushbytes "pieout:j{\"method\":\"terminate\",\"concern\":\"itxn.asset_config;burn_trophy_asset\"}"
@@ -4809,15 +4675,15 @@ terminate:
     itxn_submit
 
 terminate_after_if_else@4:
-    // smart_contracts/pieout/contract.py:784-785
+    // smart_contracts/pieout/contract.py:808-809
     // # Delete box game trophy from contract storage if it exsists
     // del self.box_game_trophy.value
-    bytec_2 // "t_"
+    bytec_1 // "t_"
     box_del
     pop
 
 terminate_after_if_else@5:
-    // smart_contracts/pieout/contract.py:787-793
+    // smart_contracts/pieout/contract.py:811-817
     // # Issue payment inner transaction closing all remaining funds in application account balance
     // itxn.Payment(
     //     receiver=Txn.sender,
@@ -4826,30 +4692,30 @@ terminate_after_if_else@5:
     //     note=b'pieout:j{"method":"terminate","concern":"itxn.pay;close_remainder_to"}',
     // ).submit()
     itxn_begin
-    // smart_contracts/pieout/contract.py:789
+    // smart_contracts/pieout/contract.py:813
     // receiver=Txn.sender,
     txn Sender
-    // smart_contracts/pieout/contract.py:791
+    // smart_contracts/pieout/contract.py:815
     // close_remainder_to=Txn.sender,
     dup
-    // smart_contracts/pieout/contract.py:792
+    // smart_contracts/pieout/contract.py:816
     // note=b'pieout:j{"method":"terminate","concern":"itxn.pay;close_remainder_to"}',
     pushbytes 0x7069656f75743a6a7b226d6574686f64223a227465726d696e617465222c22636f6e6365726e223a226974786e2e7061793b636c6f73655f72656d61696e6465725f746f227d
     itxn_field Note
     itxn_field CloseRemainderTo
-    // smart_contracts/pieout/contract.py:790
+    // smart_contracts/pieout/contract.py:814
     // amount=0,
     intc_1 // 0
     itxn_field Amount
     itxn_field Receiver
-    // smart_contracts/pieout/contract.py:787-788
+    // smart_contracts/pieout/contract.py:811-812
     // # Issue payment inner transaction closing all remaining funds in application account balance
     // itxn.Payment(
     intc_0 // pay
     itxn_field TypeEnum
     intc_1 // 0
     itxn_field Fee
-    // smart_contracts/pieout/contract.py:787-793
+    // smart_contracts/pieout/contract.py:811-817
     // # Issue payment inner transaction closing all remaining funds in application account balance
     // itxn.Payment(
     //     receiver=Txn.sender,

@@ -65,35 +65,43 @@ class Pieout(ARC4Contract):
 
     # Read the smart contract application game state box for given game id
     @arc4.abimethod(readonly=True)
-    def read_box_game_state(self, game_id: UInt64) -> ta.GameStateTuple:
+    def read_box_game_state(self, game_id: UInt64) -> stc.GameState:
+        # Fail transaction unless the assertion below evaluates True
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state data else immutable
 
+        return game_state
+
         # Return the game state as a tuple
-        return ta.GameStateTuple(
-            (
-                arc4.UInt64(game_id),
-                game_state.staking_finalized,
-                game_state.max_players,
-                game_state.active_players,
-                game_state.first_place_score,
-                game_state.second_place_score,
-                game_state.third_place_score,
-                game_state.box_p_start_pos,
-                game_state.expiry_ts,
-                game_state.prize_pool,
-                game_state.admin_address,
-                game_state.first_place_address,
-                game_state.second_place_address,
-                game_state.third_place_address,
-            )
-        )
+        # return ta.GameStateTuple(
+        #     (
+        #         arc4.UInt64(game_id),
+        #         game_state.staking_finalized,
+        #         game_state.max_players,
+        #         game_state.active_players,
+        #         game_state.first_place_score,
+        #         game_state.second_place_score,
+        #         game_state.third_place_score,
+        #         game_state.box_p_start_pos,
+        #         game_state.expiry_ts,
+        #         game_state.prize_pool,
+        #         game_state.admin_address,
+        #         game_state.first_place_address,
+        #         game_state.second_place_address,
+        #         game_state.third_place_address,
+        #     )
+        # )
 
     # Read the smart contract application game players box for given game id
     @arc4.abimethod(readonly=True)
     def read_box_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
+        # Fail transaction unless the assertion below evaluates True
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+
         # Retrieve current game players from box using the game id parameter
         game_players = self.box_game_players[game_id]
 
@@ -202,6 +210,27 @@ class Pieout(ARC4Contract):
             note=b'pieout:j{"method":"claim_trophy","concern":"itxn.asset_transfer;transfer_trophy_asset"}',
         ).submit()
 
+    # Get box commit rand contents with default start values
+    @arc4.abimethod
+    def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+        assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
+        assert self.box_game_trophy, err.BOX_NOT_FOUND
+
+        assert box_c_pay.amount == cst.BOX_C_COST, err.INVALID_BOX_PAY_FEE
+        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
+        assert (
+            box_c_pay.receiver == Global.current_application_address
+        ), err.INVALID_BOX_PAY_RECEIVER
+
+        # Initialize box commit rand w/ default start value
+        srt.reset_box_commit_rand(
+            box_commit_rand=self.box_commit_rand,
+            account=Txn.sender,
+            round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
+        )
+
     # Create new game instance with a unique ID
     @arc4.abimethod
     def new_game(
@@ -214,6 +243,8 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 4, err.INVALID_GROUP_SIZE
         assert self.box_game_trophy, err.BOX_NOT_FOUND
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+
         assert (
             max_players >= cst.MAX_PLAYERS_BOT_BOUND
             and max_players <= cst.MAX_PLAYERS_TOP_BOUND
@@ -276,15 +307,18 @@ class Pieout(ARC4Contract):
         game_id: UInt64,
         stake_pay: gtxn.PaymentTransaction,
     ) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert self.box_game_trophy, err.BOX_NOT_FOUND
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
 
         assert stake_pay.amount == cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
         assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
@@ -334,27 +368,6 @@ class Pieout(ARC4Contract):
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
-
-    # Get box commit rand contents with default start values
-    @arc4.abimethod
-    def get_box_commit_rand(self, box_c_pay: gtxn.PaymentTransaction) -> None:
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert Txn.sender not in self.box_commit_rand, err.BOX_FOUND
-        assert self.box_game_trophy, err.BOX_NOT_FOUND
-
-        assert box_c_pay.amount == cst.BOX_C_COST, err.INVALID_BOX_PAY_FEE
-        assert box_c_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
-        assert (
-            box_c_pay.receiver == Global.current_application_address
-        ), err.INVALID_BOX_PAY_RECEIVER
-
-        # Initialize box commit rand w/ default start value
-        srt.reset_box_commit_rand(
-            box_commit_rand=self.box_commit_rand,
-            account=Txn.sender,
-            round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
-        )
 
     # Set box commit rand contents used for obtaining on-chain randomness and playing the game
     @arc4.abimethod
@@ -475,6 +488,7 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.group_index == 0, err.INVALID_GROUP_IDX
 
         assert second_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
@@ -498,6 +512,10 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
         assert Txn.group_index == 1, err.INVALID_GROUP_IDX
 
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
+        assert self.box_game_trophy, err.BOX_NOT_FOUND
+
         assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
         assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
         assert first_txn.app_args(0) == arc4.arc4_signature(
@@ -506,9 +524,6 @@ class Pieout(ARC4Contract):
         assert first_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
         assert first_txn.app_args(1) == op.itob(self.box_commit_rand[Txn.sender].game_id.native)
 
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
-        assert Txn.sender in self.box_commit_rand, err.BOX_NOT_FOUND
-        assert self.box_game_trophy, err.BOX_NOT_FOUND
         assert (
             srt.check_acc_in_game(  # noqa: E712, RUF100
                 game_id=game_id,
@@ -535,13 +550,13 @@ class Pieout(ARC4Contract):
             Global.round >= self.box_commit_rand[Txn.sender].commit_round.native
         ), err.COMMIT_ROUND_NOT_REACHED
 
-        # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-        seed = arc4.abi_call[Bytes](
-            "must_get(uint64,byte[])byte[]",
-            self.box_commit_rand[Txn.sender].commit_round.native,
-            Txn.sender.bytes,
-            app_id=600011887,  # TestNet VRF Beacon Application ID
-        )[0]
+        # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        # seed = arc4.abi_call[Bytes](
+        #     "must_get(uint64,byte[])byte[]",
+        #     self.box_commit_rand[Txn.sender].commit_round.native,
+        #     Txn.sender.bytes,
+        #     app_id=600011887,  # TestNet VRF Beacon Application ID
+        # )[0]
 
         # Calculate player score and assign placement if their score qualifies
         srt.calc_score_get_place(
@@ -549,7 +564,7 @@ class Pieout(ARC4Contract):
             score_id=self.score_id,
             game_state=game_state,
             player=Txn.sender,
-            seed=seed,  # Use VRF output as seed outside LocalNet env
+            seed=Txn.sender.bytes,  # Use VRF output as seed outside LocalNet env
         )
 
         # Increment score id by 1
@@ -610,35 +625,42 @@ class Pieout(ARC4Contract):
     @arc4.abimethod
     def trigger_game_prog(
         self, game_id: UInt64, trigger_id: arc4.UInt8
-    ) -> arc4.Bool:
+    ) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
 
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
-
         # If trigger id 0 corresponds w/ event: Game Live
         if trigger_id.native == 0:
+            # Fail transaction unless the assertion below evaluates True
+            assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
             assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
-            is_game_live = srt.is_game_live(game_state)
-            return is_game_live
-        # If trigger id 2 corresponds w/ event: Game Over
+
+            srt.is_game_live(game_state)
+
+        # EIif trigger id 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
+            # Fail transaction unless the assertion below evaluates True
             assert game_state.staking_finalized == True, err.STAKING_FINAL  # noqa: E712
             assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
-            is_game_over = srt.is_game_over(
+
+            srt.is_game_over(
                 game_id=game_id,
                 game_state=game_state,
                 box_game_players=self.box_game_players,
                 box_commit_rand=self.box_commit_rand,
             )
-            return is_game_over
+
         # Else, trigger id is not found, fail transaction
         else:
             assert False, err.TRIGGER_ID_NOT_FOUND  # noqa: B011
+
+        self.box_game_state[game_id] = game_state.copy()
 
     # Allow admin to reset existing game instance
     @arc4.abimethod
@@ -700,14 +722,16 @@ class Pieout(ARC4Contract):
         self,
         game_id: UInt64,
     ) -> None:
+        # Fail transaction unless the assertions below evaluate True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+
         # Retrieve current game state from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert (
             Txn.sender == self.box_game_state[game_id].admin_address.native
             or Txn.sender == Global.creator_address
