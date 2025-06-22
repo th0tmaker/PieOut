@@ -1,75 +1,107 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { PieOutMethods } from '../methods'
-import { useWallet } from '@txnlab/use-wallet-react'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import { useWallet } from '@txnlab/use-wallet-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { GameState } from '../contracts/Pieout'
-import { algorand } from '../utils/network/getAlgorandClient'
+import { PieOutMethods } from '../methods'
 import { ellipseAddress } from '../utils/ellipseAddress'
+import { algorand } from '../utils/network/getAlgorandClient'
 
-import deepEqual from 'fast-deep-equal'
+import { useCollapseTableItem } from '../hooks/useCollapseTableItem'
+import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
+import { usePollGameData } from '../hooks/usePollGameData'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
 
-  const appMethods = activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined
+  const appMethods = useMemo(() => {
+    if (!activeAddress) return undefined
+    return new PieOutMethods(algorand, activeAddress)
+  }, [algorand, activeAddress])
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
 
   const [inputedGameId, setInputedGameId] = useState('')
   const [validatedGameId, setValidatedGameId] = useState('')
-
   const [userMsg, setUserMsg] = useState('')
 
-  const [viewAdminActions, setViewAdminActions] = useState(false)
-  const [viewTriggerEvents, setViewTriggerEvents] = useState(false)
+  const [viewingAdminActions, setViewingAdminActions] = useState(false)
+  const [viewingTriggerEvents, setViewingTriggerEvents] = useState(false)
+  const [viewingGamePlayers, setViewingGamePlayers] = useState(false)
 
-  const [viewPlayers, setViewPlayers] = useState(false)
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
 
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const currentTimestamp = useCurrentTimestamp()
+
+  const highlightTriggerEvent =
+    currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === false
+
+  const dropdownAdminRef = useRef<HTMLDivElement>(null)
+  const dropdownTriggerRef = useRef<HTMLDivElement>(null)
+  const dropdownPlayersRef = useRef<HTMLDivElement>(null)
+
+  useCollapseTableItem({
+    refs: [dropdownAdminRef, dropdownTriggerRef, dropdownPlayersRef],
+    conditions: [viewingAdminActions, viewingTriggerEvents, viewingGamePlayers],
+    collapse: () => {
+      setViewingAdminActions(false)
+      setViewingTriggerEvents(false)
+      setViewingGamePlayers(false)
+    },
+  })
+
+  usePollGameData({
+    appMethods,
+    validatedGameId,
+    activeAddress: activeAddress ?? undefined,
+    currentGameState,
+    setCurrentGameState,
+    currentGamePlayers,
+    setCurrentGamePlayers,
+  })
+
+  // useEffect(() => {
+  //   if (!validatedGameId) return
+
+  //   const intervalId = setInterval(async () => {
+  //     try {
+  //       const bigIntGameId = BigInt(validatedGameId)
+  //       const newGameState = await appMethods?.readGameState(1001n, activeAddress!, bigIntGameId)
+  //       const newGamePlayers = await appMethods?.readGamePlayers(1001n, activeAddress!, bigIntGameId)
+
+  //       if (newGameState && !deepEqual(currentGameState, newGameState)) {
+  //         setCurrentGameState(newGameState)
+  //       }
+
+  //       if (Array.isArray(newGamePlayers) && !deepEqual(currentGamePlayers, newGamePlayers)) {
+  //         setCurrentGamePlayers([...newGamePlayers])
+  //       }
+  //       consoleLogger.info('polled state, yay!')
+  //     } catch (err) {
+  //       consoleLogger.error('Polling error:', err)
+  //     }
+  //   }, 3000)
+
+  //   return () => clearInterval(intervalId)
+  // }, [validatedGameId, appMethods, activeAddress])
+
+  // useEffect(() => {
+  //   function handleClickOutside(event: MouseEvent) {
+  //     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+  //       setViewAdminActions(false)
+  //     }
+  //   }
+
+  //   if (viewAdminActions) {
+  //     document.addEventListener('mousedown', handleClickOutside)
+  //   }
+
+  //   return () => {
+  //     document.removeEventListener('mousedown', handleClickOutside)
+  //   }
+  // }, [viewAdminActions])
 
   useEffect(() => {
-    if (!validatedGameId) return
-
-    const intervalId = setInterval(async () => {
-      try {
-        const bigIntGameId = BigInt(validatedGameId)
-        const newGameState = await appMethods?.readGameState(1001n, activeAddress!, bigIntGameId)
-        const newGamePlayers = await appMethods?.readGamePlayers(1001n, activeAddress!, bigIntGameId)
-
-        if (newGameState && !deepEqual(currentGameState, newGameState)) {
-          setCurrentGameState(newGameState)
-        }
-
-        if (Array.isArray(newGamePlayers) && !deepEqual(currentGamePlayers, newGamePlayers)) {
-          setCurrentGamePlayers([...newGamePlayers])
-        }
-        consoleLogger.info('polled state, yay!')
-      } catch (err) {
-        consoleLogger.error('Polling error:', err)
-      }
-    }, 3000)
-
-    return () => clearInterval(intervalId)
-  }, [validatedGameId, appMethods, activeAddress])
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setViewAdminActions(false)
-      }
-    }
-
-    if (viewAdminActions) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [viewAdminActions])
-
-  useEffect(() => {
-    setViewPlayers(false)
+    setViewingGamePlayers(false)
   }, [validatedGameId])
 
   // Create a method that reads the game state
@@ -87,7 +119,7 @@ const GameTable: React.FC = () => {
         setUserMsg('Game ID must not be zero.')
         return
       }
-
+      await highlightTriggerIdField()
       // Simulate the readGameState call to get the box game state contents
       // Pass stored app id when migrating to TestNet
       const gameState = await appMethods.readGameState(1001n, activeAddress, bigIntGameId)
@@ -113,6 +145,12 @@ const GameTable: React.FC = () => {
       setCurrentGameState(null)
       setUserMsg('No matching game found.')
     }
+  }
+
+  const highlightTriggerIdField = async () => {
+    consoleLogger.info('Current Timestamp (Unix, sec):', currentTimestamp) // number
+    consoleLogger.info('Staking Finalized:', currentGameState?.stakingFinalized ?? 'N/A') // boolean
+    consoleLogger.info('Expiry Timestamp (Unix, sec):', currentGameState?.expiryTs?.toString() ?? 'N/A') // bigint to string
   }
 
   // // Create a method that reads the game state
@@ -183,6 +221,8 @@ const GameTable: React.FC = () => {
   // Render JSX
   return activeAddress ? (
     <div className="p-4">
+      {/* Add Live Timestamp wherever relevant */}
+      Current Date: {new Date(currentTimestamp * 1000).toLocaleTimeString()}
       <div className="mb-4">
         <label className="font-semibold mr-2">Game ID:</label>
         <input
@@ -205,7 +245,6 @@ const GameTable: React.FC = () => {
         {/* Error Message */}
         {userMsg && <span className="text-red-500 text-sm ml-4">{userMsg}</span>}
       </div>
-
       <table className="min-w-min border border-gray-300 rounded-md">
         <thead className="bg-gray-100">
           <tr>
@@ -227,14 +266,14 @@ const GameTable: React.FC = () => {
               {/* Admin */}
               <td className="text-center border border-gray-300 px-4 py-2 relative">
                 {currentGameState.adminAddress === activeAddress ? (
-                  <div ref={dropdownRef}>
+                  <div ref={dropdownAdminRef}>
                     <button
-                      onClick={() => setViewAdminActions((prev) => !prev)}
+                      onClick={() => setViewingAdminActions((prev) => !prev)}
                       className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     >
                       {ellipseAddress(currentGameState.adminAddress)}
                     </button>
-                    {viewAdminActions && (
+                    {viewingAdminActions && (
                       <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10">
                         <ul className="text-sm text-gray-700">
                           <li
@@ -242,13 +281,13 @@ const GameTable: React.FC = () => {
                             onClick={() => {
                               // Add your admin action here
                               consoleLogger.info('Admin clicked: kick players, end game, etc.')
-                              setViewAdminActions(false)
+                              setViewingAdminActions(false)
                             }}
                           >
                             Reset Game
                           </li>
 
-                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => setViewAdminActions(false)}>
+                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => setViewingAdminActions(false)}>
                             Delete Game
                           </li>
                         </ul>
@@ -278,13 +317,18 @@ const GameTable: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      Lobby /
-                      <button
-                        onClick={handleJoinGame}
-                        className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                      >
-                        Join
-                      </button>
+                      Lobby
+                      {activeAddress !== currentGameState.adminAddress && (
+                        <>
+                          {' / '}
+                          <button
+                            onClick={handleJoinGame}
+                            className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                          >
+                            Join
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -305,29 +349,42 @@ const GameTable: React.FC = () => {
               <td className="relative text-center border border-gray-300 px-4 py-2">
                 <button
                   className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setViewTriggerEvents((prev) => !prev)}
+                  onClick={() => setViewingTriggerEvents((prev) => !prev)}
                 >
                   View
                 </button>
 
-                {viewTriggerEvents && (
-                  <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10">
-                    <ul className="text-sm text-gray-700 max-h-60 overflow-auto">
+                {viewingTriggerEvents && (
+                  <div
+                    ref={dropdownTriggerRef} // <-- Add this
+                    className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+                  >
+                    <ul className="text-sm text-gray-700">
                       <li
-                        className="hover:bg-gray-100 px-4 py-2 cursor-pointer"
+                        className={`relative px-4 py-2 ${
+                          highlightTriggerEvent ? 'bg-green-100 hover:bg-green-200 cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-help'
+                        } group`} // group is required for group-hover
                         onClick={async () => {
+                          if (!highlightTriggerEvent) return
                           await appMethods?.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), 0n)
-                          setViewTriggerEvents(false)
+                          setViewingTriggerEvents(false)
                         }}
                       >
-                        0 - GAME LIVE CHECK
+                        <span className={highlightTriggerEvent ? 'text-red-600 font-bold' : ''}>0 - GAME LIVE CHECK</span>
+
+                        {/* Tooltip shown only when not triggerable */}
+                        {!highlightTriggerEvent && (
+                          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+                            This action is unavailable until the game is ready.
+                          </div>
+                        )}
                       </li>
                       <li
                         className="hover:bg-gray-100 px-4 py-2 cursor-pointer"
                         onClick={async () => {
                           await appMethods?.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), 2n)
                           consoleLogger.info('Trigger: Check if game is over')
-                          setViewTriggerEvents(false)
+                          setViewingTriggerEvents(false)
                         }}
                       >
                         2 - GAME OVER CHECK
@@ -340,13 +397,16 @@ const GameTable: React.FC = () => {
               <td className="relative text-center border border-gray-300 px-4 py-2">
                 <button
                   className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setViewPlayers((prev) => !prev)}
+                  onClick={() => setViewingGamePlayers((prev) => !prev)}
                 >
                   Vieww
                 </button>
 
-                {viewPlayers && (
-                  <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10">
+                {viewingGamePlayers && (
+                  <div
+                    ref={dropdownPlayersRef}
+                    className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+                  >
                     <ul className="text-sm text-gray-700 max-h-60 overflow-auto">
                       {currentGamePlayers && currentGamePlayers.length > 0 ? (
                         currentGamePlayers.map((address: string, index: number) => (

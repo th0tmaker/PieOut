@@ -1,8 +1,8 @@
 //src/methods.ts
 
 import { AlgorandClient, microAlgo } from '@algorandfoundation/algokit-utils'
-import { PieoutClient, PieoutFactory } from './contracts/Pieout'
 import { ABIMethod } from 'algosdk'
+import { PieoutClient, PieoutFactory } from './contracts/Pieout'
 
 export class PieOutMethods {
   private readonly algorand: AlgorandClient

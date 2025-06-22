@@ -9,18 +9,18 @@
 // RUN FRONTEND TIMESTAMP OF GAME LIVE/OVER EVENTS, THEN HIGHLIGHT TRIGGER IDS WHEN THESE THESE WILL RESULT IN TRUE
 
 // src/components/Home.tsx
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useState } from 'react'
 import AppCalls from './components/AppCalls'
 import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
 import Transact from './components/Transact'
-import { PieOutMethods } from './methods'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { PieoutClient } from './contracts/Pieout'
 import { pollOnChainData } from './hooks/CurrentRound'
-import { algorand } from './utils/network/getAlgorandClient'
+import { PieOutMethods } from './methods'
 import { ellipseAddress } from './utils/ellipseAddress'
+import { algorand } from './utils/network/getAlgorandClient'
 
 interface HomeProps {}
 
