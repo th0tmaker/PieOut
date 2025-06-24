@@ -9,14 +9,19 @@ import { algorand } from '../utils/network/getAlgorandClient'
 import { useCollapseTableItem } from '../hooks/useCollapseTableItem'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { usePollGameData } from '../hooks/usePollGameData'
+import { useAppClient } from '../contexts/AppClientContext'
+import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
+  const { appClient } = useAppClient()
 
   const appMethods = useMemo(() => {
     if (!activeAddress) return undefined
     return new PieOutMethods(algorand, activeAddress)
   }, [algorand, activeAddress])
+
+  const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
 
@@ -24,16 +29,23 @@ const GameTable: React.FC = () => {
   const [validatedGameId, setValidatedGameId] = useState('')
   const [userMsg, setUserMsg] = useState('')
 
-  const [viewingAdminActions, setViewingAdminActions] = useState(false)
-  const [viewingTriggerEvents, setViewingTriggerEvents] = useState(false)
-  const [viewingGamePlayers, setViewingGamePlayers] = useState(false)
+  const [isViewingAdminActions, setIsViewingAdminActions] = useState(false)
+  const [isViewingTriggerEvents, setIsViewingTriggerEvents] = useState(false)
+  const [isViewingGamePlayers, setIsViewingGamePlayers] = useState(false)
 
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
 
   const currentTimestamp = useCurrentTimestamp()
 
-  const highlightTriggerEvent =
-    currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === false
+  const eventTriggerConditions = useMemo(
+    () => ({
+      triggersEvent0:
+        currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === false,
+      triggersEvent2:
+        currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === true,
+    }),
+    [currentGameState, currentTimestamp],
+  )
 
   const dropdownAdminRef = useRef<HTMLDivElement>(null)
   const dropdownTriggerRef = useRef<HTMLDivElement>(null)
@@ -41,11 +53,11 @@ const GameTable: React.FC = () => {
 
   useCollapseTableItem({
     refs: [dropdownAdminRef, dropdownTriggerRef, dropdownPlayersRef],
-    conditions: [viewingAdminActions, viewingTriggerEvents, viewingGamePlayers],
+    conditions: [isViewingAdminActions, isViewingTriggerEvents, isViewingGamePlayers],
     collapse: () => {
-      setViewingAdminActions(false)
-      setViewingTriggerEvents(false)
-      setViewingGamePlayers(false)
+      setIsViewingAdminActions(false)
+      setIsViewingTriggerEvents(false)
+      setIsViewingGamePlayers(false)
     },
   })
 
@@ -57,140 +69,68 @@ const GameTable: React.FC = () => {
     setCurrentGameState,
     currentGamePlayers,
     setCurrentGamePlayers,
+    setBoxCommitRand,
   })
 
-  // useEffect(() => {
-  //   if (!validatedGameId) return
-
-  //   const intervalId = setInterval(async () => {
-  //     try {
-  //       const bigIntGameId = BigInt(validatedGameId)
-  //       const newGameState = await appMethods?.readGameState(1001n, activeAddress!, bigIntGameId)
-  //       const newGamePlayers = await appMethods?.readGamePlayers(1001n, activeAddress!, bigIntGameId)
-
-  //       if (newGameState && !deepEqual(currentGameState, newGameState)) {
-  //         setCurrentGameState(newGameState)
-  //       }
-
-  //       if (Array.isArray(newGamePlayers) && !deepEqual(currentGamePlayers, newGamePlayers)) {
-  //         setCurrentGamePlayers([...newGamePlayers])
-  //       }
-  //       consoleLogger.info('polled state, yay!')
-  //     } catch (err) {
-  //       consoleLogger.error('Polling error:', err)
-  //     }
-  //   }, 3000)
-
-  //   return () => clearInterval(intervalId)
-  // }, [validatedGameId, appMethods, activeAddress])
-
-  // useEffect(() => {
-  //   function handleClickOutside(event: MouseEvent) {
-  //     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-  //       setViewAdminActions(false)
-  //     }
-  //   }
-
-  //   if (viewAdminActions) {
-  //     document.addEventListener('mousedown', handleClickOutside)
-  //   }
-
-  //   return () => {
-  //     document.removeEventListener('mousedown', handleClickOutside)
-  //   }
-  // }, [viewAdminActions])
-
   useEffect(() => {
-    setViewingGamePlayers(false)
-  }, [validatedGameId])
+    consoleLogger.info('bla', currentGameState?.activePlayers?.toString() ?? 'No active players')
+    setIsViewingGamePlayers(false)
+  }, [validatedGameId, currentGameState])
 
   // Create a method that reads the game state
   const readBoxGameData = async (inputGameId: string) => {
     try {
-      // Return from method if no activeAddress or pieOutMethods object exists
+      // Return from method if no activeAddress or appMethods object exists
       if (!activeAddress || !appMethods) {
         consoleLogger.info('Missing wallet address or method binding')
         return
       }
 
-      // Return from method if input game id is zero
-      const bigIntGameId = BigInt(inputGameId)
+      // Try to safely parse inputGameId to BigInt
+      let bigIntGameId: bigint
+      try {
+        bigIntGameId = BigInt(inputGameId)
+      } catch {
+        setUserMsg('Invalid Game ID.')
+        return
+      }
+
       if (bigIntGameId === 0n) {
         setUserMsg('Game ID must not be zero.')
         return
       }
-      await highlightTriggerIdField()
-      // Simulate the readGameState call to get the box game state contents
-      // Pass stored app id when migrating to TestNet
+
+      // NOTE: Need to listen for change and update validatedGameId based on that instead of needing another render
+
+      // Try to fetch game state and related data
       const gameState = await appMethods.readGameState(1001n, activeAddress, bigIntGameId)
       const gamePlayers = await appMethods.readGamePlayers(1001n, activeAddress, bigIntGameId)
 
-      consoleLogger.info('Players:', gamePlayers)
-      consoleLogger.info(gameState.expiryTs.toString())
-
-      if (!gameState) {
+      // Current game State is responsible for rendring table contents or message to enter valid game id
+      // Therefore, when my inputGameId changes to prompt a non-existent gameState, it should:
+      // change to message permanently (need to ensure gameState is null even on polls)
+      // or, keep previous gameState and not override it with null, just display red message
+      if (gameState) {
+        setCurrentGameState(gameState)
+        setValidatedGameId(inputGameId)
+        setUserMsg('')
+        setCurrentGamePlayers(Array.isArray(gamePlayers) ? [...gamePlayers] : [])
+      } else {
+        // No gameState found: set null but preserve last valid game ID
         setCurrentGameState(null)
-        setValidatedGameId('')
-        setUserMsg('App call failure!')
-        return
+        setInputedGameId(validatedGameId)
+        setUserMsg('No matching game found.')
+        setCurrentGamePlayers([])
       }
-
-      setCurrentGameState(gameState)
-      setValidatedGameId(inputGameId)
-      setUserMsg('')
-
-      setCurrentGamePlayers(Array.isArray(gamePlayers) ? [...gamePlayers] : [])
     } catch (error) {
       consoleLogger.error('Failed to fetch game state:', error)
+
+      // Treat errors the same as an invalid/missing game
       setCurrentGameState(null)
       setUserMsg('No matching game found.')
+      setCurrentGamePlayers([])
     }
   }
-
-  const highlightTriggerIdField = async () => {
-    consoleLogger.info('Current Timestamp (Unix, sec):', currentTimestamp) // number
-    consoleLogger.info('Staking Finalized:', currentGameState?.stakingFinalized ?? 'N/A') // boolean
-    consoleLogger.info('Expiry Timestamp (Unix, sec):', currentGameState?.expiryTs?.toString() ?? 'N/A') // bigint to string
-  }
-
-  // // Create a method that reads the game state
-  // const readGamePlayers = async () => {
-  //   try {
-  //     // Return from method if no activeAddress or pieOutMethods object exists
-  //     if (!activeAddress || !pieOutMethods) {
-  //       consoleLogger.info('Missing wallet address or method binding')
-  //       return
-  //     }
-
-  //     // // Return from method if input game id is zero
-  //     // const bigIntGameId = BigInt(inputGameId)
-  //     // if (bigIntGameId === 0n) {
-  //     //   setUserMsg('Game ID must not be zero.')
-  //     //   return
-  //     // }
-
-  //     // Simulate the readGamePlayers call to get the box game players contents
-  //     // Pass stored app id when migrating to TestNet
-  //     const gamePlayers = await pieOutMethods.readGamePlayers(1001n, activeAddress, BigInt(validatedGameId))
-  //     consoleLogger.info(gamePlayers.toString())
-
-  //     // Store gameState query if successful
-  //     if (gameState) {
-  //       setCurrentGameState(gameState)
-  //       setValidatedGameId(inputGameId)
-  //       setUserMsg('')
-  //       // Else, display user message
-  //     } else {
-  //       setCurrentGameState(null)
-  //       setValidatedGameId('')
-  //       setUserMsg('App call failure!')
-  //     }
-  //   } catch (error) {
-  //     consoleLogger.error('Failed to fetch game state:', error)
-  //     setCurrentGameState(null)
-  //     setUserMsg('No matching game found.')
-  //   }
-  // }
 
   const handleJoinGame = () => {
     if (!appMethods || !activeAddress || !validatedGameId) return
@@ -218,62 +158,80 @@ const GameTable: React.FC = () => {
     }
   }
 
+  const handleNumOnlyGameId = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numOnlyInput = e.target.value.replace(/\D/g, '')
+    setInputedGameId(numOnlyInput)
+  }
+
+  const handleTrigGameEvent = async (triggerId: bigint) => {
+    if (!activeAddress || !appMethods || !eventTriggerConditions) return
+    try {
+      await appMethods.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), triggerId)
+      setIsViewingTriggerEvents(false)
+    } catch (err) {
+      consoleLogger.error('Error during trigger game event:', err)
+    }
+  }
+
   // Render JSX
   return activeAddress ? (
     <div className="p-4">
-      {/* Add Live Timestamp wherever relevant */}
-      Current Date: {new Date(currentTimestamp * 1000).toLocaleTimeString()}
-      <div className="mb-4">
-        <label className="font-semibold mr-2">Game ID:</label>
+      <div className="mb-4 font-bold text-indigo-200">
+        Current Local Time: <span className="text-cyan-300">{new Date(currentTimestamp * 1000).toLocaleTimeString()}</span>
+      </div>
+      <div className="mb-4 flex items-center gap-4">
+        <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
+
         <input
-          className="w-46 border border-gray-300 rounded px-2 py-1 text-center"
+          className={`w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 focus:bg-slate-700 ${
+            inputedGameId ? 'bg-slate-700' : ''
+          } hover:bg-slate-700 focus:outline-none focus:border-lime-400`}
           type="text"
           value={inputedGameId}
-          onChange={(e) => {
-            const onlyDigits = e.target.value.replace(/\D/g, '')
-            setInputedGameId(onlyDigits)
-          }}
+          onChange={handleNumOnlyGameId}
           maxLength={20}
           inputMode="numeric"
+          placeholder="Game ID"
         />
+        <span className="font-bold text-indigo-200">:</span>
         <button
-          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+          className="bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
           onClick={() => readBoxGameData(inputedGameId)}
         >
           Input
         </button>
         {/* Error Message */}
-        {userMsg && <span className="text-red-500 text-sm ml-4">{userMsg}</span>}
+        <span className="flex items-center gap-4">{userMsg && <span className="text-red-500 text-sm">{userMsg}</span>}</span>
       </div>
-      <table className="min-w-min border border-gray-300 rounded-md">
+      <table className="min-w-min border border-indigo-300 rounded-md">
         <thead className="bg-gray-100">
           <tr>
-            <th className="text-center border border-gray-300 px-4 py-2">Game ID</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Admin</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Prize Pool</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Status</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Commit</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Trigger</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Players</th>
-            <th className="text-center border border-gray-300 px-4 py-2">Leaderboard</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Game ID</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Admin</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Prize Pool</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Status</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Commit</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Trigger</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Players</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Leaderboard</th>
           </tr>
         </thead>
         <tbody>
           {currentGameState ? (
             <tr>
               {/* Game ID */}
-              <td className="text-center border border-gray-300 px-2 py-1">{validatedGameId}</td>
+              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-2 py-1">{validatedGameId}</td>
               {/* Admin */}
-              <td className="text-center border border-gray-300 px-4 py-2 relative">
+              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 relative">
                 {currentGameState.adminAddress === activeAddress ? (
                   <div ref={dropdownAdminRef}>
                     <button
-                      onClick={() => setViewingAdminActions((prev) => !prev)}
-                      className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                      onClick={() => setIsViewingAdminActions((prev) => !prev)}
+                      className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     >
                       {ellipseAddress(currentGameState.adminAddress)}
                     </button>
-                    {viewingAdminActions && (
+                    {isViewingAdminActions && (
                       <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10">
                         <ul className="text-sm text-gray-700">
                           <li
@@ -281,13 +239,13 @@ const GameTable: React.FC = () => {
                             onClick={() => {
                               // Add your admin action here
                               consoleLogger.info('Admin clicked: kick players, end game, etc.')
-                              setViewingAdminActions(false)
+                              setIsViewingAdminActions(false)
                             }}
                           >
                             Reset Game
                           </li>
 
-                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => setViewingAdminActions(false)}>
+                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => setIsViewingAdminActions(false)}>
                             Delete Game
                           </li>
                         </ul>
@@ -299,9 +257,11 @@ const GameTable: React.FC = () => {
                 )}
               </td>
               {/* Prize Pool */}
-              <td className="text-center border border-gray-300 px-4 py-2">{currentGameState.prizePool.toString()}</td>
+              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+                {currentGameState.prizePool.toString()}
+              </td>
               {/* Status */}
-              <td className="text-center border border-gray-300 px-4 py-2">
+              <td className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
                 <div className="font-bold flex items-center justify-center gap-1">
                   {Number(currentGameState.prizePool) === 0 ? (
                     <>Over</>
@@ -310,7 +270,7 @@ const GameTable: React.FC = () => {
                       Live /
                       <button
                         onClick={handlePlayGame}
-                        className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                        className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                       >
                         Play
                       </button>
@@ -323,7 +283,7 @@ const GameTable: React.FC = () => {
                           {' / '}
                           <button
                             onClick={handleJoinGame}
-                            className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                            className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                           >
                             Join
                           </button>
@@ -333,76 +293,94 @@ const GameTable: React.FC = () => {
                   )}
                 </div>
                 {Number(currentGameState.prizePool) !== 0 && (
-                  <div className="text-xs text-gray-600">{new Date(Number(currentGameState.expiryTs) * 1000).toLocaleString()}</div>
+                  <div className="text-xs text-white">{new Date(Number(currentGameState.expiryTs) * 1000).toLocaleString()}</div>
                 )}{' '}
               </td>
-              {/* Lock */}
-              <td className="relative text-center border border-gray-300 px-4 py-2">
-                <button
-                  className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={handleSetBoxCommitRand}
-                >
-                  Lock
-                </button>
+              {/* Set */}
+              <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+                {currentGameState.stakingFinalized && currentGameState.prizePool !== 0n && boxCommitRand?.gameId === 0n ? (
+                  <button
+                    className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                    onClick={handleSetBoxCommitRand}
+                  >
+                    Set
+                  </button>
+                ) : (
+                  <div className="group inline-block relative">
+                    <span className="text-indigo-200 cursor-help">Set</span>
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+                      {!currentGameState.stakingFinalized
+                        ? 'Unavailable: This game has not started yet.'
+                        : currentGameState.prizePool === 0n
+                          ? 'Unavailable: This game already ended.'
+                          : 'Unavailable: Previous commit is still active.'}
+                    </div>
+                  </div>
+                )}
               </td>
               {/* Trigger */}
-              <td className="relative text-center border border-gray-300 px-4 py-2">
+              <td className=" relative font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
-                  className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setViewingTriggerEvents((prev) => !prev)}
+                  className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                  onClick={() => setIsViewingTriggerEvents((prev) => !prev)}
                 >
-                  View
+                  Check
                 </button>
 
-                {viewingTriggerEvents && (
+                {isViewingTriggerEvents && (
                   <div
-                    ref={dropdownTriggerRef} // <-- Add this
+                    ref={dropdownTriggerRef}
                     className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
                   >
                     <ul className="text-sm text-gray-700">
                       <li
                         className={`relative px-4 py-2 ${
-                          highlightTriggerEvent ? 'bg-green-100 hover:bg-green-200 cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-help'
+                          eventTriggerConditions.triggersEvent0
+                            ? 'text-indigo-200 bg-slate-800 border border-lime-400 cursor-pointer'
+                            : 'bg-slate-800 text-gray-400 cursor-help'
                         } group`} // group is required for group-hover
-                        onClick={async () => {
-                          if (!highlightTriggerEvent) return
-                          await appMethods?.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), 0n)
-                          setViewingTriggerEvents(false)
-                        }}
+                        onClick={() => handleTrigGameEvent(0n)}
                       >
-                        <span className={highlightTriggerEvent ? 'text-red-600 font-bold' : ''}>0 - GAME LIVE CHECK</span>
+                        <span className={eventTriggerConditions.triggersEvent0 ? 'text-lime-400 font-bold' : ''}>0 - Game Live</span>
 
                         {/* Tooltip shown only when not triggerable */}
-                        {!highlightTriggerEvent && (
+                        {!eventTriggerConditions.triggersEvent0 && (
                           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
                             This action is unavailable until the game is ready.
                           </div>
                         )}
                       </li>
                       <li
-                        className="hover:bg-gray-100 px-4 py-2 cursor-pointer"
-                        onClick={async () => {
-                          await appMethods?.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), 2n)
-                          consoleLogger.info('Trigger: Check if game is over')
-                          setViewingTriggerEvents(false)
-                        }}
+                        className={`relative px-4 py-2 ${
+                          eventTriggerConditions.triggersEvent2
+                            ? 'text-indigo-200 bg-slate-800 border border-lime-400 cursor-pointer'
+                            : 'bg-slate-800 text-gray-400 cursor-help'
+                        } group`} // group is required for group-hover
+                        onClick={() => handleTrigGameEvent(2n)}
                       >
-                        2 - GAME OVER CHECK
+                        <span className={eventTriggerConditions.triggersEvent2 ? 'text-lime-400 font-bold' : ''}>2 - Game Over</span>
+
+                        {/* Tooltip shown only when not triggerable */}
+                        {!!eventTriggerConditions.triggersEvent2 && (
+                          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+                            This action is unavailable until the game is ready.
+                          </div>
+                        )}
                       </li>
                     </ul>
                   </div>
                 )}
               </td>
               {/* Players */}
-              <td className="relative text-center border border-gray-300 px-4 py-2">
+              <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
-                  className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setViewingGamePlayers((prev) => !prev)}
+                  className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                  onClick={() => setIsViewingGamePlayers((prev) => !prev)}
                 >
-                  Vieww
+                  View
                 </button>
 
-                {viewingGamePlayers && (
+                {isViewingGamePlayers && (
                   <div
                     ref={dropdownPlayersRef}
                     className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
@@ -422,18 +400,18 @@ const GameTable: React.FC = () => {
                 )}
               </td>
               {/* Leaderboard */}
-              <td className="text-center border border-gray-300 px-4 py-2">
+              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
-                  className="text-blue-600 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                  className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                   onClick={() => consoleLogger.info('Leaderboard:', currentGameState)}
                 >
-                  Viewww
+                  View
                 </button>
               </td>
             </tr>
           ) : (
             <tr>
-              <td colSpan={6} className="text-center py-4 text-gray-500">
+              <td colSpan={8} className="relative text-center py-4 px-2 text-white">
                 Game not found. Ensure Game ID is valid.
               </td>
             </tr>

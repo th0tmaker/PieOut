@@ -369,7 +369,7 @@ export class PieOutMethods {
       args: { gameId: gameId, triggerId: triggerId },
       note: noteTriggerGameProg,
       maxFee: microAlgo(100_000),
-      populateAppCallResources: true,
+      coverAppCallInnerTransactionFees: true,
     })
 
     return triggerGameProgTxn.return

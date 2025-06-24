@@ -16,11 +16,12 @@ import AppCalls from './components/AppCalls'
 import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
 import Transact from './components/Transact'
-import { PieoutClient } from './contracts/Pieout'
 import { pollOnChainData } from './hooks/CurrentRound'
 import { PieOutMethods } from './methods'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
+import { useAppClient } from './contexts/AppClientContext'
+import { useBoxCommitRand } from './contexts/BoxCommitRandContext'
 
 interface HomeProps {}
 
@@ -34,17 +35,12 @@ const Home: React.FC<HomeProps> = () => {
 
   const appMethods = activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined
 
-  const [appClient, setAppClient] = useState<PieoutClient | null>(null)
-  const [appCreator, setAppCreator] = useState<string | null>(null)
+  const { appClient, appCreator, getAppClient } = useAppClient()
+  const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
 
   const { currentRound, selfCheckRound, athScore, athAddress } = pollOnChainData(algorand.client.algod, appClient)
 
   const [boxTrophyData, setBoxTrophyData] = useState<{ assetId: string; ownerAddress: string } | null>(null)
-  const [boxCommitRandData, setBoxCommitRandData] = useState<{
-    gameId: string
-    commitRound: string
-    expiryRound: string
-  } | null>(null)
 
   const [toggleGameOptions, setToggleGameOptions] = useState(false)
 
@@ -64,14 +60,7 @@ const Home: React.FC<HomeProps> = () => {
     if (!activeAddress || !appMethods) return
 
     try {
-      const appClient = await appMethods.genContract(activeAddress, 'note: create app', 'note: fund mbr')
-      setAppClient(appClient)
-
-      const appInfo = await appClient.algorand.app.getById(appClient.appId)
-      setAppCreator(appInfo.creator.toString())
-
-      consoleLogger.info('App ID:', appClient.appId)
-      alert(`App created! ID: ${appClient.appId}`)
+      await getAppClient()
     } catch (err) {
       consoleLogger.error('Error:', err)
       alert('Failed to create app')
@@ -121,13 +110,46 @@ const Home: React.FC<HomeProps> = () => {
       const entry = boxCommitRand.get(activeAddress)
 
       if (entry) {
-        setBoxCommitRandData({
-          gameId: entry.gameId.toString() ?? 'not-found',
-          commitRound: entry.commitRound.toString() ?? 'not-found',
-          expiryRound: entry.expiryRound.toString() ?? 'not-found',
+        setBoxCommitRand({
+          gameId: entry?.gameId ?? null,
+          commitRound: entry?.commitRound ?? null,
+          expiryRound: entry?.expiryRound ?? null,
         })
       } else {
-        setBoxCommitRandData(null)
+        setBoxCommitRand(null)
+      }
+    } catch (err) {
+      consoleLogger.error('Commit failed:', err)
+      alert('Commit failed')
+    }
+  }
+
+  const setCommit = async () => {
+    if (!activeAddress || !appMethods || !appClient?.appId) {
+      consoleLogger.info('Debug Info:', {
+        activeAddress,
+        pieOutMethods: appMethods,
+        appId: appClient?.appId,
+      })
+      alert('Missing active wallet, methods, or app client')
+      return
+    }
+
+    try {
+      await appMethods.setBoxCommitRand(appClient.appId, activeAddress, 1n)
+      alert('blabla!')
+
+      const boxCommitRand = await appClient.state.box.boxCommitRand.getMap()
+      const entry = boxCommitRand.get(activeAddress)
+
+      if (entry) {
+        setBoxCommitRand({
+          gameId: entry?.gameId ?? null,
+          commitRound: entry?.commitRound ?? null,
+          expiryRound: entry?.expiryRound ?? null,
+        })
+      } else {
+        setBoxCommitRand(null)
       }
     } catch (err) {
       consoleLogger.error('Commit failed:', err)
@@ -154,28 +176,8 @@ const Home: React.FC<HomeProps> = () => {
     }
   }
 
-  // const handleBoxSetCommitRand = async () => {
-  //   if (!activeAddress || !appMethods || !appClient?.appId) {
-  //     alert('Missing active wallet, methods, or app client')
-  //     return
-  //   }
-  //   try {
-  //     await appMethods.setBoxCommitRand(appClient.appId, activeAddress, )
-  //     await appMethods.newGame(appClient.appId, activeAddress, 3n, 'note: boxSPay', 'note: boxPPay', 'note: StakePay', 'note: newGame')
-  //     alert('🎮 New game created successfully!')
-
-  //     // Need to search only by key prefix 's_' in name
-  //     const appBoxes = await appClient.algorand.client.algod.getApplicationBoxes(appClient.appId).do()
-  //     // const entry = boxCommitRand.get(activeAddress)
-  //     consoleLogger.info(JSON.stringify(appBoxes.boxes, null, 2))
-  //   } catch (err) {
-  //     consoleLogger.error('Error creating new game:', err)
-  //     alert('❌ Failed to create new game.')
-  //   }
-  // }
-
   return (
-    <div className="p-4" style={{ backgroundColor: '#FFFFFF' }}>
+    <div className="p-4" style={{ backgroundColor: '#27292D' }}>
       <h1 className="text-2xl font-bold mb-4">My Smart Contract DApp</h1>
 
       <button
@@ -208,9 +210,9 @@ const Home: React.FC<HomeProps> = () => {
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-orange-500 hover:bg-orange-600 border-2 border-black"
-        // onClick={handleCommit}
+        onClick={setCommit}
       >
-        Lock
+        Set
       </button>
 
       <div className="relative inline-block">
@@ -279,13 +281,13 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       )}
 
-      {boxCommitRandData ? (
+      {boxCommitRand ? (
         <div className="mt-2 inline-block p-2 border-2 border-indigo-700 rounded-md text-sm font-bold font-mono text-gray-800 shadow-sm">
           <p className="text-base text-center text-indigo-700 font-semibold">PLAYER STATUS</p>
           <p>🎮 Account: {ellipseAddress(activeAddress ?? '')}</p>
-          <p>🆔 Game ID: {boxCommitRandData.gameId}</p>
-          <p>🎲 Commit Round: {boxCommitRandData.commitRound}</p>
-          <p>⏳ Expiry Round: {boxCommitRandData.expiryRound}</p>
+          <p>🆔 Game ID: {boxCommitRand?.gameId?.toString() ?? 'N/A'}</p>
+          <p>🎲 Commit Round: {boxCommitRand?.commitRound?.toString() ?? 'N/A'}</p>
+          <p>⏳ Expiry Round: {boxCommitRand?.expiryRound?.toString() ?? 'N/A'}</p>
         </div>
       ) : (
         <p className="mt-4 text-sm font-mono text-red-500">Commit data not found</p>
