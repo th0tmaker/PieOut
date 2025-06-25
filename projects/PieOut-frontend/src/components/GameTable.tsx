@@ -6,64 +6,79 @@ import { PieOutMethods } from '../methods'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
-import { useCollapseTableItem } from '../hooks/useCollapseTableItem'
+import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
+import { useCollapseTableItem2 } from '../hooks/useCollapseTableItem2'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { usePollGameData } from '../hooks/usePollGameData'
-import { useAppClient } from '../contexts/AppClientContext'
-import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
-  const { appClient } = useAppClient()
+  // const { appClient } = useAppClient()
 
-  const appMethods = useMemo(() => {
-    if (!activeAddress) return undefined
-    return new PieOutMethods(algorand, activeAddress)
-  }, [algorand, activeAddress])
+  const appMethods = useMemo(() => (activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined), [activeAddress])
 
   const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
 
   const [inputedGameId, setInputedGameId] = useState('')
-  const [validatedGameId, setValidatedGameId] = useState('')
   const [userMsg, setUserMsg] = useState('')
 
-  const [isViewingAdminActions, setIsViewingAdminActions] = useState(false)
-  const [isViewingTriggerEvents, setIsViewingTriggerEvents] = useState(false)
-  const [isViewingGamePlayers, setIsViewingGamePlayers] = useState(false)
+  const [validatedGameId, setValidatedGameId] = useState<bigint | undefined>(undefined)
 
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
 
   const currentTimestamp = useCurrentTimestamp()
 
+  const [openDropdowns, setOpenDropdowns] = useState({
+    adminActions: false,
+    triggerEvents: false,
+    gamePlayers: false,
+    // add more as needed
+  })
+
+  // Create refs for each dropdown (useRef is fine here since refs don't change)
+  const dropdownRefs = {
+    adminActions: useRef<HTMLDivElement>(null),
+    triggerEvents: useRef<HTMLDivElement>(null),
+    gamePlayers: useRef<HTMLDivElement>(null),
+    // add more as needed
+  }
+
+  // Collapse function closes all dropdowns
+  const collapseAll = () =>
+    setOpenDropdowns({
+      adminActions: false,
+      triggerEvents: false,
+      gamePlayers: false,
+      // reset others too
+    })
+
+  useCollapseTableItem2({
+    refs: Object.values(dropdownRefs),
+    conditions: Object.values(openDropdowns),
+    collapse: collapseAll,
+    listenEscape: true,
+  })
+
+  // Example toggle handler
+  const toggleDropdown = (name: keyof typeof openDropdowns) => {
+    setOpenDropdowns((prev) => ({
+      ...prev,
+      [name]: !prev[name],
+    }))
+  }
   const eventTriggerConditions = useMemo(
     () => ({
-      triggersEvent0:
-        currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === false,
-      triggersEvent2:
-        currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized === true,
+      triggersEvent0: currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && !currentGameState.stakingFinalized,
+      triggersEvent2: currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized,
     }),
     [currentGameState, currentTimestamp],
   )
 
-  const dropdownAdminRef = useRef<HTMLDivElement>(null)
-  const dropdownTriggerRef = useRef<HTMLDivElement>(null)
-  const dropdownPlayersRef = useRef<HTMLDivElement>(null)
-
-  useCollapseTableItem({
-    refs: [dropdownAdminRef, dropdownTriggerRef, dropdownPlayersRef],
-    conditions: [isViewingAdminActions, isViewingTriggerEvents, isViewingGamePlayers],
-    collapse: () => {
-      setIsViewingAdminActions(false)
-      setIsViewingTriggerEvents(false)
-      setIsViewingGamePlayers(false)
-    },
-  })
-
   usePollGameData({
     appMethods,
-    validatedGameId,
+    validatedGameId: validatedGameId !== undefined ? validatedGameId : 0n,
     activeAddress: activeAddress ?? undefined,
     currentGameState,
     setCurrentGameState,
@@ -74,61 +89,36 @@ const GameTable: React.FC = () => {
 
   useEffect(() => {
     consoleLogger.info('bla', currentGameState?.activePlayers?.toString() ?? 'No active players')
-    setIsViewingGamePlayers(false)
+    // setIsViewingGamePlayers(false)
   }, [validatedGameId, currentGameState])
 
-  // Create a method that reads the game state
   const readBoxGameData = async (inputGameId: string) => {
+    if (!activeAddress || !appMethods) {
+      setUserMsg('Wallet not connected or methods unavailable.')
+      return
+    }
+
+    let bigIntGameId: bigint
     try {
-      // Return from method if no activeAddress or appMethods object exists
-      if (!activeAddress || !appMethods) {
-        consoleLogger.info('Missing wallet address or method binding')
-        return
-      }
+      bigIntGameId = BigInt(inputGameId)
+    } catch {
+      setUserMsg('Invalid Game ID format.')
+      return
+    }
 
-      // Try to safely parse inputGameId to BigInt
-      let bigIntGameId: bigint
-      try {
-        bigIntGameId = BigInt(inputGameId)
-      } catch {
-        setUserMsg('Invalid Game ID.')
-        return
-      }
-
-      if (bigIntGameId === 0n) {
-        setUserMsg('Game ID must not be zero.')
-        return
-      }
-
-      // NOTE: Need to listen for change and update validatedGameId based on that instead of needing another render
-
-      // Try to fetch game state and related data
+    try {
       const gameState = await appMethods.readGameState(1001n, activeAddress, bigIntGameId)
       const gamePlayers = await appMethods.readGamePlayers(1001n, activeAddress, bigIntGameId)
 
-      // Current game State is responsible for rendring table contents or message to enter valid game id
-      // Therefore, when my inputGameId changes to prompt a non-existent gameState, it should:
-      // change to message permanently (need to ensure gameState is null even on polls)
-      // or, keep previous gameState and not override it with null, just display red message
-      if (gameState) {
-        setCurrentGameState(gameState)
-        setValidatedGameId(inputGameId)
-        setUserMsg('')
-        setCurrentGamePlayers(Array.isArray(gamePlayers) ? [...gamePlayers] : [])
-      } else {
-        // No gameState found: set null but preserve last valid game ID
-        setCurrentGameState(null)
-        setInputedGameId(validatedGameId)
-        setUserMsg('No matching game found.')
-        setCurrentGamePlayers([])
-      }
+      setValidatedGameId(bigIntGameId)
+      setCurrentGameState(gameState)
+      setCurrentGamePlayers(gamePlayers ?? [])
+      setUserMsg('')
     } catch (error) {
       consoleLogger.error('Failed to fetch game state:', error)
-
-      // Treat errors the same as an invalid/missing game
       setCurrentGameState(null)
-      setUserMsg('No matching game found.')
       setCurrentGamePlayers([])
+      setUserMsg('Game not found or could not be loaded.')
     }
   }
 
@@ -164,10 +154,10 @@ const GameTable: React.FC = () => {
   }
 
   const handleTrigGameEvent = async (triggerId: bigint) => {
-    if (!activeAddress || !appMethods || !eventTriggerConditions) return
+    if (!activeAddress || !appMethods || !eventTriggerConditions || !validatedGameId) return
     try {
-      await appMethods.triggerGameProg(1001n, activeAddress, BigInt(validatedGameId), triggerId)
-      setIsViewingTriggerEvents(false)
+      await appMethods.triggerGameProg(1001n, activeAddress, validatedGameId, triggerId)
+      // setIsViewingTriggerEvents(false)
     } catch (err) {
       consoleLogger.error('Error during trigger game event:', err)
     }
@@ -220,32 +210,35 @@ const GameTable: React.FC = () => {
           {currentGameState ? (
             <tr>
               {/* Game ID */}
-              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-2 py-1">{validatedGameId}</td>
+              <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-2 py-1">
+                {validatedGameId?.toString()}
+              </td>
               {/* Admin */}
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 relative">
                 {currentGameState.adminAddress === activeAddress ? (
-                  <div ref={dropdownAdminRef}>
+                  <div>
                     <button
-                      onClick={() => setIsViewingAdminActions((prev) => !prev)}
+                      onClick={() => toggleDropdown('adminActions')}
                       className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     >
                       {ellipseAddress(currentGameState.adminAddress)}
                     </button>
-                    {isViewingAdminActions && (
-                      <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10">
+                    {openDropdowns.adminActions && (
+                      <div
+                        ref={dropdownRefs.adminActions}
+                        className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10"
+                      >
                         <ul className="text-sm text-gray-700">
                           <li
                             className="hover:bg-gray-100 px-4 py-2 cursor-pointer"
                             onClick={() => {
                               // Add your admin action here
                               consoleLogger.info('Admin clicked: kick players, end game, etc.')
-                              setIsViewingAdminActions(false)
                             }}
                           >
                             Reset Game
                           </li>
-
-                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => setIsViewingAdminActions(false)}>
+                          <li className="hover:bg-gray-100 px-4 py-2 cursor-pointer" onClick={() => consoleLogger.info('delete game')}>
                             Delete Game
                           </li>
                         </ul>
@@ -267,13 +260,18 @@ const GameTable: React.FC = () => {
                     <>Over</>
                   ) : currentGameState.stakingFinalized ? (
                     <>
-                      Live /
-                      <button
-                        onClick={handlePlayGame}
-                        className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                      >
-                        Play
-                      </button>
+                      Live
+                      {currentGamePlayers?.includes(activeAddress ?? '') ? (
+                        <>
+                          {' / '}
+                          <button
+                            onClick={handlePlayGame}
+                            className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                          >
+                            Play
+                          </button>
+                        </>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -281,12 +279,16 @@ const GameTable: React.FC = () => {
                       {activeAddress !== currentGameState.adminAddress && (
                         <>
                           {' / '}
-                          <button
-                            onClick={handleJoinGame}
-                            className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                          >
-                            Join
-                          </button>
+                          {currentGamePlayers?.includes(activeAddress ?? '') === true ? (
+                            <span className="text-cyan-300 font-bold">Joined</span>
+                          ) : (
+                            <button
+                              onClick={handleJoinGame}
+                              className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                            >
+                              Join
+                            </button>
+                          )}
                         </>
                       )}
                     </>
@@ -322,14 +324,14 @@ const GameTable: React.FC = () => {
               <td className=" relative font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setIsViewingTriggerEvents((prev) => !prev)}
+                  onClick={() => toggleDropdown('triggerEvents')}
                 >
                   Check
                 </button>
 
-                {isViewingTriggerEvents && (
+                {openDropdowns.triggerEvents && (
                   <div
-                    ref={dropdownTriggerRef}
+                    ref={dropdownRefs.triggerEvents}
                     className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
                   >
                     <ul className="text-sm text-gray-700">
@@ -341,7 +343,9 @@ const GameTable: React.FC = () => {
                         } group`} // group is required for group-hover
                         onClick={() => handleTrigGameEvent(0n)}
                       >
-                        <span className={eventTriggerConditions.triggersEvent0 ? 'text-lime-400 font-bold' : ''}>0 - Game Live</span>
+                        <span className={eventTriggerConditions.triggersEvent0 ? 'text-lime-400 font-bold hover:bg-slate-700' : ''}>
+                          0 - Game Live
+                        </span>
 
                         {/* Tooltip shown only when not triggerable */}
                         {!eventTriggerConditions.triggersEvent0 && (
@@ -375,14 +379,14 @@ const GameTable: React.FC = () => {
               <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => setIsViewingGamePlayers((prev) => !prev)}
+                  onClick={() => toggleDropdown('gamePlayers')}
                 >
                   View
                 </button>
 
-                {isViewingGamePlayers && (
+                {openDropdowns.gamePlayers && (
                   <div
-                    ref={dropdownPlayersRef}
+                    ref={dropdownRefs.gamePlayers}
                     className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
                   >
                     <ul className="text-sm text-gray-700 max-h-60 overflow-auto">
@@ -412,7 +416,9 @@ const GameTable: React.FC = () => {
           ) : (
             <tr>
               <td colSpan={8} className="relative text-center py-4 px-2 text-white">
-                Game not found. Ensure Game ID is valid.
+                {validatedGameId === 0n && currentGameState === null
+                  ? 'Invalid input. Game ID must not be zero.'
+                  : 'Game not found. Ensure Game ID is valid.'}
               </td>
             </tr>
           )}

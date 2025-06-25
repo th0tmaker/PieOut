@@ -38,6 +38,6 @@ export function useCollapseTableItem({ refs, conditions, collapse }: UseCollapse
     return () => {
       document.removeEventListener('mousedown', handleDetectMouseClickOutside)
     }
-    // Dependency array: rerun effect when refs or conditions change
-  }, [refs.map((r) => r.current), conditions.join(''), collapse])
+    // Only re-run effect if conditions or collapse change
+  }, [conditions.some(Boolean), collapse, refs])
 }

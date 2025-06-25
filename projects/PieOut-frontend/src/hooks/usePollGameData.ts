@@ -1,13 +1,13 @@
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import deepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useAppClient } from '../contexts/AppClientContext'
 import { GameState } from '../contracts/Pieout'
 import { PieOutMethods } from '../methods'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-import { useAppClient } from '../contexts/AppClientContext'
 
 type UsePollGameDataProps = {
   appMethods?: PieOutMethods
-  validatedGameId: string
+  validatedGameId: bigint
   activeAddress?: string
   currentGameState: GameState | null
   setCurrentGameState: (state: GameState | null) => void
