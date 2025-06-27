@@ -1,5 +1,4 @@
 //src/methods.ts
-
 import { AlgorandClient, microAlgo } from '@algorandfoundation/algokit-utils'
 import { ABIMethod } from 'algosdk'
 import { PieoutClient, PieoutFactory } from './contracts/Pieout'

@@ -7,7 +7,7 @@ import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
 import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
-import { useCollapseTableItem2 } from '../hooks/useCollapseTableItem2'
+import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { usePollGameData } from '../hooks/usePollGameData'
 
@@ -17,16 +17,15 @@ const GameTable: React.FC = () => {
 
   const appMethods = useMemo(() => (activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined), [activeAddress])
 
-  const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
-
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
+  const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
+  const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
 
   const [inputedGameId, setInputedGameId] = useState('')
   const [userMsg, setUserMsg] = useState('')
+  const [isGameIdZero, setIsGameIdZero] = useState(false)
 
   const [validatedGameId, setValidatedGameId] = useState<bigint | undefined>(undefined)
-
-  const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
 
   const currentTimestamp = useCurrentTimestamp()
 
@@ -38,15 +37,22 @@ const GameTable: React.FC = () => {
   })
 
   // Create refs for each dropdown (useRef is fine here since refs don't change)
-  const dropdownRefs = {
+  const dropdownListRefs = {
     adminActions: useRef<HTMLDivElement>(null),
     triggerEvents: useRef<HTMLDivElement>(null),
     gamePlayers: useRef<HTMLDivElement>(null),
     // add more as needed
   }
 
-  // Collapse function closes all dropdowns
-  const collapseAll = () =>
+  // Add button refs alongside your dropdown refs
+  const dropdownBtnRefs = {
+    adminActionsBtn: useRef<HTMLButtonElement>(null),
+    triggerEventsBtn: useRef<HTMLButtonElement>(null),
+    gamePlayersBtn: useRef<HTMLButtonElement>(null),
+  }
+
+  // Function closes all dropdowns
+  const closeAll = () =>
     setOpenDropdowns({
       adminActions: false,
       triggerEvents: false,
@@ -54,27 +60,68 @@ const GameTable: React.FC = () => {
       // reset others too
     })
 
-  useCollapseTableItem2({
-    refs: Object.values(dropdownRefs),
-    conditions: Object.values(openDropdowns),
-    collapse: collapseAll,
+  useDropdownEventListener({
+    dropdownListRefs: Object.values(dropdownListRefs),
+    dropdownBtnRefs: Object.values(dropdownBtnRefs),
+    isOpen: Object.values(openDropdowns), // or just a single boolean
+    onClose: closeAll,
     listenEscape: true,
   })
 
   // Example toggle handler
   const toggleDropdown = (name: keyof typeof openDropdowns) => {
-    setOpenDropdowns((prev) => ({
-      ...prev,
-      [name]: !prev[name],
-    }))
+    setOpenDropdowns((prev) => {
+      const isCurrentlyOpen = prev[name]
+
+      if (isCurrentlyOpen) {
+        // If clicking the same button, close it
+        return {
+          adminActions: false,
+          triggerEvents: false,
+          gamePlayers: false,
+        }
+      } else {
+        // If opening a different dropdown, close all others and open this one
+        return {
+          adminActions: name === 'adminActions',
+          triggerEvents: name === 'triggerEvents',
+          gamePlayers: name === 'gamePlayers',
+        }
+      }
+    })
   }
-  const eventTriggerConditions = useMemo(
-    () => ({
-      triggersEvent0: currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && !currentGameState.stakingFinalized,
-      triggersEvent2: currentGameState && currentTimestamp > Number(currentGameState.expiryTs) && currentGameState.stakingFinalized,
-    }),
-    [currentGameState, currentTimestamp],
-  )
+
+  const eventTriggerConditions = useMemo(() => {
+    if (!currentGameState) {
+      return {
+        triggersEvent0: false,
+        triggersEvent2: false,
+        tooltipMessage0: 'Game data not available yet.',
+        tooltipMessage2: 'Game data not available yet.',
+      }
+    }
+
+    const { expiryTs, stakingFinalized, prizePool } = currentGameState
+    const isExpired = currentTimestamp > Number(expiryTs)
+    const gameEnded = prizePool === 0n
+
+    return {
+      triggersEvent0: isExpired && !stakingFinalized && !gameEnded,
+      triggersEvent2: isExpired && stakingFinalized && !gameEnded,
+
+      tooltipMessage0: gameEnded
+        ? 'Action unavailable. Game already ended.'
+        : !isExpired
+          ? 'Action unavailable. Game phase timer must first expire.'
+          : 'Action unavailable. Game already progressed beyond this phase.',
+
+      tooltipMessage2: gameEnded
+        ? 'Action unavailable. Game already ended.'
+        : stakingFinalized && !isExpired
+          ? 'Action unavailable. Game phase timer must first expire.'
+          : 'Action unavailable. Game has yet to reach this phase.',
+    }
+  }, [currentGameState, currentTimestamp])
 
   usePollGameData({
     appMethods,
@@ -106,6 +153,13 @@ const GameTable: React.FC = () => {
       return
     }
 
+    if (bigIntGameId === 0n) {
+      setIsGameIdZero(true)
+      setCurrentGameState(null)
+      setCurrentGamePlayers([])
+      return
+    }
+
     try {
       const gameState = await appMethods.readGameState(1001n, activeAddress, bigIntGameId)
       const gamePlayers = await appMethods.readGamePlayers(1001n, activeAddress, bigIntGameId)
@@ -113,12 +167,12 @@ const GameTable: React.FC = () => {
       setValidatedGameId(bigIntGameId)
       setCurrentGameState(gameState)
       setCurrentGamePlayers(gamePlayers ?? [])
-      setUserMsg('')
+      setIsGameIdZero(false)
     } catch (error) {
       consoleLogger.error('Failed to fetch game state:', error)
       setCurrentGameState(null)
       setCurrentGamePlayers([])
-      setUserMsg('Game not found or could not be loaded.')
+      setIsGameIdZero(false)
     }
   }
 
@@ -165,7 +219,7 @@ const GameTable: React.FC = () => {
 
   // Render JSX
   return activeAddress ? (
-    <div className="p-4">
+    <div className="">
       <div className="mb-4 font-bold text-indigo-200">
         Current Local Time: <span className="text-cyan-300">{new Date(currentTimestamp * 1000).toLocaleTimeString()}</span>
       </div>
@@ -199,7 +253,7 @@ const GameTable: React.FC = () => {
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Game ID</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Admin</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Prize Pool</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Status</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Phase</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Commit</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Trigger</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Players</th>
@@ -216,23 +270,35 @@ const GameTable: React.FC = () => {
               {/* Admin */}
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 relative">
                 {currentGameState.adminAddress === activeAddress ? (
-                  <div>
+                  <div className="flex items-center gap-2 relative">
                     <button
+                      ref={dropdownBtnRefs.adminActionsBtn} // Add this ref
                       onClick={() => toggleDropdown('adminActions')}
                       className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     >
                       {ellipseAddress(currentGameState.adminAddress)}
                     </button>
+
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentGameState.adminAddress)
+                        consoleLogger.info('Address copied to clipboard:', currentGameState.adminAddress)
+                      }}
+                      title="Copy full address"
+                      className="text-pink-400 hover:text-lime-400 ml-1 text-lg"
+                    >
+                      🗐
+                    </button>
+
                     {openDropdowns.adminActions && (
                       <div
-                        ref={dropdownRefs.adminActions}
+                        ref={dropdownListRefs.adminActions}
                         className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10"
                       >
                         <ul className="text-sm text-gray-700">
                           <li
                             className="hover:bg-gray-100 px-4 py-2 cursor-pointer"
                             onClick={() => {
-                              // Add your admin action here
                               consoleLogger.info('Admin clicked: kick players, end game, etc.')
                             }}
                           >
@@ -246,7 +312,19 @@ const GameTable: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  ellipseAddress(currentGameState.adminAddress)
+                  <span className="flex items-center gap-2">
+                    {ellipseAddress(currentGameState.adminAddress)}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentGameState.adminAddress)
+                        consoleLogger.info('Address copied to clipboard:', currentGameState.adminAddress)
+                      }}
+                      title="Copy full address"
+                      className="text-pink-400 hover:text-lime-400 ml-1 text-lg"
+                    >
+                      🗐
+                    </button>
+                  </span>
                 )}
               </td>
               {/* Prize Pool */}
@@ -257,10 +335,10 @@ const GameTable: React.FC = () => {
               <td className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
                 <div className="font-bold flex items-center justify-center gap-1">
                   {Number(currentGameState.prizePool) === 0 ? (
-                    <>Over</>
+                    <span className="text-red-500">Over</span>
                   ) : currentGameState.stakingFinalized ? (
                     <>
-                      Live
+                      <span className="text-cyan-300">Live</span>
                       {currentGamePlayers?.includes(activeAddress ?? '') ? (
                         <>
                           {' / '}
@@ -275,20 +353,16 @@ const GameTable: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      Lobby
-                      {activeAddress !== currentGameState.adminAddress && (
+                      <span className="text-cyan-300 font-bold">Queue</span>
+                      {activeAddress !== currentGameState.adminAddress && !currentGamePlayers?.includes(activeAddress ?? '') && (
                         <>
                           {' / '}
-                          {currentGamePlayers?.includes(activeAddress ?? '') === true ? (
-                            <span className="text-cyan-300 font-bold">Joined</span>
-                          ) : (
-                            <button
-                              onClick={handleJoinGame}
-                              className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                            >
-                              Join
-                            </button>
-                          )}
+                          <button
+                            onClick={handleJoinGame}
+                            className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                          >
+                            Join
+                          </button>
                         </>
                       )}
                     </>
@@ -323,6 +397,7 @@ const GameTable: React.FC = () => {
               {/* Trigger */}
               <td className=" relative font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
+                  ref={dropdownBtnRefs.triggerEventsBtn} // Add this ref
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                   onClick={() => toggleDropdown('triggerEvents')}
                 >
@@ -331,15 +406,15 @@ const GameTable: React.FC = () => {
 
                 {openDropdowns.triggerEvents && (
                   <div
-                    ref={dropdownRefs.triggerEvents}
+                    ref={dropdownListRefs.triggerEvents}
                     className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
                   >
                     <ul className="text-sm text-gray-700">
                       <li
                         className={`relative px-4 py-2 ${
                           eventTriggerConditions.triggersEvent0
-                            ? 'text-indigo-200 bg-slate-800 border border-lime-400 cursor-pointer'
-                            : 'bg-slate-800 text-gray-400 cursor-help'
+                            ? 'text-indigo-200 bg-slate-800 border hover:bg-slate-700 border-lime-400 cursor-pointer'
+                            : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
                         } group`} // group is required for group-hover
                         onClick={() => handleTrigGameEvent(0n)}
                       >
@@ -350,7 +425,7 @@ const GameTable: React.FC = () => {
                         {/* Tooltip shown only when not triggerable */}
                         {!eventTriggerConditions.triggersEvent0 && (
                           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                            This action is unavailable until the game is ready.
+                            {eventTriggerConditions.tooltipMessage0}
                           </div>
                         )}
                       </li>
@@ -358,16 +433,16 @@ const GameTable: React.FC = () => {
                         className={`relative px-4 py-2 ${
                           eventTriggerConditions.triggersEvent2
                             ? 'text-indigo-200 bg-slate-800 border border-lime-400 cursor-pointer'
-                            : 'bg-slate-800 text-gray-400 cursor-help'
+                            : 'bg-slate-800 text-gray-400 cursor-help hover:bg-slate-700'
                         } group`} // group is required for group-hover
                         onClick={() => handleTrigGameEvent(2n)}
                       >
                         <span className={eventTriggerConditions.triggersEvent2 ? 'text-lime-400 font-bold' : ''}>2 - Game Over</span>
 
                         {/* Tooltip shown only when not triggerable */}
-                        {!!eventTriggerConditions.triggersEvent2 && (
+                        {!eventTriggerConditions.triggersEvent2 && (
                           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                            This action is unavailable until the game is ready.
+                            {eventTriggerConditions.tooltipMessage2}
                           </div>
                         )}
                       </li>
@@ -377,32 +452,51 @@ const GameTable: React.FC = () => {
               </td>
               {/* Players */}
               <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
-                <button
-                  className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => toggleDropdown('gamePlayers')}
-                >
-                  View
-                </button>
-
-                {openDropdowns.gamePlayers && (
-                  <div
-                    ref={dropdownRefs.gamePlayers}
-                    className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+                <div className="relative inline-block">
+                  <button
+                    ref={dropdownBtnRefs.gamePlayersBtn} // Add this ref
+                    className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+                    onClick={() => toggleDropdown('gamePlayers')}
                   >
-                    <ul className="text-sm text-gray-700 max-h-60 overflow-auto">
-                      {currentGamePlayers && currentGamePlayers.length > 0 ? (
-                        currentGamePlayers.map((address: string, index: number) => (
-                          <li key={index} className="hover:bg-gray-100 px-4 py-2 cursor-pointer">
-                            {index} - {ellipseAddress(address)}{' '}
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-gray-500 px-4 py-2">Lobby empty</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
+                    View
+                  </button>
+
+                  {openDropdowns.gamePlayers && (
+                    <div
+                      ref={dropdownListRefs.gamePlayers}
+                      className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+                    >
+                      <ul className="text-sm text-gray-700">
+                        {currentGamePlayers && currentGamePlayers.length > 0 ? (
+                          currentGamePlayers.map((address: string, index: number) => (
+                            <li
+                              key={index}
+                              className="bg-slate-800 text-indigo-200 hover:bg-slate-700 px-4 py-2 flex justify-between items-center text-center"
+                            >
+                              <span className="mx-auto flex items-center gap-2">
+                                {index} - {ellipseAddress(address)}
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(address)
+                                    consoleLogger.info('Copied player address:', address)
+                                  }}
+                                  title="Copy full address"
+                                  className="text-pink-400 hover:text-lime-400 ml-1"
+                                >
+                                  🗐
+                                </button>
+                              </span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-gray-500 px-4 py-2 text-center">Lobby empty</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </td>
+
               {/* Leaderboard */}
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
@@ -416,9 +510,7 @@ const GameTable: React.FC = () => {
           ) : (
             <tr>
               <td colSpan={8} className="relative text-center py-4 px-2 text-white">
-                {validatedGameId === 0n && currentGameState === null
-                  ? 'Invalid input. Game ID must not be zero.'
-                  : 'Game not found. Ensure Game ID is valid.'}
+                {isGameIdZero ? 'Invalid input. Game ID must not be zero.' : 'Game not found. Ensure Game ID is valid.'}
               </td>
             </tr>
           )}

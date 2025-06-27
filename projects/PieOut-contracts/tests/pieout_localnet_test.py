@@ -19,9 +19,9 @@ from algokit_utils import (
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
 from algosdk.abi import Method
-from algosdk.encoding import encode_address
-from algosdk.transaction import wait_for_confirmation
-
+from algosdk.encoding import encode_address, encode_as_bytes, msgpack_encode
+from algosdk.transaction import wait_for_confirmation, SignedTransaction
+import msgpack
 from smart_contracts.artifacts.pieout.pieout_client import (
     PieoutClient,
     PieoutFactory,
@@ -170,7 +170,7 @@ def apps(
 
 
 # Fund smart contract app account (app creator is account doing the funding, implied by use of their client instance)
-def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
+def test_fund_app_mbr(creator: SigningAccount, apps: dict[str, PieoutClient]) -> None:
     # Get smart contract application client from from apps dict
     app_client = apps["pieout_client_1"].app_client
     # Send a payment transaction to make the app account operable by funding its base minimum balance requirement

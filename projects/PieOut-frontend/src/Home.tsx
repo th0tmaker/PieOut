@@ -177,8 +177,9 @@ const Home: React.FC<HomeProps> = () => {
   }
 
   return (
-    <div className="p-4" style={{ backgroundColor: '#27292D' }}>
-      <h1 className="text-2xl font-bold mb-4">My Smart Contract DApp</h1>
+    <div className="p-6 min-h-screen bg-slate-800">
+      {/* style={{ backgroundColor: '#27292D' }}> */}
+      <h1 className="text-2xl text-indigo-200 font-bold mb-4">My Smart Contract DApp</h1>
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-purple-500 hover:bg-purple-600 border-2 border-black"
@@ -246,18 +247,6 @@ const Home: React.FC<HomeProps> = () => {
         )}
       </div>
 
-      {currentRound !== null && (
-        <div className="mt-4 text-lg text-blue-700 font-bold font-mono">
-          🧊 CURRENT ROUND: {currentRound}
-          <button
-            className="ml-4 bg-gray-200 hover:bg-gray-300 text-black text-sm font-bold py-1 px-2 rounded-2xl"
-            onClick={selfCheckRound}
-          >
-            🔄 Refresh
-          </button>
-        </div>
-      )}
-
       {appClient && (
         <>
           <p className="text-lg text-green-700 font-bold font-mono">
@@ -266,31 +255,87 @@ const Home: React.FC<HomeProps> = () => {
             {ellipseAddress(appCreator)}
           </p>
           <div className="mt-2 inline-block p-2 border-2 border-indigo-700 rounded-md text-sm font-bold font-mono text-gray-800 shadow-sm">
-            <p className="text-base text-center text-indigo-700 font-semibold">RECORD</p>
+            <p className="text-base text-center text-indigo-200 font-semibold">RECORD</p>
             <p>🪙 Score: {athScore}</p>
             <p>👤 Holder: {ellipseAddress(athAddress)}</p>
           </div>
         </>
       )}
 
-      {boxTrophyData && (
-        <div className="mt-2 inline-block p-2 border-2 border-indigo-700 rounded-md text-sm font-bold font-mono text-gray-800 shadow-sm">
-          <p className="text-base text-center text-indigo-700 font-semibold">GAME TROPHY</p>
-          <p>🏆 Asset ID: {boxTrophyData.assetId}</p>
-          <p>👤 Owner: {ellipseAddress(boxTrophyData.ownerAddress)}</p>
+      {boxTrophyData ? (
+        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-gray-800 shadow-sm">
+          <p className="text-base text-center text-indigo-200">GAME TROPHY</p>
+          <p>🏆 Asset ID: {boxTrophyData.assetId ?? 'N/D'}</p>
+          <p>👤 Owner: {boxTrophyData.ownerAddress ? ellipseAddress(boxTrophyData.ownerAddress) : 'N/D'}</p>
+        </div>
+      ) : (
+        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-indigo-200 shadow-sm">
+          <p className="text-base text-center text-indigo-200">GAME TROPHY</p>
+          <p>🏆︎ Asset ID: N/D</p>
+          <p>♕️ Owner: N/D</p>
         </div>
       )}
 
       {boxCommitRand ? (
-        <div className="mt-2 inline-block p-2 border-2 border-indigo-700 rounded-md text-sm font-bold font-mono text-gray-800 shadow-sm">
-          <p className="text-base text-center text-indigo-700 font-semibold">PLAYER STATUS</p>
-          <p>🎮 Account: {ellipseAddress(activeAddress ?? '')}</p>
-          <p>🆔 Game ID: {boxCommitRand?.gameId?.toString() ?? 'N/A'}</p>
-          <p>🎲 Commit Round: {boxCommitRand?.commitRound?.toString() ?? 'N/A'}</p>
-          <p>⏳ Expiry Round: {boxCommitRand?.expiryRound?.toString() ?? 'N/A'}</p>
+        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-gray-800 shadow-sm">
+          <p className="text-base text-center text-orange-500">PLAYER STATUS</p>
+          {/* <p>🎮 Account: {ellipseAddress(activeAddress ?? '')}</p> */}
+          <p>
+            Account: <span className="text-cyan-300">{ellipseAddress(activeAddress ?? '')} 🗣</span>
+          </p>
+          <p>🆔 Game ID: {boxCommitRand.gameId?.toString() ?? 'N/D'}</p>
+          <p>🎲 Commit Round❒: {boxCommitRand.commitRound?.toString() ?? 'N/D'}</p>
+          <p>⏳ Expiry Round❒: {boxCommitRand.expiryRound?.toString() ?? 'N/D'}</p>
         </div>
       ) : (
-        <p className="mt-4 text-sm font-mono text-red-500">Commit data not found</p>
+        <div className="my-2 p-2 border-2 border-cyan-300 rounded-md font-bold font-mono text-indigo-200 shadow-sm inline-block w-fit">
+          {' '}
+          <p className="text-lg text-center text-cyan-300 font-bold">
+            <span className="mb-2 border-b-2 border-cyan-300 pb-1 inline-block">UN/REGISTER</span>
+          </p>
+          <div className="flex justify-center gap-4 mt-2 mb-4">
+            <button
+              className="text-base bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+              onClick={() => consoleLogger.info('Register clicked')}
+            >
+              Self
+            </button>
+            <button
+              className="text-base bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+              onClick={() => consoleLogger.info('Another action')}
+            >
+              Other
+            </button>
+          </div>
+          <hr className="my-2 border-t-[2px] border-cyan-300" />
+          <p className="text-lg text-center text-cyan-300">𓊈USER PROFILE𓊉</p>
+          <p>
+            Status: <span className="text-red-400">Not Registered</span>
+          </p>
+          {/* <hr className="my-2 border-t-[2px] border-cyan-300 opacity-80" /> */}
+          <p>Account: N/D </p>
+          <p>Game ID: N/D</p>
+          <p>Commit Round: N/D ❒</p>
+          <p>Expiry Round: N/D ❒</p>
+          {/* <button
+            className="block mx-auto mt-4 mb-2 text-base text-center bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+            onClick={() => consoleLogger.info('bla')}
+          >
+            Register
+          </button> */}
+        </div>
+      )}
+
+      {currentRound !== null && (
+        <div className="mt-4 text-indigo-200 font-bold">
+          Current Round: <span className="text-cyan-300">{currentRound} ❒</span>
+          {/* <button
+            className="ml-4 bg-gray-200 hover:bg-gray-300 text-black text-sm font-bold py-1 px-2 rounded-2xl"
+            onClick={selfCheckRound}
+          >
+            🔄 Refresh
+          </button> */}
+        </div>
       )}
 
       <div>
