@@ -16,12 +16,12 @@ import AppCalls from './components/AppCalls'
 import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
 import Transact from './components/Transact'
+import { useAppClient } from './contexts/AppClientContext'
+import { useBoxCommitRand } from './contexts/BoxCommitRandContext'
 import { pollOnChainData } from './hooks/CurrentRound'
 import { PieOutMethods } from './methods'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
-import { useAppClient } from './contexts/AppClientContext'
-import { useBoxCommitRand } from './contexts/BoxCommitRandContext'
 
 interface HomeProps {}
 
@@ -276,55 +276,97 @@ const Home: React.FC<HomeProps> = () => {
         </div>
       )}
 
-      {boxCommitRand ? (
-        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-gray-800 shadow-sm">
-          <p className="text-base text-center text-orange-500">PLAYER STATUS</p>
-          {/* <p>🎮 Account: {ellipseAddress(activeAddress ?? '')}</p> */}
+      <div className="p-4 border-2 border-cyan-300 rounded-md font-bold font-mono text-indigo-200 shadow-sm inline-block w-fit space-y-3">
+        {/* USER PROFILE Button */}
+        <button className="block mx-auto text-lg text-pink-400 underline hover:text-lime-300 transition-colors duration-200 pb-1 px-2 font-bold">
+          USER PROFILE
+        </button>
+
+        {/* Divider */}
+        <hr className="border-t-[2px] border-cyan-300 opacity-80" />
+
+        {/* Info */}
+        <div className="space-y-1">
           <p>
-            Account: <span className="text-cyan-300">{ellipseAddress(activeAddress ?? '')} 🗣</span>
+            Status:{' '}
+            <span className={boxCommitRand ? 'text-green-400' : 'text-red-400'}>{boxCommitRand ? 'Registered' : 'Not Registered'}</span>
           </p>
-          <p>🆔 Game ID: {boxCommitRand.gameId?.toString() ?? 'N/D'}</p>
-          <p>🎲 Commit Round❒: {boxCommitRand.commitRound?.toString() ?? 'N/D'}</p>
-          <p>⏳ Expiry Round❒: {boxCommitRand.expiryRound?.toString() ?? 'N/D'}</p>
+
+          <p className="flex items-center">
+            Account:{' '}
+            {boxCommitRand ? (
+              <span className="text-cyan-300 ml-1 flex items-center">
+                {ellipseAddress(activeAddress ?? '')}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeAddress ?? '')
+                    consoleLogger.info('Address copied to clipboard:', activeAddress)
+                  }}
+                  title="Copy full address"
+                  className="text-pink-400 hover:text-lime-400 ml-2"
+                >
+                  🗐
+                </button>
+              </span>
+            ) : (
+              <span className="ml-1">N/D</span>
+            )}
+          </p>
+
+          <p>
+            Game ID:{' '}
+            {boxCommitRand?.gameId !== undefined && boxCommitRand?.gameId !== null ? (
+              <span className="text-cyan-300">{`${boxCommitRand.gameId.toString()} #`}</span>
+            ) : (
+              'N/D'
+            )}
+          </p>
+
+          <p>
+            Commit Round:{' '}
+            {boxCommitRand?.commitRound !== undefined && boxCommitRand?.commitRound !== null ? (
+              <span className="text-cyan-300">{`${boxCommitRand.commitRound} ❒`}</span>
+            ) : (
+              'N/D'
+            )}
+          </p>
+
+          <p>
+            Expiry Round:{' '}
+            {boxCommitRand?.expiryRound !== undefined && boxCommitRand?.expiryRound !== null ? (
+              <span className="text-cyan-300">{`${boxCommitRand.expiryRound} ❒`}</span>
+            ) : (
+              'N/D'
+            )}
+          </p>
         </div>
-      ) : (
-        <div className="my-2 p-2 border-2 border-cyan-300 rounded-md font-bold font-mono text-indigo-200 shadow-sm inline-block w-fit">
-          {' '}
-          <p className="text-lg text-center text-cyan-300 font-bold">
-            <span className="mb-2 border-b-2 border-cyan-300 pb-1 inline-block">UN/REGISTER</span>
-          </p>
-          <div className="flex justify-center gap-4 mt-2 mb-4">
-            <button
-              className="text-base bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
-              onClick={() => consoleLogger.info('Register clicked')}
-            >
-              Self
-            </button>
-            <button
-              className="text-base bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
-              onClick={() => consoleLogger.info('Another action')}
-            >
-              Other
-            </button>
-          </div>
-          <hr className="my-2 border-t-[2px] border-cyan-300" />
-          <p className="text-lg text-center text-cyan-300">𓊈USER PROFILE𓊉</p>
+
+        {/* Register Button */}
+        <button
+          className="block mx-auto mt-4 text-base text-center bg-slate-800 text-pink-300 border-2 border-pink-400 px-4 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={handleCommit}
+        >
+          {boxCommitRand ? 'Unregister' : 'Register'}
+        </button>
+
+        {/* Divider */}
+        <hr className="border-t-[2px] border-cyan-300 opacity-80" />
+
+        {/* Unregister Message */}
+        <div className="text-center text-white text-sm space-y-1">
           <p>
-            Status: <span className="text-red-400">Not Registered</span>
+            Want to unregister
+            <br />
+            another account?
           </p>
-          {/* <hr className="my-2 border-t-[2px] border-cyan-300 opacity-80" /> */}
-          <p>Account: N/D </p>
-          <p>Game ID: N/D</p>
-          <p>Commit Round: N/D ❒</p>
-          <p>Expiry Round: N/D ❒</p>
-          {/* <button
-            className="block mx-auto mt-4 mb-2 text-base text-center bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
-            onClick={() => consoleLogger.info('bla')}
+          <button
+            onClick={() => consoleLogger.info('Unregister another account clicked')}
+            className="text-pink-400 underline hover:text-lime-300 transition-colors duration-200"
           >
-            Register
-          </button> */}
+            CLICK HERE
+          </button>
         </div>
-      )}
+      </div>
 
       {currentRound !== null && (
         <div className="mt-4 text-indigo-200 font-bold">
