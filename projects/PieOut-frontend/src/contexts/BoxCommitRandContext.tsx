@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useRef } from 'react'
+import React, { createContext, useContext, useState, useRef, useMemo, MutableRefObject } from 'react'
 
-type BoxCommitRand = {
+export type BoxCommitRand = {
   gameId: bigint | null
   commitRound: bigint | null
   expiryRound: bigint | null
@@ -9,23 +9,31 @@ type BoxCommitRand = {
 type BoxCommitRandContextType = {
   boxCommitRand: BoxCommitRand
   setBoxCommitRand: (entry: BoxCommitRand) => void
-  boxCommitRandRef: React.MutableRefObject<BoxCommitRand>
+  boxCommitRandRef: MutableRefObject<BoxCommitRand>
 }
 
 const BoxCommitRandContext = createContext<BoxCommitRandContextType | undefined>(undefined)
 
 export const BoxCommitRandProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [boxCommitRand, _setBoxCommitRand] = useState<BoxCommitRand>(null)
+  const [boxCommitRand, setBoxCommitRand] = useState<BoxCommitRand>(null)
   const boxCommitRandRef = useRef<BoxCommitRand>(null)
 
-  const setBoxCommitRand = (entry: BoxCommitRand) => {
+  const handleSetBoxCommitRand = (entry: BoxCommitRand) => {
     boxCommitRandRef.current = entry
-    _setBoxCommitRand(entry)
+    setBoxCommitRand(entry)
   }
 
-  return (
-    <BoxCommitRandContext.Provider value={{ boxCommitRand, setBoxCommitRand, boxCommitRandRef }}>{children}</BoxCommitRandContext.Provider>
+  // memoize to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({
+      boxCommitRand,
+      setBoxCommitRand: handleSetBoxCommitRand,
+      boxCommitRandRef,
+    }),
+    [boxCommitRand], // only changes when boxCommitRand changes
   )
+
+  return <BoxCommitRandContext.Provider value={value}>{children}</BoxCommitRandContext.Provider>
 }
 
 export const useBoxCommitRand = (): BoxCommitRandContextType => {

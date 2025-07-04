@@ -3,10 +3,10 @@ module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      fontFamily: {
-        // kaisei: ['"Kaisei Decol"', 'serif'],
-        // sans: ['Amatic SC', 'cursive'],
-        // sans: ['"Kaisei Decol"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      zIndex: {
+        modal: '1000',
+        'modal-overlay': '1050',
+        tooltip: '1100',
       },
     },
   },

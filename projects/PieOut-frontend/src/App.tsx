@@ -3,7 +3,7 @@ import { SnackbarProvider } from 'notistack'
 import Home from './Home'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 import { algorand } from './utils/network/getAlgorandClient'
-import { PieOutMethods } from './methods'
+import { PieoutMethods } from './methods'
 import { AppClientProvider } from './contexts/AppClientContext'
 import { BoxCommitRandProvider } from './contexts/BoxCommitRandContext'
 
@@ -34,7 +34,7 @@ const AppProvider = () => {
   const { activeAddress, transactionSigner } = useWallet()
   algorand.setDefaultSigner(transactionSigner)
 
-  const appMethods = activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined
+  const appMethods = activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined
 
   return (
     <AppClientProvider activeAddress={activeAddress ?? ''} appMethods={appMethods}>

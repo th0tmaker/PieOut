@@ -2,7 +2,7 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { GameState } from '../contracts/Pieout'
-import { PieOutMethods } from '../methods'
+import { PieoutMethods } from '../methods'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
@@ -10,12 +10,17 @@ import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { usePollGameData } from '../hooks/usePollGameData'
+import LeaderboardModal from './LeaderboardModal'
+import { useModal } from '../hooks/useModal'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
   // const { appClient } = useAppClient()
+  const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
+  const [openLeaderboardModal, setOpenLeaderboardModal] = useState<boolean>(false)
+  const { modal, toggleModal, openModal, closeModal, getModalProps } = useModal()
 
-  const appMethods = useMemo(() => (activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined), [activeAddress])
+  const appMethods = useMemo(() => (activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined), [activeAddress])
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
@@ -29,6 +34,13 @@ const GameTable: React.FC = () => {
 
   const currentTimestamp = useCurrentTimestamp()
 
+  // const toggleDemoModal = () => {
+  //   setOpenDemoModal(!openDemoModal)
+  // }
+
+  const toggleLeaderboardModal = () => {
+    setOpenLeaderboardModal(!openLeaderboardModal)
+  }
   const [openDropdowns, setOpenDropdowns] = useState({
     adminActions: false,
     triggerEvents: false,
@@ -220,12 +232,19 @@ const GameTable: React.FC = () => {
   // Render JSX
   return activeAddress ? (
     <div className="">
-      <div className="mb-4 font-bold text-indigo-200">
+      <div className="mb-2 font-bold text-indigo-200">
         Current Local Time: <span className="text-cyan-300">{new Date(currentTimestamp * 1000).toLocaleTimeString()}</span>
       </div>
-      <div className="mb-4 flex items-center gap-4">
-        <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
 
+      <div className="mb-4 flex items-center gap-4">
+        {/* <button
+          className="bg-slate-800 text-lime-300 border-2 border-lime-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={() => readBoxGameData(inputedGameId)}
+        >
+          Create New Game
+        </button>
+        <span className="font-bold text-indigo-200">|———|</span> */}
+        <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
         <input
           className={`w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 focus:bg-slate-700 ${
             inputedGameId ? 'bg-slate-700' : ''
@@ -244,8 +263,6 @@ const GameTable: React.FC = () => {
         >
           Input
         </button>
-        {/* Error Message */}
-        <span className="flex items-center gap-4">{userMsg && <span className="text-red-500 text-sm">{userMsg}</span>}</span>
       </div>
       <table className="min-w-min border border-indigo-300 rounded-md">
         <thead className="bg-gray-100">
@@ -474,7 +491,7 @@ const GameTable: React.FC = () => {
                               className="bg-slate-800 text-indigo-200 hover:bg-slate-700 px-4 py-2 flex justify-between items-center text-center"
                             >
                               <span className="mx-auto flex items-center gap-2">
-                                {index} - {ellipseAddress(address)}
+                                {ellipseAddress(address)}
                                 <button
                                   onClick={() => {
                                     navigator.clipboard.writeText(address)
@@ -501,9 +518,9 @@ const GameTable: React.FC = () => {
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={() => consoleLogger.info('Leaderboard:', currentGameState)}
+                  onClick={toggleLeaderboardModal}
                 >
-                  View
+                  Open
                 </button>
               </td>
             </tr>
@@ -516,6 +533,7 @@ const GameTable: React.FC = () => {
           )}
         </tbody>
       </table>
+      <LeaderboardModal {...getModalProps('leaderboard')} />
     </div>
   ) : null
 }

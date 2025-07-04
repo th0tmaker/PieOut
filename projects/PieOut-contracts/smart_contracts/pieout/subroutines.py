@@ -206,7 +206,7 @@ def calc_score_get_place(
 
 # Check if game is live and execute its conditional logic
 @subroutine
-def is_game_live(game_state: stc.GameState) -> None:
+def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
     # Check game live criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
@@ -222,7 +222,8 @@ def is_game_live(game_state: stc.GameState) -> None:
 
         # Emit ARC-28 event for off-chain tracking
         arc4.emit(
-            "game_live(bool,uint64)",
+            "game_live(uint64,bool,uint64)",
+            game_id,
             game_state.staking_finalized,
             game_state.expiry_ts,
         )
@@ -265,8 +266,11 @@ def is_game_over(
 
         # Emit ARC-28 event for off-chain tracking
         arc4.emit(
-            "game_over(uint8,address,address,address)",
+            "game_over(uint64,uint8,uint8,uint8,address,address,address)",
+            game_id,
             game_state.first_place_score,
+            game_state.second_place_score,
+            game_state.third_place_score,
             game_state.first_place_address,
             game_state.second_place_address,
             game_state.third_place_address,

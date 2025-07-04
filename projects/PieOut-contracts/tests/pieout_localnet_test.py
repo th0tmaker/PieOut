@@ -21,7 +21,6 @@ from algokit_utils.models import SigningAccount
 from algosdk.abi import Method
 from algosdk.encoding import encode_address, encode_as_bytes, msgpack_encode
 from algosdk.transaction import wait_for_confirmation, SignedTransaction
-import msgpack
 from smart_contracts.artifacts.pieout.pieout_client import (
     PieoutClient,
     PieoutFactory,

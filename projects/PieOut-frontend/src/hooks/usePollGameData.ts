@@ -3,10 +3,10 @@ import deepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAppClient } from '../contexts/AppClientContext'
 import { GameState } from '../contracts/Pieout'
-import { PieOutMethods } from '../methods'
+import { PieoutMethods } from '../methods'
 
 type UsePollGameDataProps = {
-  appMethods?: PieOutMethods
+  appMethods?: PieoutMethods
   validatedGameId: bigint
   activeAddress?: string
   currentGameState: GameState | null
@@ -56,22 +56,27 @@ export function usePollGameData({
   }, [currentGamePlayers])
 
   const poll = useCallback(async () => {
-    if (!activeAddress || !appMethods || !gameId) return
+    if (!activeAddress || !appMethods) return
 
     try {
-      const [newGameState, newGamePlayers] = await Promise.all([
-        appMethods.readGameState(1001n, activeAddress, gameId),
-        appMethods.readGamePlayers(1001n, activeAddress, gameId),
-      ])
+      let newGameState: GameState | null = null
+      let newGamePlayers: string[] | null = null
 
-      if (newGameState && !deepEqual(gameStateRef.current, newGameState)) {
-        setCurrentGameState(newGameState)
-      }
-      if (Array.isArray(newGamePlayers) && !deepEqual(gamePlayersRef.current, newGamePlayers)) {
-        setCurrentGamePlayers([...newGamePlayers])
+      if (gameId) {
+        ;[newGameState, newGamePlayers] = await Promise.all([
+          appMethods.readGameState(1001n, activeAddress, gameId),
+          appMethods.readGamePlayers(1001n, activeAddress, gameId),
+        ])
+
+        if (newGameState && !deepEqual(gameStateRef.current, newGameState)) {
+          setCurrentGameState(newGameState)
+        }
+        if (Array.isArray(newGamePlayers) && !deepEqual(gamePlayersRef.current, newGamePlayers)) {
+          setCurrentGamePlayers([...newGamePlayers])
+        }
       }
 
-      // Get boxCommitRand entry for active address
+      // Get boxCommitRand entry for active address (always, even if no gameId)
       if (setBoxCommitRand && appClient) {
         const boxCommitRandMap = await appClient.state.box.boxCommitRand.getMap()
         const entry = boxCommitRandMap?.get(activeAddress)
@@ -127,7 +132,7 @@ export function usePollGameData({
     }
 
     // Don't start polling if currentGameState is explicitly null
-    if (!activeAddress || !appMethods || !gameId || currentGameState === null) return
+    if (!activeAddress || !appMethods) return
 
     poll()
 

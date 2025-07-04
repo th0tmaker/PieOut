@@ -11,7 +11,7 @@
 // src/components/Home.tsx
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import AppCalls from './components/AppCalls'
 import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
@@ -19,9 +19,12 @@ import Transact from './components/Transact'
 import { useAppClient } from './contexts/AppClientContext'
 import { useBoxCommitRand } from './contexts/BoxCommitRandContext'
 import { pollOnChainData } from './hooks/CurrentRound'
-import { PieOutMethods } from './methods'
+import { PieoutMethods } from './methods'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
+// import { useAppSubscriber } from './hooks/useAppSubscriber'
+import LeaderboardModal from './components/LeaderboardModal'
+import { useModal } from './hooks/useModal'
 
 interface HomeProps {}
 
@@ -29,11 +32,14 @@ const Home: React.FC<HomeProps> = () => {
   const [openWalletModal, setOpenWalletModal] = useState<boolean>(false)
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [appCallsDemoModal, setAppCallsDemoModal] = useState<boolean>(false)
+  const [leaderboardModal, setLeaderboardModal] = useState<boolean>(false)
 
   const { activeAddress, transactionSigner } = useWallet()
+  const { modal, toggleModal, openModal, closeModal, getModalProps } = useModal()
+
   algorand.setDefaultSigner(transactionSigner)
 
-  const appMethods = activeAddress ? new PieOutMethods(algorand, activeAddress) : undefined
+  const appMethods = activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined
 
   const { appClient, appCreator, getAppClient } = useAppClient()
   const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
@@ -44,17 +50,43 @@ const Home: React.FC<HomeProps> = () => {
 
   const [toggleGameOptions, setToggleGameOptions] = useState(false)
 
-  const toggleWalletModal = () => {
-    setOpenWalletModal(!openWalletModal)
-  }
+  const [showTrophyDetails, setShowTrophyDetails] = useState(false)
 
-  const toggleDemoModal = () => {
-    setOpenDemoModal(!openDemoModal)
-  }
+  const [showUserProfile, setShowUserProfile] = useState(false)
+  const [openLeaderboardModal, setOpenLeaderboardModal] = useState<boolean>(false)
 
-  const toggleAppCallsModal = () => {
-    setAppCallsDemoModal(!appCallsDemoModal)
-  }
+  const hasBoxCommitRand: boolean =
+    boxCommitRand?.gameId != null && boxCommitRand?.commitRound != null && boxCommitRand?.expiryRound != null
+
+  // const { startAppSubscriber, stopAppSubscriber } = useAppSubscriber({})
+
+  useEffect(() => {
+    consoleLogger.info('blahhh', boxCommitRand)
+  }, [boxCommitRand])
+
+  // RUN SUBSCRIBER CODE
+  // useEffect(() => {
+  //   consoleLogger.info('subscriber is running')
+  //   startAppSubscriber()
+
+  //   return () => stopAppSubscriber()
+  // }, []) // ✅ Only run once on mount
+
+  // const toggleWalletModal = () => {
+  //   setOpenWalletModal(!openWalletModal)
+  // }
+
+  // const toggleLeaderboardModal = () => {
+  //   setOpenLeaderboardModal(!openLeaderboardModal)
+  // }
+
+  // const toggleDemoModal = () => {
+  //   setOpenDemoModal(!openDemoModal)
+  // }
+
+  // const toggleAppCallsModal = () => {
+  //   setAppCallsDemoModal(!appCallsDemoModal)
+  // }
 
   const handleGenContract = async () => {
     if (!activeAddress || !appMethods) return
@@ -183,7 +215,7 @@ const Home: React.FC<HomeProps> = () => {
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-purple-500 hover:bg-purple-600 border-2 border-black"
-        onClick={toggleWalletModal}
+        onClick={() => toggleModal('wallet')}
       >
         Wallet
       </button>
@@ -247,129 +279,81 @@ const Home: React.FC<HomeProps> = () => {
         )}
       </div>
 
-      {appClient && (
-        <>
-          <p className="text-lg text-green-700 font-bold font-mono">
-            💻 APP - Name:{appClient?.appName.toString()}, ID:{appClient?.appId.toString()}, Address:{}
-            {ellipseAddress(appClient?.appAddress.toString())}, Creator Address:{}
-            {ellipseAddress(appCreator)}
-          </p>
-          <div className="mt-2 inline-block p-2 border-2 border-indigo-700 rounded-md text-sm font-bold font-mono text-gray-800 shadow-sm">
-            <p className="text-base text-center text-indigo-200 font-semibold">RECORD</p>
-            <p>🪙 Score: {athScore}</p>
-            <p>👤 Holder: {ellipseAddress(athAddress)}</p>
-          </div>
-        </>
-      )}
-
-      {boxTrophyData ? (
-        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-gray-800 shadow-sm">
-          <p className="text-base text-center text-indigo-200">GAME TROPHY</p>
-          <p>🏆 Asset ID: {boxTrophyData.assetId ?? 'N/D'}</p>
-          <p>👤 Owner: {boxTrophyData.ownerAddress ? ellipseAddress(boxTrophyData.ownerAddress) : 'N/D'}</p>
-        </div>
-      ) : (
-        <div className="mt-2 p-2 border-2 border-indigo-700 rounded-md font-bold font-mono text-indigo-200 shadow-sm">
-          <p className="text-base text-center text-indigo-200">GAME TROPHY</p>
-          <p>🏆︎ Asset ID: N/D</p>
-          <p>♕️ Owner: N/D</p>
-        </div>
-      )}
-
-      <div className="p-4 border-2 border-cyan-300 rounded-md font-bold font-mono text-indigo-200 shadow-sm inline-block w-fit space-y-3">
-        {/* USER PROFILE Button */}
-        <button className="block mx-auto text-lg text-pink-400 underline hover:text-lime-300 transition-colors duration-200 pb-1 px-2 font-bold">
-          USER PROFILE
-        </button>
-
-        {/* Divider */}
-        <hr className="border-t-[2px] border-cyan-300 opacity-80" />
-
-        {/* Info */}
-        <div className="space-y-1">
-          <p>
-            Status:{' '}
-            <span className={boxCommitRand ? 'text-green-400' : 'text-red-400'}>{boxCommitRand ? 'Registered' : 'Not Registered'}</span>
-          </p>
-
-          <p className="flex items-center">
-            Account:{' '}
-            {boxCommitRand ? (
-              <span className="text-cyan-300 ml-1 flex items-center">
-                {ellipseAddress(activeAddress ?? '')}
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeAddress ?? '')
-                    consoleLogger.info('Address copied to clipboard:', activeAddress)
-                  }}
-                  title="Copy full address"
-                  className="text-pink-400 hover:text-lime-400 ml-2"
-                >
-                  🗐
-                </button>
-              </span>
-            ) : (
-              <span className="ml-1">N/D</span>
-            )}
-          </p>
-
-          <p>
-            Game ID:{' '}
-            {boxCommitRand?.gameId !== undefined && boxCommitRand?.gameId !== null ? (
-              <span className="text-cyan-300">{`${boxCommitRand.gameId.toString()} #`}</span>
-            ) : (
-              'N/D'
-            )}
-          </p>
-
-          <p>
-            Commit Round:{' '}
-            {boxCommitRand?.commitRound !== undefined && boxCommitRand?.commitRound !== null ? (
-              <span className="text-cyan-300">{`${boxCommitRand.commitRound} ❒`}</span>
-            ) : (
-              'N/D'
-            )}
-          </p>
-
-          <p>
-            Expiry Round:{' '}
-            {boxCommitRand?.expiryRound !== undefined && boxCommitRand?.expiryRound !== null ? (
-              <span className="text-cyan-300">{`${boxCommitRand.expiryRound} ❒`}</span>
-            ) : (
-              'N/D'
-            )}
-          </p>
-        </div>
-
-        {/* Register Button */}
+      {/* TROPHY INFO */}
+      <div className="inline-block w-fit border-2 border-yellow-300 rounded-md shadow-sm font-bold font-mono text-indigo-200">
         <button
-          className="block mx-auto mt-4 text-base text-center bg-slate-800 text-pink-300 border-2 border-pink-400 px-4 py-1 rounded-full hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
-          onClick={handleCommit}
+          className="block mx-auto text-lg text-pink-400 underline hover:text-lime-300 transition-colors duration-200 font-bold px-4 py-2"
+          onClick={() => setShowTrophyDetails((prev) => !prev)}
         >
-          {boxCommitRand ? 'Unregister' : 'Register'}
+          HONORS
         </button>
 
-        {/* Divider */}
-        <hr className="border-t-[2px] border-cyan-300 opacity-80" />
-
-        {/* Unregister Message */}
-        <div className="text-center text-white text-sm space-y-1">
-          <p>
-            Want to unregister
-            <br />
-            another account?
-          </p>
-          <button
-            onClick={() => consoleLogger.info('Unregister another account clicked')}
-            className="text-pink-400 underline hover:text-lime-300 transition-colors duration-200"
-          >
-            CLICK HERE
-          </button>
+        <div
+          className={`transition-[max-height,opacity] duration-700 ease-in overflow-hidden px-4 ${
+            showTrophyDetails ? 'max-h-96 opacity-100 pb-4' : 'max-h-0 opacity-0'
+          }`}
+        >
+          {boxTrophyData?.assetId && boxTrophyData?.ownerAddress ? (
+            <>
+              <p>
+                High Score: <span className="text-yellow-300">{athScore ?? 'N/D'} ♕️</span>
+              </p>
+              <p className="flex items-center">
+                Claimant:
+                <span className="text-yellow-300 ml-1 flex items-center">
+                  {ellipseAddress(boxTrophyData.ownerAddress)}
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(boxTrophyData.ownerAddress)
+                      consoleLogger.info('Address copied to clipboard:', activeAddress)
+                    }}
+                    title="Copy full address"
+                    className="text-pink-400 hover:text-lime-400 ml-2"
+                  >
+                    🗐
+                  </button>
+                </span>
+              </p>
+              <p>
+                Trophy (Asset ID): <span className="text-yellow-300">{boxTrophyData.assetId} 🏆︎</span>
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-center text-white mt-2">No data available.</p>
+          )}
         </div>
       </div>
 
+      {/* Buttons */}
+      <div className="flex flex-row items-center gap-2">
+        <button
+          className="mt-4 text-base text-center bg-slate-800 text-yellow-300 border-2 border-yellow-400 px-4 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={() => toggleModal('wallet')}
+        >
+          Wallet
+        </button>
+        <button
+          className="mt-4 text-base text-center bg-slate-800 text-yellow-300 border-2 border-yellow-400 px-4 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={() => toggleModal('leaderboard')}
+        >
+          Profile
+        </button>
+        <button
+          className="mt-4 text-base text-center bg-slate-800 text-yellow-300 border-2 border-yellow-400 px-4 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={() => toggleModal('leaderboard')}
+        >
+          Game
+        </button>
+        <button
+          className="mt-4 text-base text-center bg-slate-800 text-yellow-300 border-2 border-yellow-400 px-4 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
+          onClick={() => setShowTrophyDetails((prev) => !prev)}
+        >
+          Honors
+        </button>
+      </div>
+
       {currentRound !== null && (
-        <div className="mt-4 text-indigo-200 font-bold">
+        <div className="mt-2 text-indigo-200 font-bold">
           Current Round: <span className="text-cyan-300">{currentRound} ❒</span>
           {/* <button
             className="ml-4 bg-gray-200 hover:bg-gray-300 text-black text-sm font-bold py-1 px-2 rounded-2xl"
@@ -385,8 +369,11 @@ const Home: React.FC<HomeProps> = () => {
         {/* Your other UI */}
         <GameTable />
       </div>
+      <LeaderboardModal {...getModalProps('leaderboard')} />
 
-      <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} />
+      <ConnectWallet {...getModalProps('wallet')} />
+
+      {/* <ConnectWallet openModal={openWalletModal} closeModal={toggleWalletModal} /> */}
       <Transact openModal={openDemoModal} setModalState={setOpenDemoModal} />
       <AppCalls openModal={appCallsDemoModal} setModalState={setAppCallsDemoModal} />
     </div>

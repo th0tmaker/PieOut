@@ -3,7 +3,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { useSnackbar } from 'notistack'
 import { useState } from 'react'
 import { getAlgodConfigFromViteEnvironment } from '../utils/network/getAlgoClientConfigs'
-import { PieOutMethods } from '../methods'
+import { PieoutMethods } from '../methods'
 import { makeApplicationCallTxnFromObject, OnApplicationComplete } from 'algosdk'
 
 interface TransactInterface {

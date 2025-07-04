@@ -2,11 +2,9 @@ import { useWallet, Wallet, WalletId } from '@txnlab/use-wallet-react'
 import Account from './Account'
 import { useEffect, useState } from 'react'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import { ModalInterface } from '../interfaces/modal'
 
-interface ConnectWalletInterface {
-  openModal: boolean
-  closeModal: () => void
-}
+interface ConnectWalletInterface extends ModalInterface {}
 
 const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
   const { wallets, activeWalletAccounts, activeAddress } = useWallet()

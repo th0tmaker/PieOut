@@ -364,7 +364,7 @@ class Pieout(ARC4Contract):
         )
 
         # Check if game is live on every call
-        srt.is_game_live(game_state)
+        srt.is_game_live(game_id=game_id, game_state=game_state)
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
@@ -641,7 +641,7 @@ class Pieout(ARC4Contract):
             assert game_state.staking_finalized == False, err.STAKING_FINAL  # noqa: E712
             assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
 
-            srt.is_game_live(game_state)
+            srt.is_game_live(game_id=game_id, game_state=game_state)
 
         # EIif trigger id 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:

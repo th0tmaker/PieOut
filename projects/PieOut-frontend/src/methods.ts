@@ -3,7 +3,7 @@ import { AlgorandClient, microAlgo } from '@algorandfoundation/algokit-utils'
 import { ABIMethod } from 'algosdk'
 import { PieoutClient, PieoutFactory } from './contracts/Pieout'
 
-export class PieOutMethods {
+export class PieoutMethods {
   private readonly algorand: AlgorandClient
   private readonly factory: PieoutFactory
 
@@ -20,7 +20,7 @@ export class PieOutMethods {
   }
 
   // Factory deploy and handle the smart contract application creation and deletion
-  async factoryDeployContract(sender: string): Promise<PieoutClient> {
+  async deployApp(sender: string): Promise<PieoutClient> {
     const { appClient } = await this.factory.deploy({
       appName: 'PieOut',
       createParams: {
@@ -46,7 +46,7 @@ export class PieOutMethods {
   }
 
   // Factory create the smart contract application by calling the generate method
-  async genContract(sender: string, noteGenContract?: string | Uint8Array, noteFundAppMbr?: string | Uint8Array): Promise<PieoutClient> {
+  async generateApp(sender: string, noteGenContract?: string | Uint8Array, noteFundAppMbr?: string | Uint8Array): Promise<PieoutClient> {
     const { appClient } = await this.factory.send.create.generate({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
@@ -67,7 +67,7 @@ export class PieOutMethods {
   }
 
   // Delete the smart contract application by calling the terminate method
-  async terminateContract(appId: bigint, sender: string, note?: string | Uint8Array) {
+  async terminateApp(appId: bigint, sender: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
     await client.appClient.send.delete({
