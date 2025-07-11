@@ -7,6 +7,7 @@ class GameState(arc4.Struct):
     staking_finalized: arc4.Bool
     max_players: arc4.UInt8
     active_players: arc4.UInt8
+    best_score: arc4.UInt8
     first_place_score: arc4.UInt8
     second_place_score: arc4.UInt8
     third_place_score: arc4.UInt8
@@ -22,11 +23,14 @@ class GameState(arc4.Struct):
 # Struct containing game trophy values
 class GameTrophy(arc4.Struct):
     asset_id: arc4.UInt64
-    owner_address: arc4.Address
+    high_score: arc4.UInt8
+    highscorer_address: arc4.Address
 
 
-# Struct containing commit randomness values
-class CommitRand(arc4.Struct):
+# Struct containing game register values
+class GameRegister(arc4.Struct):
+    hosting_game: arc4.Bool
+    best_score: arc4.UInt8
     game_id: arc4.UInt64
-    commit_round: arc4.UInt64
     expiry_round: arc4.UInt64
+    commit_rand_round: arc4.UInt64

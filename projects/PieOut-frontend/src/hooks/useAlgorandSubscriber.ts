@@ -19,7 +19,6 @@ const pieoutEvents = {
       name: 'player_score',
       args: [
         { name: 'game_id', type: 'uint64' },
-        { name: 'score_id', type: 'uint64' },
         { name: 'player', type: 'address' },
         { name: 'score', type: 'uint8' },
       ],

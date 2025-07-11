@@ -1,4 +1,4 @@
-import { BoxCommitRand } from '../contexts/BoxCommitRandContext'
+import { BoxCommitRand } from '../providers/BoxCommitRandDataProvider'
 
 //src/conditions/conditions.ts
 export function hasBoxCommitRand(boxCommitRand: BoxCommitRand | undefined): boolean {

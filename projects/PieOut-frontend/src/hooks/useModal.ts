@@ -3,9 +3,11 @@ import { useState, useCallback } from 'react'
 // Define a modal state type - each modal has a boolean open/closed state
 type ModalState = {
   wallet: boolean
-  demo: boolean
-  appCalls: boolean
+  profile: boolean
+  profileBlurb: boolean
   leaderboard: boolean
+  honors: boolean
+  honorsBlurb: boolean
   profileUserMsg: boolean
 }
 
@@ -14,9 +16,11 @@ export function useModal() {
   // Initialize all modals as closed (false)
   const [modal, setModal] = useState<ModalState>({
     wallet: false,
-    demo: false,
-    appCalls: false,
+    profile: false,
+    profileBlurb: false,
     leaderboard: false,
+    honors: false,
+    honorsBlurb: false,
     profileUserMsg: false,
   })
 
@@ -47,8 +51,8 @@ export function useModal() {
   // Define a callback method that returns an object with openModal (boolean) and closeModal (function) props
   const getProps = useCallback(
     (modalName: keyof ModalState) => ({
-      openModal: modal[modalName], // Current open/closed state
-      closeModal: () => close(modalName), // Function to close the modal
+      openModal: modal[modalName],
+      closeModal: () => close(modalName),
     }),
     [modal, close],
   )
@@ -59,6 +63,6 @@ export function useModal() {
     toggleModal: toggle, // Function to toggle any modal
     openModal: open, // Function to open any modal
     closeModal: close, // Function to close any modal
-    getModalProps: getProps, // Helper that matches your component interface
+    getModalProps: getProps, // Helper that matches any modal interface
   }
 }

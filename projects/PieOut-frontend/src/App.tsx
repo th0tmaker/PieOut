@@ -4,8 +4,9 @@ import Home from './Home'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 import { algorand } from './utils/network/getAlgorandClient'
 import { PieoutMethods } from './methods'
-import { AppClientProvider } from './contexts/AppClientContext'
-import { BoxCommitRandProvider } from './contexts/BoxCommitRandContext'
+import { BoxCommitRandDataProvider } from './providers/BoxCommitRandDataProvider'
+import { AppClientProvider } from './providers/AppClientProvider'
+import { AppMethodKitProvider } from './providers/AppMethodKitProvider'
 
 let supportedWallets: SupportedWallet[]
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
@@ -37,8 +38,10 @@ const AppProvider = () => {
   const appMethods = activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined
 
   return (
-    <AppClientProvider activeAddress={activeAddress ?? ''} appMethods={appMethods}>
-      <Home />
+    <AppClientProvider activeAddress={activeAddress ?? ''} appMethods={appMethods} algorand={algorand}>
+      <AppMethodKitProvider>
+        <Home />
+      </AppMethodKitProvider>
     </AppClientProvider>
   )
 }
@@ -66,9 +69,9 @@ export default function App() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <BoxCommitRandProvider>
+        <BoxCommitRandDataProvider>
           <AppProvider />
-        </BoxCommitRandProvider>
+        </BoxCommitRandDataProvider>
       </WalletProvider>
     </SnackbarProvider>
   )

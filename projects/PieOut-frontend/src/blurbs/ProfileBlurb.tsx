@@ -1,7 +1,5 @@
-// src/components/UserMsgText.tsx
-import React from 'react'
-
-const ProfileText = () => {
+//src/blurs/ProfileBlurb.tsx
+const ProfileBlurbContent = () => {
   return (
     <div className="text-sm text-white space-y-3">
       <p>
@@ -43,4 +41,4 @@ const ProfileText = () => {
   )
 }
 
-export default ProfileText
+export default ProfileBlurbContent

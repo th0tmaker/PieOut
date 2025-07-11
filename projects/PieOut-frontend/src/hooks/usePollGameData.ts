@@ -1,9 +1,10 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import deepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useAppClient } from '../contexts/AppClientContext'
+// import { AppClientContext } from '../contexts/AppClientContext'
 import { GameState } from '../contracts/Pieout'
 import { PieoutMethods } from '../methods'
+import { useAppClient } from './useAppClient'
 
 type UsePollGameDataProps = {
   appMethods?: PieoutMethods
@@ -13,7 +14,7 @@ type UsePollGameDataProps = {
   setCurrentGameState: (state: GameState | null) => void
   currentGamePlayers: string[] | null
   setCurrentGamePlayers: (players: string[]) => void
-  setBoxCommitRand?: (entry: { gameId: bigint | null; commitRound: bigint | null; expiryRound: bigint | null }) => void
+  setBoxCommitRandData?: (entry: { gameId: bigint | null; commitRound: bigint | null; expiryRound: bigint | null }) => void
   pollingInterval?: number
 }
 
@@ -25,7 +26,7 @@ export function usePollGameData({
   setCurrentGameState,
   currentGamePlayers,
   setCurrentGamePlayers,
-  setBoxCommitRand: setBoxCommitRand,
+  setBoxCommitRandData,
   pollingInterval = 3000,
 }: UsePollGameDataProps) {
   const { appClient } = useAppClient()
@@ -77,7 +78,7 @@ export function usePollGameData({
       }
 
       // Get boxCommitRand entry for active address (always, even if no gameId)
-      if (setBoxCommitRand && appClient) {
+      if (setBoxCommitRandData && appClient) {
         const boxCommitRandMap = await appClient.state.box.boxCommitRand.getMap()
         const entry = boxCommitRandMap?.get(activeAddress)
 
@@ -90,13 +91,13 @@ export function usePollGameData({
         // Only update if changed
         if (!deepEqual(boxCommitRandRef.current, parsedEntry)) {
           boxCommitRandRef.current = parsedEntry
-          setBoxCommitRand(parsedEntry)
+          setBoxCommitRandData(parsedEntry)
         }
       }
     } catch (err) {
       consoleLogger.error('Polling error:', err)
     }
-  }, [activeAddress, appClient, appMethods, gameId, setCurrentGameState, setCurrentGamePlayers, setBoxCommitRand])
+  }, [activeAddress, appClient, appMethods, gameId, setCurrentGameState, setCurrentGamePlayers, setBoxCommitRandData])
 
   useEffect(() => {
     if (!gameId || !activeAddress || !appMethods) return

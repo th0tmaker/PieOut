@@ -79,14 +79,16 @@ def resolve_receiver_by_prio(
 
 # Reset box commit rand values back to its initial default state
 @subroutine
-def reset_box_commit_rand(
-    box_commit_rand: BoxMap[Account, stc.CommitRand],
+def reset_box_game_register(
+    box_game_register: BoxMap[Account, stc.GameRegister],
     account: Account,
     round_delta: UInt64
     ) -> None:
-    box_commit_rand[account] = stc.CommitRand(
+    box_game_register[account] = stc.GameRegister(
+        hosting_game=arc4.Bool(False),  # noqa: FBT003
+        best_score=arc4.UInt8(0),
         game_id=arc4.UInt64(0),
-        commit_round=arc4.UInt64(0),
+        commit_rand_round=arc4.UInt64(0),
         expiry_round=arc4.UInt64(Global.round + round_delta),
     )
 
@@ -129,8 +131,8 @@ def check_acc_in_game(
 @subroutine
 def calc_score_get_place(
     game_id: UInt64,
-    score_id: UInt64,
     game_state: stc.GameState,
+    game_register: stc.GameRegister,
     player: Account,
     seed: Bytes,
 ) -> None:
@@ -162,12 +164,19 @@ def calc_score_get_place(
 
     # Emit ARC-28 event for off-chain tracking
     arc4.emit(
-        "player_score(uint64,uint64,address,uint8)",
+        "player_score(uint64,address,uint8)",
         game_id,
-        score_id,
         player,
         arc4.UInt8(score),
     )
+
+    # Check if score is greater than the game instance best score
+    if score > game_register.best_score.native:
+        game_register.best_score = arc4.UInt8(score)
+
+    # Check if score is greater than the account's personal best score across every game played
+    if score > game_register.best_score.native:
+        game_register.best_score = arc4.UInt8(score)
 
     # Check if score is great enough for a top three placement and arrange leaderboard accordingly
     if (
@@ -228,14 +237,13 @@ def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
             game_state.expiry_ts,
         )
 
-
 # Check if game is over and execute its conditional logic
 @subroutine
 def is_game_over(
     game_id: UInt64,
     game_state: stc.GameState,
     box_game_players: BoxMap[UInt64, Bytes],
-    box_commit_rand: BoxMap[Account, stc.CommitRand],
+    box_game_register: BoxMap[Account, stc.GameRegister],
 ) -> None:
     # Check game over criteria
     if (
@@ -249,8 +257,8 @@ def is_game_over(
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player = Account.from_bytes(player_addr_bytes)
                 # Reset box commit rand fields back to their original start values
-                reset_box_commit_rand(
-                    box_commit_rand=box_commit_rand,
+                reset_box_game_register(
+                    box_game_register=box_game_register,
                     account=player,
                     round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA)
                 )

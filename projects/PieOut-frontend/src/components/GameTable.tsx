@@ -6,11 +6,12 @@ import { PieoutMethods } from '../methods'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
-import { useBoxCommitRand } from '../contexts/BoxCommitRandContext'
+import { useBoxCommitRandData } from '../hooks/useBoxCommitRandData'
+
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { usePollGameData } from '../hooks/usePollGameData'
-import LeaderboardModal from './LeaderboardModal'
+import ProfileModal from './ProfileModal'
 import { useModal } from '../hooks/useModal'
 
 const GameTable: React.FC = () => {
@@ -24,7 +25,7 @@ const GameTable: React.FC = () => {
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
-  const { boxCommitRand, setBoxCommitRand } = useBoxCommitRand()
+  const { boxCommitRandData, setBoxCommitRandData } = useBoxCommitRandData()
 
   const [inputedGameId, setInputedGameId] = useState('')
   const [userMsg, setUserMsg] = useState('')
@@ -33,10 +34,6 @@ const GameTable: React.FC = () => {
   const [validatedGameId, setValidatedGameId] = useState<bigint | undefined>(undefined)
 
   const currentTimestamp = useCurrentTimestamp()
-
-  // const toggleDemoModal = () => {
-  //   setOpenDemoModal(!openDemoModal)
-  // }
 
   const toggleLeaderboardModal = () => {
     setOpenLeaderboardModal(!openLeaderboardModal)
@@ -143,7 +140,7 @@ const GameTable: React.FC = () => {
     setCurrentGameState,
     currentGamePlayers,
     setCurrentGamePlayers,
-    setBoxCommitRand,
+    setBoxCommitRandData,
   })
 
   useEffect(() => {
@@ -232,9 +229,9 @@ const GameTable: React.FC = () => {
   // Render JSX
   return activeAddress ? (
     <div className="">
-      <div className="mb-2 font-bold text-indigo-200">
+      {/* <div className="mb-2 font-bold text-indigo-200">
         Current Local Time: <span className="text-cyan-300">{new Date(currentTimestamp * 1000).toLocaleTimeString()}</span>
-      </div>
+      </div> */}
 
       <div className="mb-4 flex items-center gap-4">
         {/* <button
@@ -391,7 +388,7 @@ const GameTable: React.FC = () => {
               </td>
               {/* Set */}
               <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-                {currentGameState.stakingFinalized && currentGameState.prizePool !== 0n && boxCommitRand?.gameId === 0n ? (
+                {currentGameState.stakingFinalized && currentGameState.prizePool !== 0n && boxCommitRandData?.gameId === 0n ? (
                   <button
                     className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     onClick={handleSetBoxCommitRand}
@@ -518,7 +515,7 @@ const GameTable: React.FC = () => {
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
                 <button
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                  onClick={toggleLeaderboardModal}
+                  onClick={() => toggleModal('leaderboard')}
                 >
                   Open
                 </button>
@@ -533,7 +530,7 @@ const GameTable: React.FC = () => {
           )}
         </tbody>
       </table>
-      <LeaderboardModal {...getModalProps('leaderboard')} />
+      <ProfileModal {...getModalProps('leaderboard')} />
     </div>
   ) : null
 }

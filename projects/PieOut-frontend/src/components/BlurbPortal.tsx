@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom'
 
-function InfoPortal({ title, text, onClose }: { title: string; text: string | React.ReactNode; onClose: () => void }) {
+function BlurbPortal({ title, text, onClose }: { title: string; text: string | React.ReactNode; onClose: () => void }) {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-modal-overlay" onClick={onClose}>
       <div
@@ -25,4 +25,4 @@ function InfoPortal({ title, text, onClose }: { title: string; text: string | Re
   )
 }
 
-export default InfoPortal
+export default BlurbPortal
