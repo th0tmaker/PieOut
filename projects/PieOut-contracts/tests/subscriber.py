@@ -13,7 +13,7 @@ pieout_events = {
                 {"name": "game_id", "type": "uint64"},
                 {"name": "staking_finalized", "type": "bool"},
                 {"name": "expiry_ts", "type": "uint64"},
-            ]
+            ],
         },
         {
             "name": "player_score",
@@ -21,7 +21,7 @@ pieout_events = {
                 {"name": "game_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
                 {"name": "score", "type": "uint8"},
-            ]
+            ],
         },
         {
             "name": "game_over",
@@ -31,29 +31,28 @@ pieout_events = {
                 {"name": "first_place_address", "type": "address"},
                 {"name": "second_place_address", "type": "address"},
                 {"name": "third_place_address", "type": "address"},
-            ]
+            ],
         },
     ],
-    "continue_on_error": False
+    "continue_on_error": False,
 }
 
 
 # --- Create the AlgorandSubscriber ---
-def create_subscriber(algod_client: algod.AlgodClient, indexer_client: indexer.IndexerClient, max_rounds_to_sync: int) -> AlgorandSubscriber:
+def create_subscriber(
+    algod_client: algod.AlgodClient,
+    indexer_client: indexer.IndexerClient,
+    max_rounds_to_sync: int,
+) -> AlgorandSubscriber:
     global watermark
+    pieout_group = pieout_events.get("group_name", "default_group")
     config = {
         "filters": [
             {
                 "name": "pieout_filter",
                 "filter": {
-                    # "app_id": 1001, <- Your App ID
-                    # "arc28_events": [
-                    #     {"group_name": "pieout", "event_name": "game_live"},
-                    #     {"group_name": "pieout", "event_name": "player_score"},
-                    #     {"group_name": "pieout", "event_name": "game_over"},
-                    # ]
                     "arc28_events": [
-                        {"group_name": event["group_name"], "event_name": event["name"]}
+                        {"group_name": pieout_group, "event_name": event["name"]}
                         for event in pieout_events["events"]
                     ]
                 },

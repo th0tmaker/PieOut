@@ -1,9 +1,9 @@
 # tests/pieout_localnet_test.py
-import base64
 import logging
 from datetime import datetime
-from algokit_subscriber import SubscribedTransaction
+
 import pytest
+from algokit_subscriber import SubscribedTransaction
 from algokit_utils import (
     AppCallMethodCallParams,
     AppClientCompilationParams,
@@ -18,9 +18,9 @@ from algokit_utils import (
 )
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
-from algosdk.abi import Method
-from algosdk.encoding import encode_address
+from algosdk.abi.method import Method
 from algosdk.transaction import wait_for_confirmation
+
 from smart_contracts.artifacts.pieout.pieout_client import (
     PieoutClient,
     PieoutFactory,
@@ -33,7 +33,6 @@ from .helpers import create_payment_txn, send_app_call_txn
 from .subscriber import (
     AlgorandSubscriber,
     create_subscriber,
-    log_subbed_arc28_events,
 )
 
 # Setup the logging.Logger
@@ -43,7 +42,11 @@ logger = logging.getLogger(__name__)
 # Return an instance of the AlgorandSubscriber object to listen for network events
 @pytest.fixture(scope="session")
 def subscriber(algorand: AlgorandClient) -> AlgorandSubscriber:
-    return create_subscriber(algod_client=algorand.client.algod, indexer_client=algorand.client.indexer)
+    return create_subscriber(
+        algod_client=algorand.client.algod,
+        indexer_client=algorand.client.indexer,
+        max_rounds_to_sync=100,
+    )
 
 
 # Return an instance of the AlgorandClient object from the environment config
@@ -140,11 +143,13 @@ def sc_client(app_factory: PieoutFactory) -> PieoutClient:
         create_params=PieoutMethodCallCreateParams(
             method="generate",
             max_fee=micro_algo(5_000),
-            note=b'pieout:j{"concern":"txn.app_call;generate"}',),
+            note=b'pieout:j{"concern":"txn.app_call;generate"}',
+        ),
         delete_params=PieoutMethodCallDeleteParams(
             method="terminate",
             max_fee=micro_algo(5_000),
-            note=b'pieout:j{"concern":"txn.app_call;terminate"}',),
+            note=b'pieout:j{"concern":"txn.app_call;terminate"}',
+        ),
     )[0]
 
     # Return the smart contract client w/ creator account as default sender and signer
@@ -181,9 +186,7 @@ def test_fund_app_mbr(apps: dict[str, PieoutClient]) -> None:
     )
 
     # Verify transaction was confirmed by the network
-    wait_for_confirmation(
-        app_client.algorand.client.algod, fund_app_txn.tx_id, 3
-    )
+    wait_for_confirmation(app_client.algorand.client.algod, fund_app_txn.tx_id, 3)
     assert (
         fund_app_txn.confirmation
     ), "fund_app_txn.confirmation transaction failed confirmation."
@@ -199,22 +202,21 @@ def test_mint_trophy(
 
     # Define nested function that attemps to call the `mint_trophy` method
     def try_mint_trophy_txn(
-        sender: SigningAccount,
-        note: bytes | str | None = None
+        sender: SigningAccount, note: bytes | str | None = None
     ) -> None:
         # Create the required payment transactions
         box_t_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=cst.BOX_T_COST,
-            note=b'pieout:j{"concern":"txn.pay;box_t_mbr_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;box_t_mbr_pay"}',
         )  # Box game trophy MBR cost payment
 
         mint_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=100_000,
-            note=b'pieout:j{"concern":"txn.pay;asset_create_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;asset_create_pay"}',
         )  # Asset creation payment
 
         # Send app call transaction to execute smart contract method `mint_trophy`
@@ -234,7 +236,7 @@ def test_mint_trophy(
     try_mint_trophy_txn(
         sender=creator,
         note=b'pieout:j{"method":"mint_trophy","concern":"txn.app_call;asset_cfg_create"}',
-        )
+    )
 
     # Second call should trip assert error cause trophy already exists
     # try_mint_trophy_txn(
@@ -242,7 +244,8 @@ def test_mint_trophy(
     #     note=b'pieout:j{"method":"mint_trophy","concern":"txn.app_call;mint_trophy_asset2"}',
     #     )
 
-# Test case for app call transaction to call `get_box_commit_rand` method of the smart contract
+
+# Test case for app call transaction to call `get_box_game_register` method of the smart contract
 def test_get_box_game_register(
     creator: SigningAccount,
     randy_factory: dict[str, SigningAccount],
@@ -253,15 +256,14 @@ def test_get_box_game_register(
 
     # Define nested function that attemps to call the `get_box_game_register` method
     def try_get_box_game_register_txn(
-        sender: SigningAccount,
-        note: bytes | str | None = None
+        sender: SigningAccount, note: bytes | str | None = None
     ) -> None:
         # Create the required payment transactions
         box_r_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=cst.BOX_R_COST,
-            note=b'pieout:j{"concern":"txn.pay;box_r_mbr_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;box_r_mbr_pay"}',
         )  # Box game register MBR cost payment
 
         # Send app call transaction to execute smart contract method `get_box_game_register`
@@ -292,7 +294,7 @@ def test_get_box_game_register(
     # Call `try_get_box_game_register_txn` for creator
     try_get_box_game_register_txn(
         sender=creator,
-        note=b'pieout:j{"method":"get_box_game_register","concern":"txn.app_call;get_box_game_register_creator"}'
+        note=b'pieout:j{"method":"get_box_game_register","concern":"txn.app_call;get_box_game_register_creator"}',
     )
 
     # For every randy in `randies_reg_list`
@@ -300,7 +302,7 @@ def test_get_box_game_register(
         # Call `try_get_box_game_register_txn`
         try_get_box_game_register_txn(
             sender=randy_factory[randy],
-            note=b'pieout:j{"method":"get_box_game_register","concern":"txn.app_call;get_box_game_register_randy_enum"}'
+            note=b'pieout:j{"method":"get_box_game_register","concern":"txn.app_call;get_box_game_register_randy_enum"}',
         )
 
 
@@ -314,33 +316,33 @@ def test_new_game(
 
     # Define nested function that attemps to call the `new_game` method
     def try_new_game_txn(
-        sender: SigningAccount,
-        max_players: int,
-        note: bytes | str | None = None
+        sender: SigningAccount, max_players: int, note: bytes | str | None = None
     ) -> None:
         # Define payment amounts
-        box_p_cost = apps["pieout_client_1"].send.calc_single_box_cost(
-            (10, max_players * 32)
-        ).abi_return
+        box_p_cost = (
+            apps["pieout_client_1"]
+            .send.calc_single_box_cost((10, max_players * 32))
+            .abi_return
+        )
 
         # Create the required payment transactions
         box_s_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=cst.BOX_S_COST,
-            note=b'pieout:j{"concern":"txn.pay;box_s_mbr_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;box_s_mbr_pay"}',
         )  # Box game state MBR cost payment
         box_p_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=box_p_cost,
-            note=b'pieout:j{"concern":"txn.pay;box_p_mbr_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;box_p_mbr_pay"}',
         )  # Box game players MBR cost payment
         stake_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=cst.STAKE_AMOUNT_MANAGER,
-            note=b'pieout:j{"concern":"txn.pay;admin_stake_deposit_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;admin_stake_deposit_pay"}',
         )  # Admin stake deposit for prize pool payment
 
         # Send app call transaction to execute smart contract method `new_game`
@@ -359,13 +361,13 @@ def test_new_game(
     try_new_game_txn(
         sender=randy_factory["randy_1"],
         max_players=8,
-        note=b'pieout:j{"method":"new_game","concern":"txn.app_call;new_game_randy_1_admin"}'
-        )
+        note=b'pieout:j{"method":"new_game","concern":"txn.app_call;new_game_randy_1_admin"}',
+    )
     try_new_game_txn(
         sender=randy_factory["randy_2"],
         max_players=10,
-        note=b'pieout:j{"method":"new_game","concern":"txn.app_call;new_game_randy_2_admin"}'
-        )
+        note=b'pieout:j{"method":"new_game","concern":"txn.app_call;new_game_randy_2_admin"}',
+    )
 
     # Another call from randy_2 should trip assert error cause only one game instance per account allowed
     # try_new_game_txn(
@@ -373,6 +375,7 @@ def test_new_game(
     #     max_players=12,
     #     note=b'pieout:j{"method":"new_game","concern":"txn.app_call;new_game_randy_2_admin"}'
     #     )
+
 
 # Test case for app call transaction to call `join_game` method of the smart contract
 def test_join_game(
@@ -384,30 +387,32 @@ def test_join_game(
     # Get smart contract applicationfrom from apps dict
     app = apps["pieout_client_1"]
 
-    # Simple batch handler that just logs the subscribed transactions in the filter group
-    def batch_handler(txns: list[SubscribedTransaction]) -> None:
-        print(f"Received batch of {len(txns)} transactions")
+    # Define the event listener for the app subscriber
+    def batch_handler(txns: list[SubscribedTransaction], filter_name: str) -> None:
+        logger.info(f"[{filter_name}] Received batch of {len(txns)} transactions")
         for txn in txns:
-            # Process ARC28 events
             arc28_events = txn.get("arc28_events", [])
             for event in arc28_events:
-                logger.info(f"{event.get('event_name')}: {event.get('args_by_name', {})}")
-                logger.info(f"Transaction ID from batch: {txn.get('id')}")
+                if isinstance(event, dict):
+                    logger.info(
+                        f"{event.get('event_name')}: {event.get('args_by_name', {})}"
+                    )
+                    logger.info(f"Transaction ID from batch: {txn.get('id')}")
+                else:
+                    logger.warning(f"Unexpected event format: {event}")
 
     subscriber.on_batch("pieout_filter", batch_handler)
 
     # Define nested function that attemps to call the `join_game` method
     def try_join_game_txn(
-        sender: SigningAccount,
-        game_id: int,
-        note: bytes | str | None = None
+        sender: SigningAccount, game_id: int, note: bytes | str | None = None
     ) -> None:
         # Create the required payment transactions
         stake_pay = create_payment_txn(
             app=app,
             sender=sender,
             amount=cst.STAKE_AMOUNT_MANAGER,
-            note=b'pieout:j{"concern":"txn.pay;player_stake_deposit_pay"}'
+            note=b'pieout:j{"concern":"txn.pay;player_stake_deposit_pay"}',
         )  # Player stake deposit for prize pool payment
 
         # Send app call transaction to execute smart contract method `join_game`
@@ -426,7 +431,7 @@ def test_join_game(
     try_join_game_txn(
         sender=creator,
         game_id=1,
-        note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_1_creator"}'
+        note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_1_creator"}',
     )
 
     # Randies list joining Game 1
@@ -446,14 +451,14 @@ def test_join_game(
         try_join_game_txn(
             sender=randy_factory[randy],
             game_id=1,
-            note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_1_randy_enum"}'
+            note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_1_randy_enum"}',
         )
 
     # Call `try_join_game_txn` as creator for Game 2
     try_join_game_txn(
         sender=creator,
         game_id=2,
-        note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_2_creator"}'
+        note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_2_creator"}',
     )
 
     # Randies list joining Game 2
@@ -475,7 +480,7 @@ def test_join_game(
         try_join_game_txn(
             sender=randy_factory[randy],
             game_id=2,
-            note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_2_enum"}'
+            note=b'pieout:j{"method":"join_game","concern":"txn.app_call;join_game_id_2_enum"}',
         )
 
     # Send read-only transaction to read the game state of Game 1
@@ -500,160 +505,189 @@ def test_join_game(
     logger.info(read_game_1_state_txn.abi_return)
     logger.info(read_game_2_state_txn.abi_return)
 
-
-# # Test case for app call transaction to call `set_box_commit_rand` method of the smart contract
-# def test_set_box_commit_rand(
-#     creator: SigningAccount,
-#     randy_factory: dict[str, SigningAccount],
-#     apps: dict[str, PieoutClient],
-# ) -> None:
-#     # Get smart contract applicationfrom from apps dict
-#     app = apps["pieout_client_1"]
-
-#     # Define nested function to try `set_box_commit_rand` method call
-#     def try_set_box_commit_rand_txn(
-#         sender: SigningAccount,
-#         game_id: int,
-#         note: bytes | str | None = None
-#     ) -> None:
-#         # Send app call transaction to execute smart contract method `set_box_commit_rand`
-#         send_app_call_txn(
-#             logger=logger,
-#             app=app,
-#             sender=sender,
-#             method=app.send.set_box_commit_rand,
-#             args=(game_id,),
-#             note=note,
-#             description="Set Box Commit Rand App Call",
-#         )
-
-#     # Randies to set commit rand box
-#     randies_set_box_commit_rand = [
-#         "randy_1",
-#         "randy_2",
-#         "randy_3",
-#         "randy_4",
-#         "randy_5",
-#         "randy_6",
-#         "randy_7",
-#         # "randy_8",
-#         # "randy_9",
-#     ]
-
-#     # Call `try_set_box_commit_rand_txn` for creator
-#     try_set_box_commit_rand_txn(
-#         sender=creator,
-#         game_id=1,
-#         note=b'pieout:j{"method":"set_box_commit_rand","concern":"txn.app_call;set_box_commit_rand_creator"}'
-#     )
-
-#     # For every randy in `randies_set_box_commit_rand`
-#     for randy in randies_set_box_commit_rand:
-#         # Call `try_set_box_commit_rand_txn`
-#         try_set_box_commit_rand_txn(
-#             sender=randy_factory[randy],
-#             note=b'pieout:j{"method":"set_box_commit_rand","concern":"txn.app_call;set_box_commit_rand_randy_enum"}'
-#         )
-
-#     # Log App Global State
-#     logger.info(f"Global State: {apps["pieout_client_1"].state.global_state.get_all()}")
+    subscriber.poll_once()
 
 
-# # Test case for app call transaction to call `play_game` method of the smart contract
-# def test_play_game(
-#     subscriber: AlgorandSubscriber,
-#     creator: SigningAccount,
-#     randy_factory: dict[str, SigningAccount],
-#     apps: dict[str, PieoutClient],
-# ) -> None:
-#     # Get smart contract application from from apps dict
-#     app = apps["pieout_client_1"]
+# Test case for app call transaction to call `set_game_commit` method of the smart contract
+def test_set_game_commit(
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
+    apps: dict[str, PieoutClient],
+) -> None:
+    # Get smart contract applicationfrom from apps dict
+    app = apps["pieout_client_1"]
 
-#     box_t_ = app.algorand.client.algod.application_box_by_name(
-#         app.app_id, b"t_"
-#     )
+    # Define nested function to try `set_game_commit` method call
+    def try_set_game_commit_txn(
+        sender: SigningAccount, game_id: int, note: bytes | str | None = None
+    ) -> None:
+        # Send app call transaction to execute smart contract method `set_game_commit`
+        send_app_call_txn(
+            logger=logger,
+            app=app,
+            sender=sender,
+            method=app.send.set_game_commit,
+            args=(game_id,),
+            note=note,
+            description="Set Game Commit App Call",
+        )
 
-#     box_t_bytes = base64.b64decode(box_t_["value"])
-#     asset_id = int.from_bytes(box_t_bytes[:8], byteorder="big")
-#     owner_address = encode_address(box_t_bytes[8:])
+    # Randies to set game commit
+    randies_set_list = [
+        "randy_1",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+        # "randy_8",
+        # "randy_9",
+    ]
 
-#     logger.info(f"Box Trophy Raw Bytes: {list(box_t_bytes)}")
-#     logger.info(f"Box Trophy Asset ID: {asset_id}")
-#     logger.info(f"Box Trophy Owner Address: {owner_address}")
-#     logger.info(f"ATH address before play {app.state.global_state.ath_address}")
+    # Call `try_set_game_commit_txn` for creator
+    try_set_game_commit_txn(
+        sender=creator,
+        game_id=1,
+        note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_creator"}',
+    )
 
-#     # Define nested function that attemps to call the `play_game` method
-#     def try_play_game_txn(
-#         sender: SigningAccount,
-#         game_id: int,
-#         note_1: bytes | str | None = None,
-#         note_2: bytes | str | None = None,
-#     ) -> None:
-#         # Create a new atomic group composer
-#         composer = app.new_group().composer()
+    # For every randy in `randies_set_list`
+    for randy in randies_set_list:
+        # Call `try_set_game_commit_txn`
+        try_set_game_commit_txn(
+            sender=randy_factory[randy],
+            game_id=1,
+            note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_randy_enum"}',
+        )
 
-#         # Add `add_resource_budget_play_game` abimethod as first transaction of group
-#         composer.add_app_call_method_call(
-#             params=AppCallMethodCallParams(
-#                 sender=sender.address,
-#                 signer=sender.signer,
-#                 app_id=app.app_id,
-#                 max_fee=micro_algo(100_000),
-#                 method=Method.from_signature(s="up_resource_budget_play_game(uint64)void"),
-#                 args=[game_id],
-#                 note=note_2,
-#                 )
-#             )
+    # Log App Global State
+    logger.info(f"Global State: {apps["pieout_client_1"].state.global_state.get_all()}")
 
-#         # Add `play_game` abimethod as second transaction of group
-#         composer.add_app_call_method_call(
-#             params=AppCallMethodCallParams(
-#                 sender=sender.address,
-#                 signer=sender.signer,
-#                 app_id=app.app_id,
-#                 max_fee=micro_algo(30_000),
-#                 method=Method.from_signature(s="play_game(uint64)void"),
-#                 args=[game_id],
-#                 note=note_1,
-#                 )
-#             )
 
-#         # Use composer to send group transaction for sender
-#         composer.send(params=SendParams(cover_app_call_inner_transaction_fees=True))
+# Test case for app call transaction to call `play_game` method of the smart contract
+def test_play_game(
+    subscriber: AlgorandSubscriber,
+    creator: SigningAccount,
+    randy_factory: dict[str, SigningAccount],
+    apps: dict[str, PieoutClient],
+) -> None:
+    # Get smart contract application from from apps dict
+    app = apps["pieout_client_1"]
 
-#     # Randies to play Game 1
-#     randies_game_1 = [
-#         "randy_1",
-#         "randy_2",
-#         "randy_3",
-#         "randy_4",
-#         "randy_5",
-#         "randy_6",
-#         "randy_7",
-#         # "randy_8",
-#         # "randy_9",
-#     ]
+    # Define nested function that attemps to call the `play_game` method
+    def try_play_game_txn(
+        sender: SigningAccount,
+        game_id: int,
+        note_1: bytes | str | None = None,
+        note_2: bytes | str | None = None,
+    ) -> None:
+        # Create a new atomic group composer
+        composer = app.new_group().composer()
 
-#     # Call `try_play_game` for creator
-#     try_play_game_txn(
-#         sender=creator,
-#         game_id=1,
-#         note1=b'pieout:j{"method":"up_ref_budget_for_play_game","concern":"txn.app_call;up_ref_budget_for_play_game_creator"}',
-#         note2=b'pieout:j{"method":"play_game","concern":"txn.app_call;play_game_creator"}',
-#     )
+        # Add `up_resource_budget_play_game` abimethod as first transaction of group
+        composer.add_app_call_method_call(
+            params=AppCallMethodCallParams(
+                sender=sender.address,
+                signer=sender.signer,
+                app_id=app.app_id,
+                max_fee=micro_algo(100_000),
+                method=Method.from_signature(
+                    s="up_ref_budget_for_play_game(uint64)void"
+                ),
+                args=[game_id],
+                note=note_1,
+            )
+        )
 
-#     # For every randy in `randies_game_1`
-#     for randy in randies_game_1:
-#         # Call `try_play_game`
-#         try_play_game_txn(
-#             sender=randy_factory[randy],
-#             game_id=1,
-#             note1=b'pieout:j{"method":"up_ref_budget_for_play_game","concern":"txn.app_call;up_ref_budget_for_play_game_randy_enum"}',
-#             note2=b'pieout:j{"method":"play_game","concern":"txn.app_call;play_game_randy_enum"}',
-#     )
+        # Add `play_game` abimethod as second transaction of group
+        composer.add_app_call_method_call(
+            params=AppCallMethodCallParams(
+                sender=sender.address,
+                signer=sender.signer,
+                app_id=app.app_id,
+                max_fee=micro_algo(31_000),
+                method=Method.from_signature(s="play_game(uint64)void"),
+                args=[game_id],
+                note=note_2,
+            )
+        )
 
-#     # Run subscriber in poll once mode
-#     subscriber.poll_once()
+        # Use composer to send group transaction for sender
+        composer.send(params=SendParams(cover_app_call_inner_transaction_fees=True))
+
+    # Randies to play Game 1
+    randies_game_1 = [
+        "randy_1",
+        "randy_2",
+        "randy_3",
+        "randy_4",
+        "randy_5",
+        "randy_6",
+        "randy_7",
+        # "randy_8",
+        # "randy_9",
+    ]
+
+    # Call `try_play_game` for creator
+    try_play_game_txn(
+        sender=creator,
+        game_id=1,
+        note_1=b'pieout:j{"method":"up_ref_budget_for_play_game","concern":"txn.app_call;up_ref_budget_for_play_game_creator"}',
+        note_2=b'pieout:j{"method":"play_game","concern":"txn.app_call;play_game_creator"}',
+    )
+
+    # For every randy in `randies_game_1`
+    for randy in randies_game_1:
+        # Call `try_play_game`
+        try_play_game_txn(
+            sender=randy_factory[randy],
+            game_id=1,
+            note_1=b'pieout:j{"method":"up_ref_budget_for_play_game","concern":"txn.app_call;up_ref_budget_for_play_game_randy_enum"}',
+            note_2=b'pieout:j{"method":"play_game","concern":"txn.app_call;play_game_randy_enum"}',
+        )
+
+    # Run subscriber in poll once mode
+    subscriber.poll_once()
+
+    # Send read-only transaction to read the game state of Game 1
+    read_game_1_state_txn = app.send.read_box_game_state(
+        args=(1,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        ),
+    )
+
+    # Send read-only transaction to read the game state of Game 2
+    read_game_2_state_txn = app.send.read_box_game_state(
+        args=(2,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        ),
+    )
+
+    read_creator_reg_txn = app.send.read_box_game_register(
+        args=(creator.address,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        ),
+    )
+
+    read_randy_1_reg_txn = app.send.read_box_game_register(
+        args=(randy_factory["randy_1"].address,),
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        ),
+    )
+
+    # Log
+    logger.info(read_game_1_state_txn.abi_return)
+    logger.info(read_creator_reg_txn.abi_return)
+    logger.info(read_randy_1_reg_txn.abi_return)
 
 
 # # Test case for app call transaction to call `trigger_game_prog` method of the smart contract

@@ -31,6 +31,7 @@ def burn_itxn(
         note=note,
     ).submit()
 
+
 # Execute clawback asset transfer inner transaction of single amount
 @subroutine
 def clawback_itxn(
@@ -47,6 +48,7 @@ def clawback_itxn(
         note=note,
     ).submit()
 
+
 # Execute a payout payment inner transaction
 @subroutine
 def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
@@ -55,6 +57,7 @@ def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
         amount=amount,
         note=note,
     ).submit()
+
 
 # Resolve reciever account address by priority
 @subroutine
@@ -77,13 +80,14 @@ def resolve_receiver_by_prio(
     else:
         return Global.current_application_address
 
+
 # Reset box commit rand values back to its initial default state
 @subroutine
 def reset_box_game_register(
     box_game_register: BoxMap[Account, stc.GameRegister],
     account: Account,
-    round_delta: UInt64
-    ) -> None:
+    round_delta: UInt64,
+) -> None:
     box_game_register[account] = stc.GameRegister(
         hosting_game=arc4.Bool(False),  # noqa: FBT003
         best_score=arc4.UInt8(0),
@@ -91,6 +95,7 @@ def reset_box_game_register(
         commit_rand_round=arc4.UInt64(0),
         expiry_round=arc4.UInt64(Global.round + round_delta),
     )
+
 
 # Check if account is an active player of a valid game instance
 @subroutine
@@ -118,7 +123,9 @@ def check_acc_in_game(
 
             # Optionally clear this player from the box by replacing their address with zero bytes
             if clear_player:
-                game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
+                game_players_bref = BoxRef(
+                    key=box_game_players.key_prefix + op.itob(game_id)
+                )
                 game_players_bref.replace(i, cst.ZERO_ADDR_BYTES)
 
             # Exit loop early since sender was found
@@ -126,6 +133,7 @@ def check_acc_in_game(
 
     # Return True if account was found in the game, else False
     return acc_in_game
+
 
 # Use the PCG AVM library to generate a sequence of numbers and compute the final score and placement
 @subroutine
@@ -170,11 +178,11 @@ def calc_score_get_place(
         arc4.UInt8(score),
     )
 
-    # Check if score is greater than the game instance best score
-    if score > game_register.best_score.native:
-        game_register.best_score = arc4.UInt8(score)
+    # Check if score is greater than the game state best score
+    if score > game_state.best_score.native:
+        game_state.best_score = arc4.UInt8(score)
 
-    # Check if score is greater than the account's personal best score across every game played
+    # Check if score is greater than the game register account's personal best score across every game played
     if score > game_register.best_score.native:
         game_register.best_score = arc4.UInt8(score)
 
@@ -213,6 +221,7 @@ def calc_score_get_place(
         game_state.third_place_score = arc4.UInt8(score)
         game_state.third_place_address = arc4.Address(player)
 
+
 # Check if game is live and execute its conditional logic
 @subroutine
 def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
@@ -237,6 +246,7 @@ def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
             game_state.expiry_ts,
         )
 
+
 # Check if game is over and execute its conditional logic
 @subroutine
 def is_game_over(
@@ -260,9 +270,8 @@ def is_game_over(
                 reset_box_game_register(
                     box_game_register=box_game_register,
                     account=player,
-                    round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA)
+                    round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
                 )
-
 
         # Clear box game players data by setting its value to all zeroes
         box_game_players[game_id] = op.bzero(
@@ -349,4 +358,3 @@ def is_game_over(
 
         # Set prize pool amount to zero after making payouts
         game_state.prize_pool = arc4.UInt64(0)
-
