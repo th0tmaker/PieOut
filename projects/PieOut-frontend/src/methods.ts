@@ -85,55 +85,55 @@ export class PieoutMethods {
   async readGenUnix(appId: bigint, sender: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const genUnix = await client.readGenUnix({
+    const result = await client.readGenUnix({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: [],
       note: note,
     })
 
-    return genUnix
+    return result
   }
 
   // Read game state box data
-  async readGameState(appId: bigint, sender: string, gameId: bigint) {
+  async readBoxGameState(appId: bigint, sender: string, gameId: bigint) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxGameState = await client.readBoxGameState({
+    const result = await client.readBoxGameState({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
     })
 
-    return readBoxGameState
+    return result
   }
 
   // Read game players box data
-  async readGamePlayers(appId: bigint, sender: string, gameId: bigint, note?: string | Uint8Array) {
+  async readBoxGamePlayers(appId: bigint, sender: string, gameId: bigint, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxGamePlayers = await client.readBoxGamePlayers({
+    const result = await client.readBoxGamePlayers({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
       note: note,
     })
 
-    return readBoxGamePlayers
+    return result
   }
 
   // Read commit rand box data
-  async readBoxCommitRand(appId: bigint, sender: string, player: string, note?: string | Uint8Array) {
+  async readBoxGameRegister(appId: bigint, sender: string, player: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const readBoxCommitRand = await client.readBoxCommitRand({
+    const result = await client.readBoxGameRegister({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { player: player },
       note: note,
     })
 
-    return readBoxCommitRand
+    return result
   }
 
   // Mint game trophy asset
@@ -167,7 +167,7 @@ export class PieoutMethods {
       signer: this.algorand.account.getSigner(sender),
       args: { boxTPay: boxTPay, mintPay: mintPay },
       note: noteMintTrophy,
-      maxFee: microAlgo(100_000),
+      maxFee: microAlgo(10_000),
       coverAppCallInnerTransactionFees: true,
     })
   }
@@ -181,7 +181,7 @@ export class PieoutMethods {
       signer: this.algorand.account.getSigner(sender),
       args: [],
       note: note,
-      maxFee: microAlgo(100_000),
+      maxFee: microAlgo(10_000),
       coverAppCallInnerTransactionFees: true,
     })
   }
@@ -211,7 +211,7 @@ export class PieoutMethods {
         sender: sender,
         signer: this.algorand.account.getSigner(sender),
         receiver: client.appAddress,
-        amount: microAlgo(67_300),
+        amount: microAlgo(67_700),
         note: noteBoxSPay,
       }),
       this.algorand.createTransaction.payment({
@@ -235,8 +235,6 @@ export class PieoutMethods {
       signer: this.algorand.account.getSigner(sender),
       args: { maxPlayers: maxPlayers, boxSPay: boxSPay, boxPPay: boxPPay, stakePay: stakePay },
       note: noteNewGame,
-      // maxFee: microAlgo(100_000),
-      // populateAppCallResources: true,
     })
   }
 
@@ -263,63 +261,61 @@ export class PieoutMethods {
   }
 
   // Get box commit rand
-  async getBoxCommitRand(appId: bigint, sender: string, noteBoxCPay?: string | Uint8Array, noteGetBoxCommitRand?: string | Uint8Array) {
+  async getBoxGameRegister(appId: bigint, sender: string, noteBoxCPay?: string | Uint8Array, noteGetBoxGameRegister?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const boxCPay = await this.algorand.createTransaction.payment({
+    const boxRPay = await this.algorand.createTransaction.payment({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       receiver: client.appAddress,
-      amount: microAlgo(28_900),
+      amount: microAlgo(29_700),
       note: noteBoxCPay,
     })
 
-    await client.send.getBoxCommitRand({
+    await client.send.getBoxGameRegiser({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
-      args: { boxCPay: boxCPay },
-      note: noteGetBoxCommitRand,
+      args: { boxRPay: boxRPay },
+      note: noteGetBoxGameRegister,
     })
   }
 
-  // Set box commit rand
-  async setBoxCommitRand(appId: bigint, sender: string, gameId: bigint, noteSetBoxCommitRand?: string | Uint8Array) {
+  // Set game commit
+  async setGameCommit(appId: bigint, sender: string, gameId: bigint, noteSetGameCommit?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    await client.send.setBoxCommitRand({
+    await client.send.setGameCommit({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
-      note: noteSetBoxCommitRand,
-      // maxFee: microAlgo(100_000),
-      // populateAppCallResources: true,
+      note: noteSetGameCommit,
     })
   }
 
   // Delete box commit rand for self
-  async delBoxCommitRandForSelf(appId: bigint, sender: string, gameId: bigint, noteDelBoxCommitRandForSelf?: string | Uint8Array) {
+  async delBoxGameRegisterForSelf(appId: bigint, sender: string, gameId: bigint, noteDelBoxGameRegisterForSelf?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    await client.send.delBoxCommitRandForSelf({
+    await client.send.delBoxGameRegisterForSelf({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
-      note: noteDelBoxCommitRandForSelf,
-      maxFee: microAlgo(100_000),
+      note: noteDelBoxGameRegisterForSelf,
+      maxFee: microAlgo(10_000),
       populateAppCallResources: true,
     })
   }
 
   // Delete box commit rand for other
-  async delBoxCommitRandForOther(appId: bigint, sender: string, player: string, noteDelBoxCommitRandForOther?: string | Uint8Array) {
+  async delBoxGameRegisterForOther(appId: bigint, sender: string, player: string, noteDelBoxGameRegisterForOther?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    await client.send.delBoxCommitRandForOther({
+    await client.send.delBoxGameRegisterForOther({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { player: player },
-      note: noteDelBoxCommitRandForOther,
-      maxFee: microAlgo(100_000),
+      note: noteDelBoxGameRegisterForOther,
+      maxFee: microAlgo(10_000),
       populateAppCallResources: true,
     })
   }
@@ -362,7 +358,7 @@ export class PieoutMethods {
   async triggerGameProg(appId: bigint, sender: string, gameId: bigint, triggerId: bigint, noteTriggerGameProg?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const triggerGameProgTxn = await client.send.triggerGameProg({
+    const triggerGameProgTxn = await client.send.triggerGameEvent({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId, triggerId: triggerId },

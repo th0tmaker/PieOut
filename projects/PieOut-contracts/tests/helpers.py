@@ -154,7 +154,7 @@ def log_box_game_state(box_name: bytes, box_value: bytes, logger: Logger) -> Non
     log_address(f"Game ID [{game_id}] - Second place address", second_place_addr_bytes, logger)
     log_address(f"Game ID [{game_id}] - Third place address", third_place_addr_bytes, logger)
 
-# Define a helper method that takes the commit rand box name and value and logs its data
+# Define a helper method that takes the game register box name and value and logs its data
 def log_box_commit_rand(box_name: bytes, box_value: bytes, logger: Logger) -> None:
     # Perform try and except
     try:
@@ -169,7 +169,7 @@ def log_box_commit_rand(box_name: bytes, box_value: bytes, logger: Logger) -> No
         # 16-24 bytes of box value is expiry round value
         expiry_round = int.from_bytes(bytes=box_value[16:24], byteorder="big")
 
-        # Log all the box commit rand values
+        # Log all the game register box values
         logger.info(
             f"Box Commit Rand - Player: {owner_addr},\n"
             f"Game ID: {game_id}, Commit Round: {commit_round}, Expiry Round: {expiry_round}"

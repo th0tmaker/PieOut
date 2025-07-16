@@ -39,21 +39,23 @@ pieout_events = {
 
 
 # --- Create the AlgorandSubscriber ---
-def create_subscriber(algod_client: algod.AlgodClient, indexer_client: indexer.IndexerClient, max_rounds_to_sync: int) -> AlgorandSubscriber:
+def create_subscriber(
+        algod_client: algod.AlgodClient,
+        indexer_client: indexer.IndexerClient,
+        max_rounds_to_sync: int
+    ) -> AlgorandSubscriber:
     global watermark
+    group_name = pieout_events.get("group_name", "default_group")
     config = {
         "filters": [
             {
                 "name": "pieout_filter",
                 "filter": {
-                    # "app_id": 1001, <- Your App ID
-                    # "arc28_events": [
-                    #     {"group_name": "pieout", "event_name": "game_live"},
-                    #     {"group_name": "pieout", "event_name": "player_score"},
-                    #     {"group_name": "pieout", "event_name": "game_over"},
-                    # ]
                     "arc28_events": [
-                        {"group_name": event["group_name"], "event_name": event["name"]}
+                        {
+                            "group_name": group_name,
+                            "event_name": event["name"]
+                        }
                         for event in pieout_events["events"]
                     ]
                 },
@@ -70,11 +72,10 @@ def create_subscriber(algod_client: algod.AlgodClient, indexer_client: indexer.I
     }
 
     return AlgorandSubscriber(
-        config=config,
         algod_client=algod_client,
         indexer_client=indexer_client,
+        config=config
     )
-
 
 # --- Self-built ARC-28 Event Logging Handler ---
 # def log_subbed_arc28_events(

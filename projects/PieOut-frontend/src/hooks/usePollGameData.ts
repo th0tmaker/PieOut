@@ -79,7 +79,7 @@ export function usePollGameData({
 
       // Get boxCommitRand entry for active address (always, even if no gameId)
       if (setBoxCommitRandData && appClient) {
-        const boxCommitRandMap = await appClient.state.box.boxCommitRand.getMap()
+        const boxCommitRandMap = await appClient.state.box.boxGameRegister.getMap()
         const entry = boxCommitRandMap?.get(activeAddress)
 
         const parsedEntry = {

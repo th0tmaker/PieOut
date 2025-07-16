@@ -22,8 +22,8 @@ class GameState(arc4.Struct):
 
 # Struct containing game trophy values
 class GameTrophy(arc4.Struct):
-    asset_id: arc4.UInt64
     high_score: arc4.UInt8
+    asset_id: arc4.UInt64
     highscorer_address: arc4.Address
 
 
