@@ -15,24 +15,16 @@ import { algorand } from './utils/network/getAlgorandClient'
 import ProfileModal from './components/ProfileModal'
 import { useModal } from './hooks/useModal'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
-import { useAppClient } from './hooks/useAppClient'
-import { useBoxCommitRandData } from './hooks/useBoxCommitRandData'
 import HonorsModal from './components/HonorsModal'
-import { useAppMethodKit } from './hooks/useAppMethodKit'
+import { useAppCtx } from './hooks/useAppCtx'
 
 interface HomeProps {}
-
 const Home: React.FC<HomeProps> = () => {
-  const { activeAddress, transactionSigner } = useWallet()
-  algorand.setDefaultSigner(transactionSigner)
+  const { modal, toggleModal, getModalProps } = useModal()
 
+  const { appClient, appCreator, getAppClient } = useAppCtx()
+  const { appMethodHandler } = useAppCtx()
   const currentTimestamp = useCurrentTimestamp()
-
-  const { modal, toggleModal, openModal, closeModal, getModalProps } = useModal()
-
-  const { appClient, appCreator, getAppClient } = useAppClient()
-  const { handler: appMethodHandler } = useAppMethodKit()
-
   const { currentRound } = pollOnChainData(algorand.client.algod, appClient)
 
   const [toggleGameOptions, setToggleGameOptions] = useState(false)
@@ -157,13 +149,13 @@ const Home: React.FC<HomeProps> = () => {
       {appClient !== null && (
         <div className="text-indigo-200 font-bold my-4">
           <div>
-            App Name: <span className="text-cyan-300">{appClient.appName.toString()}</span>
+            App Name: <span className="text-cyan-300">{appClient?.appName.toString()}</span>
           </div>
           <div>
-            App ID: <span className="text-cyan-300">{appClient.appId.toString()}</span>
+            App ID: <span className="text-cyan-300">{appClient?.appId.toString()}</span>
           </div>
           <div className="flex items-center">
-            App Creator: <span className="text-cyan-300 ml-1">{ellipseAddress(appCreator)}</span>
+            App Creator: <span className="text-cyan-300 ml-1">{ellipseAddress(appCreator ?? '')}</span>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(appCreator ?? '')

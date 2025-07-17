@@ -6,19 +6,18 @@ import BlurbPortal from './BlurbPortal'
 import HonorsBlurbContent from '../blurbs/HonorsBlurb'
 import { ModalInterface } from '../interfaces/modal'
 import { pollOnChainData } from '../hooks/CurrentRound'
-import { useAppClient } from '../hooks/useAppClient'
 import { algorand } from '../utils/network/getAlgorandClient'
-import { useAppMethodKit } from '../hooks/useAppMethodKit'
 import { useModal } from '../hooks/useModal'
+import { useAppCtx } from '../hooks/useAppCtx'
 
 interface HonorsModalInterface extends ModalInterface {}
 
 const HonorsModal = ({ openModal, closeModal }: HonorsModalInterface) => {
   const { activeAddress } = useWallet()
-  const [boxTrophyData, setBoxTrophyData] = useState<{ assetId: string; ownerAddress: string } | null>(null)
-  const { appClient } = useAppClient()
+  const [boxTrophyData] = useState<{ assetId: string; ownerAddress: string } | null>(null)
+  const { appClient } = useAppCtx()
   const { athScore } = pollOnChainData(algorand.client.algod, appClient)
-  const { handler: appMethodHandler } = useAppMethodKit()
+  const { appMethodHandler } = useAppCtx()
   const { toggleModal, getModalProps } = useModal()
   const { openModal: isHonorsBlurbOpen } = getModalProps('honorsBlurb')
 

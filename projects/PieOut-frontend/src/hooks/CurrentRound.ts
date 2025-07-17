@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PieoutClient } from '../contracts/Pieout'
 import { AlgodClient } from 'algosdk/dist/types/client/v2/algod/algod'
 
-export function pollOnChainData(algod: AlgodClient | null, appClient: PieoutClient | null, pollInterval = 3000) {
+export function pollOnChainData(algod: AlgodClient | undefined, appClient: PieoutClient | undefined, pollInterval = 3000) {
   const [currentRound, setCurrentRound] = useState<number | null>(null)
   const [athScore, setAthScore] = useState<number>(0)
   const [athAddress, setAthAddress] = useState<string>('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ')
@@ -34,12 +34,12 @@ export function pollOnChainData(algod: AlgodClient | null, appClient: PieoutClie
         const lastRound = Number(status.lastRound)
         setCurrentRound((prev) => (prev !== lastRound ? lastRound : prev))
 
-        if (appClient) {
-          const score = await appClient.state.global.athScore()
-          const address = await appClient.state.global.athAddress()
-          setAthScore(Number(score))
-          setAthAddress(address ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ')
-        }
+        // if (appClient) {
+        //   // const score = await appClient.state.global.athScore()
+        //   // const address = await appClient.state.global.athAddress()
+        //   setAthScore(Number(score))
+        //   setAthAddress(address ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ')
+        // }
       } catch (err) {
         consoleLogger.error('❌ Interval fetch error:', err)
       }

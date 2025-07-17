@@ -150,7 +150,7 @@ export class PieoutMethods {
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       receiver: client.appAddress,
-      amount: microAlgo(19_300),
+      amount: microAlgo(19_700),
       note: noteBoxTPay,
     })
 
@@ -272,7 +272,7 @@ export class PieoutMethods {
       note: noteBoxCPay,
     })
 
-    await client.send.getBoxGameRegiser({
+    await client.send.getBoxGameRegister({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { boxRPay: boxRPay },

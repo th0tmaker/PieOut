@@ -1,159 +1,111 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import deepEqual from 'fast-deep-equal'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-// import { AppClientContext } from '../contexts/AppClientContext'
-import { GameState } from '../contracts/Pieout'
+import { useCallback, useEffect, useRef } from 'react'
+import { GameState, GameTrophy, GameRegister, PieoutClient } from '../contracts/Pieout'
 import { PieoutMethods } from '../methods'
-import { useAppClient } from './useAppClient'
 
 type UsePollGameDataProps = {
-  appMethods?: PieoutMethods
-  validatedGameId: bigint
-  activeAddress?: string
-  currentGameState: GameState | null
-  setCurrentGameState: (state: GameState | null) => void
-  currentGamePlayers: string[] | null
-  setCurrentGamePlayers: (players: string[]) => void
-  setBoxCommitRandData?: (entry: { gameId: bigint | null; commitRound: bigint | null; expiryRound: bigint | null }) => void
+  appClient: PieoutClient | undefined
+  appMethods: PieoutMethods | undefined
+  gameId: bigint | null
+  activeAddress: string | null
+  gameTrophyData: GameTrophy | undefined
+  setGameTrophyData: (data: GameTrophy | undefined) => void
+  gameRegisterData: GameRegister | undefined
+  setGameRegisterData: (data: GameRegister | undefined) => void
+  gameStateData: GameState | undefined
+  setGameStateData: (data: GameState | undefined) => void
+  gamePlayersData: string[] | undefined
+  setGamePlayersData: (data: string[] | undefined) => void
   pollingInterval?: number
 }
 
 export function usePollGameData({
+  appClient,
   appMethods,
-  validatedGameId,
+  gameId,
   activeAddress,
-  currentGameState,
-  setCurrentGameState,
-  currentGamePlayers,
-  setCurrentGamePlayers,
-  setBoxCommitRandData,
+  gameTrophyData,
+  setGameTrophyData,
+  gameRegisterData,
+  setGameRegisterData,
+  gameStateData,
+  setGameStateData,
+  gamePlayersData,
+  setGamePlayersData,
   pollingInterval = 3000,
 }: UsePollGameDataProps) {
-  const { appClient } = useAppClient()
-
-  const gameId = useMemo(() => {
-    try {
-      return BigInt(validatedGameId)
-    } catch {
-      return null
-    }
-  }, [validatedGameId])
-
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const gameStateRef = useRef(currentGameState)
-  const gamePlayersRef = useRef(currentGamePlayers)
-  const boxCommitRandRef = useRef<{
-    gameId: bigint | null
-    commitRound: bigint | null
-    expiryRound: bigint | null
-  } | null>(null)
 
-  useEffect(() => {
-    gameStateRef.current = currentGameState
-  }, [currentGameState])
+  // Mutable refs to track previous state
+  const gameTrophyRef = useRef<GameTrophy | undefined>(gameTrophyData)
+  const gameRegisterRef = useRef<GameRegister | undefined>(gameRegisterData)
+  const gameStateRef = useRef<GameState | undefined>(gameStateData)
+  const gamePlayersRef = useRef<string[] | undefined>(gamePlayersData)
 
+  // Update refs when props change
   useEffect(() => {
-    gamePlayersRef.current = currentGamePlayers
-  }, [currentGamePlayers])
+    gameTrophyRef.current = gameTrophyData
+    gameRegisterRef.current = gameRegisterData
+    gameStateRef.current = gameStateData
+    gamePlayersRef.current = gamePlayersData
+  }, [gameTrophyData, gameRegisterData, gameStateData, gamePlayersData])
+
+  // Helper to update state only if changed
+  const syncState = <T>(ref: React.MutableRefObject<T | undefined>, newValue: T | undefined, setter: (v: T | undefined) => void) => {
+    if (!deepEqual(ref.current, newValue)) {
+      ref.current = newValue
+      setter(newValue)
+    }
+  }
 
   const poll = useCallback(async () => {
-    if (!activeAddress || !appMethods) return
+    if (!activeAddress || !appClient || !appMethods || !gameId) return
 
     try {
-      let newGameState: GameState | null = null
-      let newGamePlayers: string[] | null = null
+      const [freshTrophy, freshRegister, freshState, freshPlayers] = await Promise.all([
+        appClient.state.box.boxGameTrophy(),
+        appClient.state.box.boxGameRegister.value(activeAddress),
+        appClient.state.box.boxGameState.value(gameId),
+        appMethods?.readBoxGamePlayers(appClient.appId, activeAddress, gameId),
+      ])
 
-      if (gameId) {
-        ;[newGameState, newGamePlayers] = await Promise.all([
-          appMethods.readGameState(1001n, activeAddress, gameId),
-          appMethods.readGamePlayers(1001n, activeAddress, gameId),
-        ])
-
-        if (newGameState && !deepEqual(gameStateRef.current, newGameState)) {
-          setCurrentGameState(newGameState)
-        }
-        if (Array.isArray(newGamePlayers) && !deepEqual(gamePlayersRef.current, newGamePlayers)) {
-          setCurrentGamePlayers([...newGamePlayers])
-        }
-      }
-
-      // Get boxCommitRand entry for active address (always, even if no gameId)
-      if (setBoxCommitRandData && appClient) {
-        const boxCommitRandMap = await appClient.state.box.boxGameRegister.getMap()
-        const entry = boxCommitRandMap?.get(activeAddress)
-
-        const parsedEntry = {
-          gameId: entry?.gameId ?? null,
-          commitRound: entry?.commitRound ?? null,
-          expiryRound: entry?.expiryRound ?? null,
-        }
-
-        // Only update if changed
-        if (!deepEqual(boxCommitRandRef.current, parsedEntry)) {
-          boxCommitRandRef.current = parsedEntry
-          setBoxCommitRandData(parsedEntry)
-        }
-      }
-    } catch (err) {
-      consoleLogger.error('Polling error:', err)
+      syncState(gameTrophyRef, freshTrophy, setGameTrophyData)
+      syncState(gameRegisterRef, freshRegister, setGameRegisterData)
+      syncState(gameStateRef, freshState, setGameStateData)
+      syncState(gamePlayersRef, Array.isArray(freshPlayers) ? [...freshPlayers] : undefined, setGamePlayersData)
+    } catch (error) {
+      consoleLogger.error('Polling error:', error)
     }
-  }, [activeAddress, appClient, appMethods, gameId, setCurrentGameState, setCurrentGamePlayers, setBoxCommitRandData])
+  }, [activeAddress, appClient, appMethods, gameId])
 
+  // Start polling on mount and setup interval
   useEffect(() => {
-    if (!gameId || !activeAddress || !appMethods) return
+    if (!appClient || !gameId || !activeAddress) return
 
-    const resetStateIfNotFound = async () => {
-      try {
-        const state = await appMethods.readGameState(1001n, activeAddress, gameId)
-        if (!state) {
-          setCurrentGameState(null)
-          gameStateRef.current = null
-        }
-      } catch {
-        setCurrentGameState(null)
-        gameStateRef.current = null
-      }
-    }
-
-    resetStateIfNotFound()
-  }, [validatedGameId])
-
-  // Clear polling when currentGameState becomes null
-  useEffect(() => {
-    if (currentGameState === null && intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [currentGameState])
-
-  useEffect(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-
-    // Don't start polling if currentGameState is explicitly null
-    if (!activeAddress || !appMethods) return
-
+    // Immediate first poll
     poll()
 
     intervalRef.current = setInterval(() => {
-      poll().catch(consoleLogger.error)
+      poll()
     }, pollingInterval)
 
+    // Cleanup on unmount or dependency change
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
     }
-  }, [poll, pollingInterval, currentGameState])
+  }, [poll, pollingInterval, appClient, gameId, activeAddress])
 
+  // Clear state if appClient, activeAddress, or currentGameId become falsy
   useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+    if (!appClient || !activeAddress || !gameId) {
+      setGameTrophyData(undefined)
+      setGameRegisterData(undefined)
+      setGameStateData(undefined)
+      setGamePlayersData(undefined)
     }
-  }, [])
+  }, [appClient, activeAddress, gameId, setGameTrophyData, setGameRegisterData, setGameStateData, setGamePlayersData])
 }

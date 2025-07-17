@@ -1,5 +1,4 @@
 import { useWallet } from '@txnlab/use-wallet-react'
-import { useBoxCommitRandData } from '../hooks/useBoxCommitRandData'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import BlurbPortal from './BlurbPortal'
@@ -7,14 +6,16 @@ import ProfileBlurbContent from '../blurbs/ProfileBlurb'
 import { ModalInterface } from '../interfaces/modal'
 import { hasBoxCommitRand } from '../conditions/conditions'
 import { useModal } from '../hooks/useModal'
+import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
 
 interface ProfileModalInterface extends ModalInterface {}
 
 const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
   const { activeAddress } = useWallet()
-  const { boxCommitRandData } = useBoxCommitRandData()
-  const hasBoxCommitRandData = hasBoxCommitRand(boxCommitRandData)
   const { toggleModal, getModalProps } = useModal()
+  const { gameRegisterData } = useGameBoxDataCtx()
+  const hasBoxCommitRandData = hasBoxCommitRand(gameRegisterData)
+
   const { openModal: isProfileBlurbOpen } = getModalProps('profileBlurb')
 
   return (
@@ -70,8 +71,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Game ID */}
               <p>
                 Game ID:{' '}
-                {boxCommitRandData?.gameId !== undefined && boxCommitRandData?.gameId !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.gameId.toString()} #`}</span>
+                {gameRegisterData?.gameId !== undefined && gameRegisterData?.gameId !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData.gameId.toString()} #`}</span>
                 ) : (
                   'N/D'
                 )}
@@ -79,8 +80,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Commit Round */}
               <p>
                 Commit Round:{' '}
-                {boxCommitRandData?.commitRound !== undefined && boxCommitRandData?.commitRound !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.commitRound} ❒`}</span>
+                {gameRegisterData?.commitRandRound !== undefined && gameRegisterData?.commitRandRound !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData?.commitRandRound} ❒`}</span>
                 ) : (
                   'N/D'
                 )}
@@ -88,8 +89,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Expiry Round */}
               <p>
                 Expiry Round:{' '}
-                {boxCommitRandData?.expiryRound !== undefined && boxCommitRandData?.expiryRound !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.expiryRound} ❒`}</span>
+                {gameRegisterData?.expiryRound !== undefined && gameRegisterData?.expiryRound !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData?.expiryRound} ❒`}</span>
                 ) : (
                   'N/D'
                 )}

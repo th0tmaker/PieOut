@@ -6,32 +6,31 @@ import { PieoutMethods } from '../methods'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
-import { useBoxCommitRandData } from '../hooks/useBoxCommitRandData'
-
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
-import { usePollGameData } from '../hooks/usePollGameData'
 import ProfileModal from './ProfileModal'
 import { useModal } from '../hooks/useModal'
+import { useGameIdCtx } from '../hooks/useGameIdCtx'
+import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
-  // const { appClient } = useAppClient()
   const [openDemoModal, setOpenDemoModal] = useState<boolean>(false)
   const [openLeaderboardModal, setOpenLeaderboardModal] = useState<boolean>(false)
-  const { modal, toggleModal, openModal, closeModal, getModalProps } = useModal()
+  const { modal, toggleModal, openModal, getModalProps } = useModal()
 
   const appMethods = useMemo(() => (activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined), [activeAddress])
 
   const [currentGameState, setCurrentGameState] = useState<GameState | null>(null)
   const [currentGamePlayers, setCurrentGamePlayers] = useState<string[] | null>(null)
-  const { boxCommitRandData, setBoxCommitRandData } = useBoxCommitRandData()
 
   const [inputedGameId, setInputedGameId] = useState('')
   const [userMsg, setUserMsg] = useState('')
   const [isGameIdZero, setIsGameIdZero] = useState(false)
 
-  const [validatedGameId, setValidatedGameId] = useState<bigint | undefined>(undefined)
+  // const [validatedGameId, setValidatedGameId] = useState<bigint | undefined>(undefined)
+  const { gameId, setGameId } = useGameIdCtx()
+  const { gameRegisterData } = useGameBoxDataCtx()
 
   const currentTimestamp = useCurrentTimestamp()
 
@@ -132,21 +131,10 @@ const GameTable: React.FC = () => {
     }
   }, [currentGameState, currentTimestamp])
 
-  usePollGameData({
-    appMethods,
-    validatedGameId: validatedGameId !== undefined ? validatedGameId : 0n,
-    activeAddress: activeAddress ?? undefined,
-    currentGameState,
-    setCurrentGameState,
-    currentGamePlayers,
-    setCurrentGamePlayers,
-    setBoxCommitRandData,
-  })
-
   useEffect(() => {
     consoleLogger.info('bla', currentGameState?.activePlayers?.toString() ?? 'No active players')
     // setIsViewingGamePlayers(false)
-  }, [validatedGameId, currentGameState])
+  }, [gameId, currentGameState])
 
   const readBoxGameData = async (inputGameId: string) => {
     if (!activeAddress || !appMethods) {
@@ -170,10 +158,10 @@ const GameTable: React.FC = () => {
     }
 
     try {
-      const gameState = await appMethods.readGameState(1001n, activeAddress, bigIntGameId)
-      const gamePlayers = await appMethods.readGamePlayers(1001n, activeAddress, bigIntGameId)
+      const gameState = await appMethods.readBoxGameState(1001n, activeAddress, bigIntGameId)
+      const gamePlayers = await appMethods.readBoxGamePlayers(1001n, activeAddress, bigIntGameId)
 
-      setValidatedGameId(bigIntGameId)
+      setGameId(bigIntGameId)
       setCurrentGameState(gameState)
       setCurrentGamePlayers(gamePlayers ?? [])
       setIsGameIdZero(false)
@@ -186,26 +174,26 @@ const GameTable: React.FC = () => {
   }
 
   const handleJoinGame = () => {
-    if (!appMethods || !activeAddress || !validatedGameId) return
+    if (!appMethods || !activeAddress || !gameId) return
 
-    appMethods.joinGame(1001n, activeAddress, BigInt(validatedGameId))
+    appMethods.joinGame(1001n, activeAddress, BigInt(gameId))
   }
 
   const handlePlayGame = async () => {
-    if (!appMethods || !activeAddress || !validatedGameId) return
+    if (!appMethods || !activeAddress || !gameId) return
 
     try {
-      await appMethods.playGame(1001n, activeAddress, BigInt(validatedGameId))
+      await appMethods.playGame(1001n, activeAddress, BigInt(gameId))
     } catch (err) {
       consoleLogger.error('Error during play sequence:', err)
     }
   }
 
   const handleSetBoxCommitRand = async () => {
-    if (!appMethods || !activeAddress || !validatedGameId) return
+    if (!appMethods || !activeAddress || !gameId) return
 
     try {
-      await appMethods.setBoxCommitRand(1001n, activeAddress, BigInt(validatedGameId))
+      await appMethods.setGameCommit(1001n, activeAddress, BigInt(gameId))
     } catch (err) {
       consoleLogger.error('Error during set box commit rand sequence:', err)
     }
@@ -217,9 +205,9 @@ const GameTable: React.FC = () => {
   }
 
   const handleTrigGameEvent = async (triggerId: bigint) => {
-    if (!activeAddress || !appMethods || !eventTriggerConditions || !validatedGameId) return
+    if (!activeAddress || !appMethods || !eventTriggerConditions || !gameId) return
     try {
-      await appMethods.triggerGameProg(1001n, activeAddress, validatedGameId, triggerId)
+      await appMethods.triggerGameProg(1001n, activeAddress, gameId, triggerId)
       // setIsViewingTriggerEvents(false)
     } catch (err) {
       consoleLogger.error('Error during trigger game event:', err)
@@ -279,7 +267,7 @@ const GameTable: React.FC = () => {
             <tr>
               {/* Game ID */}
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-2 py-1">
-                {validatedGameId?.toString()}
+                {gameId?.toString()}
               </td>
               {/* Admin */}
               <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 relative">
@@ -388,7 +376,7 @@ const GameTable: React.FC = () => {
               </td>
               {/* Set */}
               <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-                {currentGameState.stakingFinalized && currentGameState.prizePool !== 0n && boxCommitRandData?.gameId === 0n ? (
+                {currentGameState.stakingFinalized && currentGameState.prizePool !== 0n && gameRegisterData?.gameId === 0n ? (
                   <button
                     className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                     onClick={handleSetBoxCommitRand}
