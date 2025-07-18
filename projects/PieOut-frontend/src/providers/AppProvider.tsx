@@ -7,7 +7,7 @@ import { Arc56Contract } from '@algorandfoundation/algokit-utils/types/app-arc56
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { algorand } from '../utils/network/getAlgorandClient'
 import { PieoutMethods } from '../methods'
-import { PieoutMethodHandler } from '../methodHandler'
+import { createMethodHandler } from '../methodHandler'
 import { AppCtx } from '../contexts/App'
 
 // Create App provider that initializes and supplies the application creator, client, methods and method handler its children
@@ -33,19 +33,15 @@ export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
   // --- Memos ---
   // useMemo: Memoize application methods
   const appMethods = useMemo(() => {
-    if (!activeAddress) return undefined
+    if (!algorand || !activeAddress) return undefined
     return new PieoutMethods(algorand, activeAddress)
-  }, [activeAddress])
+  }, [algorand, activeAddress])
 
   // useMemo: Memoize application method handler
   const appMethodHandler = useMemo(() => {
-    if (!activeAddress || !appMethods || !appClient) return undefined
-    return new PieoutMethodHandler({
-      activeAddress,
-      appMethods,
-      appClient,
-    })
-  }, [activeAddress, appMethods, appClient])
+    if (!algorand || !activeAddress || !appMethods || !appClient) return undefined
+    return createMethodHandler({ activeAddress: activeAddress, appMethods: appMethods, appClient: appClient })
+  }, [algorand, activeAddress, appMethods, appClient])
 
   // --- Hydration ---
   // useEffect: Hydrate app data from localStorage on mount
@@ -128,8 +124,8 @@ export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
     if (appClient) return appClient
 
     // Throw error if required dependencies are missing
-    if (!activeAddress || !appMethods) {
-      throw new Error('Missing activeAddress or appMethods')
+    if (!algorand || !activeAddress || !appMethods) {
+      throw new Error('Missing algorand/activeAddress/appMethods')
     }
 
     // Wait if another initialization is already in progress
@@ -157,7 +153,7 @@ export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
     // Try block
     try {
       // call generateApp from the appMethods object to create a new smart contract client
-      const client = await appMethods.generateApp(activeAddress)
+      const client = await appMethods.generate(activeAddress)
       // Access creator address from the application info
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
@@ -184,7 +180,7 @@ export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
       setIsLoading(false)
       isInitializing.current = false
     }
-  }, [activeAddress, appMethods, appClient])
+  }, [algorand, activeAddress, appMethods, appClient])
 
   // Memoize value to avoid unnecessary re-renders
   const value = useMemo(

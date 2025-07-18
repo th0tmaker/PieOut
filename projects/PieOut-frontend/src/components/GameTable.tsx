@@ -207,7 +207,7 @@ const GameTable: React.FC = () => {
   const handleTrigGameEvent = async (triggerId: bigint) => {
     if (!activeAddress || !appMethods || !eventTriggerConditions || !gameId) return
     try {
-      await appMethods.triggerGameProg(1001n, activeAddress, gameId, triggerId)
+      await appMethods.triggerGameEvent(1001n, activeAddress, gameId, triggerId)
       // setIsViewingTriggerEvents(false)
     } catch (err) {
       consoleLogger.error('Error during trigger game event:', err)

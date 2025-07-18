@@ -20,7 +20,7 @@ export class PieoutMethods {
   }
 
   // Factory deploy and handle the smart contract application creation and deletion
-  async deployApp(sender: string): Promise<PieoutClient> {
+  async deploy(sender: string): Promise<PieoutClient> {
     const { appClient } = await this.factory.deploy({
       appName: 'PieOut',
       createParams: {
@@ -46,7 +46,7 @@ export class PieoutMethods {
   }
 
   // Factory create the smart contract application by calling the generate method
-  async generateApp(sender: string, noteGenContract?: string | Uint8Array, noteFundAppMbr?: string | Uint8Array): Promise<PieoutClient> {
+  async generate(sender: string, noteGenContract?: string | Uint8Array, noteFundAppMbr?: string | Uint8Array): Promise<PieoutClient> {
     const { appClient } = await this.factory.send.create.generate({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
@@ -67,7 +67,7 @@ export class PieoutMethods {
   }
 
   // Delete the smart contract application by calling the terminate method
-  async terminateApp(appId: bigint, sender: string, note?: string | Uint8Array) {
+  async terminate(appId: bigint, sender: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
     await client.appClient.send.delete({
@@ -79,6 +79,18 @@ export class PieoutMethods {
       maxFee: microAlgo(100_000),
       coverAppCallInnerTransactionFees: true,
     })
+  }
+
+  //Calculate the minimum balance requirement (MBR) cost for storing a single box unit
+  async calcSingleBoxCost(appId: bigint, sender: string, keySize: number | bigint, valueSize: number | bigint, note?: string | Uint8Array) {
+    const client = this.factory.getAppClientById({ appId })
+    const result = await client.calcSingleBoxCost({
+      sender: sender,
+      signer: this.algorand.account.getSigner(sender),
+      args: { keySize: keySize, valueSize: valueSize },
+      note: note,
+    })
+    return result
   }
 
   // Read the smart contract application genesis unix timestamp
@@ -355,19 +367,17 @@ export class PieoutMethods {
   }
 
   // Trigger game proggession
-  async triggerGameProg(appId: bigint, sender: string, gameId: bigint, triggerId: bigint, noteTriggerGameProg?: string | Uint8Array) {
+  async triggerGameEvent(appId: bigint, sender: string, gameId: bigint, triggerId: bigint, noteTriggerGameProg?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const triggerGameProgTxn = await client.send.triggerGameEvent({
+    await client.send.triggerGameEvent({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId, triggerId: triggerId },
       note: noteTriggerGameProg,
-      maxFee: microAlgo(100_000),
+      maxFee: microAlgo(10_000),
       coverAppCallInnerTransactionFees: true,
     })
-
-    return triggerGameProgTxn.return
   }
 
   // Reset existing game

@@ -4,7 +4,6 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import BlurbPortal from './BlurbPortal'
 import ProfileBlurbContent from '../blurbs/ProfileBlurb'
 import { ModalInterface } from '../interfaces/modal'
-import { hasBoxCommitRand } from '../conditions/conditions'
 import { useModal } from '../hooks/useModal'
 import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
 
@@ -12,10 +11,8 @@ interface ProfileModalInterface extends ModalInterface {}
 
 const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
   const { activeAddress } = useWallet()
-  const { toggleModal, getModalProps } = useModal()
   const { gameRegisterData } = useGameBoxDataCtx()
-  const hasBoxCommitRandData = hasBoxCommitRand(gameRegisterData)
-
+  const { toggleModal, getModalProps } = useModal()
   const { openModal: isProfileBlurbOpen } = getModalProps('profileBlurb')
 
   return (
@@ -47,8 +44,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
             <div className="space-y-1 pt-2 text-indigo-200 font-bold">
               <p>
                 Status:{' '}
-                <span className={hasBoxCommitRandData ? 'text-green-400' : 'text-red-400'}>
-                  {hasBoxCommitRandData ? 'Registered' : 'Not Registered'}
+                <span className={gameRegisterData ? 'text-green-400' : 'text-red-400'}>
+                  {gameRegisterData ? 'Registered' : 'Not Registered'}
                 </span>
               </p>
               {/* Account */}
@@ -122,10 +119,10 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
             <button
               className="bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
               onClick={() => {
-                consoleLogger.info(hasBoxCommitRandData ? 'Unregister button clicked' : 'Register button clicked')
+                consoleLogger.info(gameRegisterData ? 'Unregister button clicked' : 'Register button clicked')
               }}
             >
-              {hasBoxCommitRandData ? 'Unregister' : 'Register'}
+              {gameRegisterData ? 'Unregister' : 'Register'}
             </button>
             {/* Close Button */}
             <button

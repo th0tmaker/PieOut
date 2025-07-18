@@ -1,5 +1,5 @@
 //src/types/MethodHandlerProps.ts
-import { GameRegister, GameTrophy, PieoutClient } from '../contracts/Pieout'
+import { PieoutClient } from '../contracts/Pieout'
 import { PieoutMethods } from '../methods'
 
 // Define the Method Handler Props type
@@ -7,12 +7,14 @@ export type MethodHandlerProps = {
   activeAddress: string | null
   appMethods: PieoutMethods | undefined
   appClient: PieoutClient | undefined
-  setTrophyData: (data: GameTrophy) => void
-  setRegisterData: (data: GameRegister) => void
-  maxPlayers?: bigint
-  gameId?: bigint
-  triggerId?: bigint
-  player?: string
+  // setTrophyData: (data: GameTrophy) => void
+  // setRegisterData: (data: GameRegister) => void
+  maxPlayers?: bigint | null
+  gameId?: bigint | null
+  triggerId?: bigint | null
+  player?: string | null
+  keySize?: bigint | number | null
+  valueSize?: bigint | number | null
 }
 
 // Define the Method Names type

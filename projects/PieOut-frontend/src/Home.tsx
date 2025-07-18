@@ -17,23 +17,47 @@ import { useModal } from './hooks/useModal'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
 import HonorsModal from './components/HonorsModal'
 import { useAppCtx } from './hooks/useAppCtx'
+import { useGameBoxDataCtx } from './hooks/useGameBoxDataCtx'
+import { maybe } from './utils/helpers/maybe'
 
 interface HomeProps {}
 const Home: React.FC<HomeProps> = () => {
-  const { modal, toggleModal, getModalProps } = useModal()
-
+  const { toggleModal, getModalProps } = useModal()
+  const { activeAddress } = useWallet()
   const { appClient, appCreator, getAppClient } = useAppCtx()
   const { appMethodHandler } = useAppCtx()
+  const { setIsAbleToPollTrophyData, setIsAbleToPollRegisterData } = useGameBoxDataCtx()
+
   const currentTimestamp = useCurrentTimestamp()
   const { currentRound } = pollOnChainData(algorand.client.algod, appClient)
-
   const [toggleGameOptions, setToggleGameOptions] = useState(false)
 
   // const { startAppSubscriber, stopAppSubscriber } = useAppSubscriber({})
 
-  // useEffect(() => {
-  //   consoleLogger.info('blahhh', boxCommitRandData)
-  // }, [boxCommitRandData])
+  useEffect(() => {
+    if (!activeAddress || !appClient) return
+
+    // Reset flags on address change
+    setIsAbleToPollRegisterData(false)
+    setIsAbleToPollTrophyData(false)
+
+    // Async check if the boxes exist for the new address
+    async function checkBoxExistForAddress() {
+      if (!activeAddress || !appClient) return
+
+      const registerData = await maybe(appClient.state.box.boxGameRegister.value(activeAddress))
+      if (registerData !== undefined) {
+        setIsAbleToPollRegisterData(true)
+      }
+
+      const trophyData = await maybe(appClient.state.box.boxGameTrophy())
+      if (trophyData !== undefined) {
+        setIsAbleToPollTrophyData(true)
+      }
+    }
+
+    checkBoxExistForAddress()
+  }, [activeAddress, appClient])
 
   // RUN SUBSCRIBER CODE
   // useEffect(() => {
@@ -64,21 +88,27 @@ const Home: React.FC<HomeProps> = () => {
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-green-500 hover:bg-green-600 border-2 border-black"
-        onClick={() => appMethodHandler?.handle('mintTrophy')}
+        onClick={async () => {
+          await appMethodHandler?.handle('mintTrophy')
+          setIsAbleToPollTrophyData(true)
+        }}
       >
         Mint Trophy
       </button>
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-fuchsia-500 hover:bg-fuchsia-600 border-2 border-black"
-        onClick={() => appMethodHandler?.handle('getBoxCommitRand')}
+        onClick={async () => {
+          await appMethodHandler?.handle('getBoxGameRegister')
+          setIsAbleToPollRegisterData(true)
+        }}
       >
         Commit
       </button>
 
       <button
         className=" mr-2 py-2 px-4 rounded text-white font-bold bg-orange-500 hover:bg-orange-600 border-2 border-black"
-        onClick={() => appMethodHandler?.handle('setBoxCommitRand')}
+        onClick={() => appMethodHandler?.handle('setGameCommit')}
       >
         Set
       </button>
