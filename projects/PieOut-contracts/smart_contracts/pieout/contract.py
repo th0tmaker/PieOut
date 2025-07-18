@@ -182,7 +182,7 @@ class Pieout(ARC4Contract):
 
     # Get box game register contents with default start values
     @arc4.abimethod
-    def get_box_game_regiser(self, box_r_pay: gtxn.PaymentTransaction) -> None:
+    def get_box_game_register(self, box_r_pay: gtxn.PaymentTransaction) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
         assert Txn.sender not in self.box_game_register, err.BOX_FOUND
@@ -408,7 +408,7 @@ class Pieout(ARC4Contract):
             or self.box_game_register[Txn.sender].game_id.native == game_id
         ), err.INVALID_GAME_ID
 
-        # Check if box commit rand game id is not equal to zero
+        # Check if game register box game id value is not equal to zero
         if self.box_game_register[Txn.sender].game_id.native != 0:
             # Fail transaction unless the assertion below evaluates True
             assert (
@@ -422,15 +422,15 @@ class Pieout(ARC4Contract):
                 == False
             ), err.PLAYER_ACTIVE
 
-        # Delete sender box commit rand from the smart contract storage
+        # Delete sender game register box from the smart contract storage
         del self.box_game_register[Txn.sender]
 
-        # Issue MBR refund for box commit rand deletion via a payment inner transaction
+        # Issue MBR refund for game register box deletion via a payment inner transaction
         srt.payout_itxn(
             receiver=Txn.sender,
             amount=UInt64(cst.BOX_R_COST),
             note=String(
-                'pieout:j{"method":"del_box_commit_rand_for_self","concern":"txn.app_c;mbr_box_c_refund"}'
+                'pieout:j{"method":"del_box_game_register_for_self","concern":"txn.app_c;mbr_box_r_refund"}'
             ),
         )
 
@@ -450,22 +450,22 @@ class Pieout(ARC4Contract):
             self.box_game_register[player].expiry_round.native < Global.round
         ), err.TIME_CONSTRAINT_VIOLATION
 
-        # Delete sender box commit rand box from contract storage
+        # Delete game register box from contract storage
         del self.box_game_register[player]
 
-        # Resolve box commit rand deletion MBR refund receiver by priority
+        # Resolve game register box deletion MBR refund receiver by priority
         receiver = srt.resolve_receiver_by_prio(
             acc1=player,
             acc2=Txn.sender,
             acc3=Global.creator_address,
         )
 
-        # Issue MBR refund for box commit rand deletion via a payment inner transaction
+        # Issue MBR refund for game register box deletion via a payment inner transaction
         srt.payout_itxn(
             receiver=receiver,
             amount=UInt64(cst.BOX_R_COST),
             note=String(
-                'pieout:j{"method":"del_box_commit_rand_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
+                'pieout:j{"method":"del_box_game_register_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
             ),
         )
 

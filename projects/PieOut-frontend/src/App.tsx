@@ -1,12 +1,10 @@
-import { SupportedWallet, useWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
+import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
 import { SnackbarProvider } from 'notistack'
 import Home from './Home'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
-import { algorand } from './utils/network/getAlgorandClient'
-import { PieoutMethods } from './methods'
-import { BoxCommitRandDataProvider } from './providers/BoxCommitRandDataProvider'
-import { AppClientProvider } from './providers/AppClientProvider'
-import { AppMethodKitProvider } from './providers/AppMethodKitProvider'
+import { GameIdProvider } from './providers/GameIdProvider'
+import { GameBoxDataProvider } from './providers/GameBoxDataProvider'
+import { AppProvider } from './providers/AppProvider'
 
 let supportedWallets: SupportedWallet[]
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
@@ -29,21 +27,6 @@ if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
     // If you are interested in WalletConnect v2 provider
     // refer to https://github.com/TxnLab/use-wallet for detailed integration instructions
   ]
-}
-
-const AppProvider = () => {
-  const { activeAddress, transactionSigner } = useWallet()
-  algorand.setDefaultSigner(transactionSigner)
-
-  const appMethods = activeAddress ? new PieoutMethods(algorand, activeAddress) : undefined
-
-  return (
-    <AppClientProvider activeAddress={activeAddress ?? ''} appMethods={appMethods} algorand={algorand}>
-      <AppMethodKitProvider>
-        <Home />
-      </AppMethodKitProvider>
-    </AppClientProvider>
-  )
 }
 
 export default function App() {
@@ -69,9 +52,13 @@ export default function App() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <BoxCommitRandDataProvider>
-          <AppProvider />
-        </BoxCommitRandDataProvider>
+        <GameIdProvider>
+          <AppProvider>
+            <GameBoxDataProvider>
+              <Home />
+            </GameBoxDataProvider>
+          </AppProvider>
+        </GameIdProvider>
       </WalletProvider>
     </SnackbarProvider>
   )

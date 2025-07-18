@@ -80,8 +80,12 @@ def resolve_receiver_by_prio(
     else:
         return Global.current_application_address
 
+<<<<<<< HEAD
 
 # Reset box commit rand values back to its initial default state
+=======
+# Reset game register box contents back to their initial original default state
+>>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
 @subroutine
 def reset_box_game_register(
     box_game_register: BoxMap[Account, stc.GameRegister],
@@ -178,11 +182,19 @@ def calc_score_get_place(
         arc4.UInt8(score),
     )
 
+<<<<<<< HEAD
     # Check if score is greater than the game state best score
     if score > game_state.best_score.native:
         game_state.best_score = arc4.UInt8(score)
 
     # Check if score is greater than the game register account's personal best score across every game played
+=======
+    # Check if score is greater than the game state's best score
+    if score > game_state.best_score.native:
+        game_state.best_score = arc4.UInt8(score)
+
+    # Check if score is greater than the game register account's best score across every game played
+>>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
     if score > game_register.best_score.native:
         game_register.best_score = arc4.UInt8(score)
 
@@ -260,13 +272,13 @@ def is_game_over(
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
         or game_state.active_players.native == 0  # If no more active players
     ):
-        # Reset box commit rand fields to default start values for any remaining players
+        # Reset game register box contents to their default starting values for any remaining players
         game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
         for i in urange(0, game_players_bref.length, 32):
             player_addr_bytes = game_players_bref.extract(i, 32)
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player = Account.from_bytes(player_addr_bytes)
-                # Reset box commit rand fields back to their original start values
+                # Reset game register fields back to their original starting values
                 reset_box_game_register(
                     box_game_register=box_game_register,
                     account=player,

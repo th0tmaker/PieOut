@@ -1,19 +1,17 @@
 import { useWallet } from '@txnlab/use-wallet-react'
-import { useBoxCommitRandData } from '../hooks/useBoxCommitRandData'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import BlurbPortal from './BlurbPortal'
 import ProfileBlurbContent from '../blurbs/ProfileBlurb'
 import { ModalInterface } from '../interfaces/modal'
-import { hasBoxCommitRand } from '../conditions/conditions'
 import { useModal } from '../hooks/useModal'
+import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
 
 interface ProfileModalInterface extends ModalInterface {}
 
 const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
   const { activeAddress } = useWallet()
-  const { boxCommitRandData } = useBoxCommitRandData()
-  const hasBoxCommitRandData = hasBoxCommitRand(boxCommitRandData)
+  const { gameRegisterData } = useGameBoxDataCtx()
   const { toggleModal, getModalProps } = useModal()
   const { openModal: isProfileBlurbOpen } = getModalProps('profileBlurb')
 
@@ -46,8 +44,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
             <div className="space-y-1 pt-2 text-indigo-200 font-bold">
               <p>
                 Status:{' '}
-                <span className={hasBoxCommitRandData ? 'text-green-400' : 'text-red-400'}>
-                  {hasBoxCommitRandData ? 'Registered' : 'Not Registered'}
+                <span className={gameRegisterData ? 'text-green-400' : 'text-red-400'}>
+                  {gameRegisterData ? 'Registered' : 'Not Registered'}
                 </span>
               </p>
               {/* Account */}
@@ -70,8 +68,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Game ID */}
               <p>
                 Game ID:{' '}
-                {boxCommitRandData?.gameId !== undefined && boxCommitRandData?.gameId !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.gameId.toString()} #`}</span>
+                {gameRegisterData?.gameId !== undefined && gameRegisterData?.gameId !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData.gameId.toString()} #`}</span>
                 ) : (
                   'N/D'
                 )}
@@ -79,8 +77,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Commit Round */}
               <p>
                 Commit Round:{' '}
-                {boxCommitRandData?.commitRound !== undefined && boxCommitRandData?.commitRound !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.commitRound} ❒`}</span>
+                {gameRegisterData?.commitRandRound !== undefined && gameRegisterData?.commitRandRound !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData?.commitRandRound} ❒`}</span>
                 ) : (
                   'N/D'
                 )}
@@ -88,8 +86,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               {/* Expiry Round */}
               <p>
                 Expiry Round:{' '}
-                {boxCommitRandData?.expiryRound !== undefined && boxCommitRandData?.expiryRound !== null ? (
-                  <span className="text-cyan-300">{`${boxCommitRandData.expiryRound} ❒`}</span>
+                {gameRegisterData?.expiryRound !== undefined && gameRegisterData?.expiryRound !== null ? (
+                  <span className="text-cyan-300">{`${gameRegisterData?.expiryRound} ❒`}</span>
                 ) : (
                   'N/D'
                 )}
@@ -121,10 +119,10 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
             <button
               className="bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
               onClick={() => {
-                consoleLogger.info(hasBoxCommitRandData ? 'Unregister button clicked' : 'Register button clicked')
+                consoleLogger.info(gameRegisterData ? 'Unregister button clicked' : 'Register button clicked')
               }}
             >
-              {hasBoxCommitRandData ? 'Unregister' : 'Register'}
+              {gameRegisterData ? 'Unregister' : 'Register'}
             </button>
             {/* Close Button */}
             <button

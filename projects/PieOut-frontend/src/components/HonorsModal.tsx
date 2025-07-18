@@ -1,26 +1,20 @@
 import { useWallet } from '@txnlab/use-wallet-react'
-import { useState } from 'react'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import BlurbPortal from './BlurbPortal'
 import HonorsBlurbContent from '../blurbs/HonorsBlurb'
 import { ModalInterface } from '../interfaces/modal'
-import { pollOnChainData } from '../hooks/CurrentRound'
-import { useAppClient } from '../hooks/useAppClient'
-import { algorand } from '../utils/network/getAlgorandClient'
-import { useAppMethodKit } from '../hooks/useAppMethodKit'
 import { useModal } from '../hooks/useModal'
-
+import { useAppCtx } from '../hooks/useAppCtx'
+import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
 interface HonorsModalInterface extends ModalInterface {}
 
 const HonorsModal = ({ openModal, closeModal }: HonorsModalInterface) => {
   const { activeAddress } = useWallet()
-  const [boxTrophyData, setBoxTrophyData] = useState<{ assetId: string; ownerAddress: string } | null>(null)
-  const { appClient } = useAppClient()
-  const { athScore } = pollOnChainData(algorand.client.algod, appClient)
-  const { handler: appMethodHandler } = useAppMethodKit()
+  const { appMethodHandler } = useAppCtx()
   const { toggleModal, getModalProps } = useModal()
   const { openModal: isHonorsBlurbOpen } = getModalProps('honorsBlurb')
+  const { gameTrophyData } = useGameBoxDataCtx()
 
   return (
     <>
@@ -50,17 +44,17 @@ const HonorsModal = ({ openModal, closeModal }: HonorsModalInterface) => {
             {/* High Score */}
             <div className="space-y-1 pt-2 text-indigo-200 font-bold">
               <p>
-                High Score: <span className="text-yellow-300">{athScore ?? 'N/D'} ♕️</span>
+                High Score: <span className="text-yellow-300">{gameTrophyData?.highScore && `${gameTrophyData.highScore} ♕️`}</span>
               </p>
-              {/* Claimer */}
-              <p>
+              {/* Highscorer */}
+              <p className="flex items-center">
                 Highscorer:
-                {boxTrophyData ? (
-                  <span className="text-yellow-300 ml-1 flex items-center">
-                    {ellipseAddress(boxTrophyData.ownerAddress)}
+                <span className="text-yellow-300 ml-1 flex items-center">
+                  {gameTrophyData ? ellipseAddress(gameTrophyData.highscorerAddress, 4) : ''}
+                  {gameTrophyData && (
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(boxTrophyData.ownerAddress)
+                        navigator.clipboard.writeText(gameTrophyData.highscorerAddress)
                         consoleLogger.info('Address copied to clipboard:', activeAddress)
                       }}
                       title="Copy full address"
@@ -68,15 +62,13 @@ const HonorsModal = ({ openModal, closeModal }: HonorsModalInterface) => {
                     >
                       🗐
                     </button>
-                  </span>
-                ) : (
-                  <span className="text-yellow-300 ml-1">N/D</span>
-                )}
+                  )}
+                </span>
               </p>
               {/* Trophy Asset ID */}
               <p>
                 Trophy (Asset ID):{' '}
-                {boxTrophyData ? <span className="text-yellow-300">{1006} 🏆︎</span> : <span className="text-yellow-300 ml-1">N/D</span>}
+                <span className="text-yellow-300">{gameTrophyData?.assetId?.toString() && `${gameTrophyData.assetId.toString()} 🏆︎`}</span>
               </p>
             </div>
             {/* Divider 2 */}
