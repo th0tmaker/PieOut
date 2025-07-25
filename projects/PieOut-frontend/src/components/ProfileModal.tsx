@@ -6,6 +6,7 @@ import ProfileBlurbContent from '../blurbs/ProfileBlurb'
 import { ModalInterface } from '../interfaces/modal'
 import { useModal } from '../hooks/useModal'
 import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
+import { CopyAddressBtn } from './CopyAddressBtn'
 
 interface ProfileModalInterface extends ModalInterface {}
 
@@ -52,17 +53,8 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
               <p>
                 Account:{' '}
                 <span className="text-cyan-300 ml-1 flex items-center justify-center">
-                  {ellipseAddress(activeAddress ?? '')}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(activeAddress ?? '')
-                      consoleLogger.info('Address copied to clipboard:', activeAddress)
-                    }}
-                    title="Copy full address"
-                    className="text-pink-400 hover:text-lime-400 ml-2"
-                  >
-                    🗐
-                  </button>
+                  {ellipseAddress(activeAddress!)}
+                  <CopyAddressBtn value={activeAddress!} title="Copy full address" />
                 </span>
               </p>
               {/* Game ID */}

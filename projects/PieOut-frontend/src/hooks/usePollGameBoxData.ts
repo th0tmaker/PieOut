@@ -3,7 +3,6 @@ import deepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useRef } from 'react'
 import { GameState, GameTrophy, GameRegister } from '../contracts/Pieout'
 import { PollGameBoxDataProps } from '../types/PollGameBoxDataProps'
-import { maybe } from '../utils/helpers/maybe'
 
 export function usePollGameData({
   appClient,
@@ -18,8 +17,8 @@ export function usePollGameData({
   setGameStateData,
   gamePlayersData,
   setGamePlayersData,
-  isAbleToPollTrophyData,
-  isAbleToPollRegisterData,
+  isLoadingGameData,
+  setIsLoadingGameData,
   pollingInterval = 3000,
 }: PollGameBoxDataProps) {
   // Mutable refs to track previous state
@@ -49,49 +48,58 @@ export function usePollGameData({
     if (!activeAddress || !appClient || !appMethods) return
 
     try {
-      // Poll Trophy Data
-      if (isAbleToPollTrophyData) {
-        const trophyData = await maybe(appClient.state.box.boxGameTrophy())
-        syncState(gameTrophyRef, trophyData, setGameTrophyData)
+      const trophyExists = await appMethods.doesBoxGameTrophyExist(appClient.appId, activeAddress)
+      if (trophyExists) {
+        const gameTrophyData = await appClient.state.box.boxGameTrophy()
+        syncState(gameTrophyRef, gameTrophyData, setGameTrophyData)
       }
 
-      // Poll Register Data
-      if (isAbleToPollRegisterData) {
-        const registerData = await maybe(appClient.state.box.boxGameRegister.value(activeAddress))
-        syncState(gameRegisterRef, registerData, setGameRegisterData)
+      const registerExists = await appMethods.doesBoxGameRegisterExist(appClient.appId, activeAddress, activeAddress)
+      if (registerExists) {
+        const gameRegisterData = await appClient.state.box.boxGameRegister.value(activeAddress)
+        syncState(gameRegisterRef, gameRegisterData, setGameRegisterData)
       }
 
-      // Poll Game State and Players Data
       if (gameId != null) {
-        const [stateData, playersData] = await Promise.all([
-          maybe(appClient.state.box.boxGameState.value(gameId)),
-          maybe(appMethods.readBoxGamePlayers(appClient.appId, activeAddress, gameId)),
-        ])
+        const stateExists = await appMethods.doesBoxGameStateExist(appClient.appId, activeAddress, gameId)
 
-        syncState(gameStateRef, stateData, setGameStateData)
-        syncState(gamePlayersRef, Array.isArray(playersData) ? [...playersData] : undefined, setGamePlayersData)
+        if (stateExists) {
+          // Fetch both game state and players data in parallel
+          const [gameStateData, gamePlayersData] = await Promise.all([
+            appClient.state.box.boxGameState.value(gameId),
+            appMethods.readBoxGamePlayers(appClient.appId, activeAddress, gameId),
+          ])
+
+          syncState(gameStateRef, gameStateData, setGameStateData)
+          syncState(gamePlayersRef, Array.isArray(gamePlayersData) ? [...gamePlayersData] : undefined, setGamePlayersData)
+
+          // Clear loading state after successful fetch
+          setIsLoadingGameData(false)
+        } else {
+          // Game doesn't exist, clear loading state
+          setIsLoadingGameData(false)
+        }
       }
     } catch (error) {
-      consoleLogger.error('Polling fatal error:', error)
+      consoleLogger.error('Polling game box data error:', error)
+      // Clear loading state on error
+      setIsLoadingGameData(false)
     }
   }, [
     activeAddress,
     appClient,
     appMethods,
     gameId,
-    isAbleToPollTrophyData,
-    isAbleToPollRegisterData,
     setGameTrophyData,
     setGameRegisterData,
     setGameStateData,
     setGamePlayersData,
+    setIsLoadingGameData,
   ])
 
-  // Start polling trophy & register data
+  // Start polling data
   useEffect(() => {
     if (!activeAddress || !appClient || !pollingInterval) return
-
-    poll() // First poll immediately
 
     intervalRef.current = setInterval(() => {
       poll()
@@ -104,16 +112,45 @@ export function usePollGameData({
   }, [poll, activeAddress, appClient, pollingInterval])
 
   useEffect(() => {
-    if (!appClient || !activeAddress) {
-      setGameTrophyData(undefined)
-      setGameRegisterData(undefined)
-    }
-  }, [appClient, activeAddress])
+    const getGameRegisterData = async () => {
+      if (!activeAddress || !appClient || !appMethods) return
 
-  useEffect(() => {
-    if (!appClient || !activeAddress || !gameId) {
-      setGameStateData(undefined)
-      setGamePlayersData(undefined)
+      try {
+        const registerExists = await appMethods.doesBoxGameRegisterExist(appClient.appId, activeAddress, activeAddress)
+        if (registerExists) {
+          const gameRegisterData = await appClient.state.box.boxGameRegister.value(activeAddress)
+          syncState(gameRegisterRef, gameRegisterData, setGameRegisterData)
+        }
+      } catch (error) {
+        consoleLogger.error('Error fetching gameRegisterData on wallet change:', error)
+      }
     }
-  }, [appClient, activeAddress, gameId])
+
+    getGameRegisterData()
+  }, [activeAddress, appClient, appMethods])
+
+  // useEffect(() => {
+  //   const getActiveGames = async () => {
+  //     if (!activeAddress || !appClient || !appMethods) return
+
+  //     try {
+  //       const activeGames = await appClient.state.box.boxGameState.getMap()
+
+  //       for (const [key, value] of Object.entries(activeGames)) {
+  //         consoleLogger.info(key, value);
+  //       }
+  //         // const gameRegisterData = await appClient.state.box.boxGameRegister.value(activeAddress)
+  //         // syncState(gameRegisterRef, gameRegisterData, setGameRegisterData)
+  //       }
+  //     } catch (error) {
+  //       consoleLogger.error('Error fetching gameRegisterData on wallet change:', error)
+  //     }
+  //   }
+
+  // }, [activeAddress, appClient, appMethods])
+
+  // Return loading state for external use (though it's also managed by the provider)
+  return {
+    isLoadingGameData,
+  }
 }

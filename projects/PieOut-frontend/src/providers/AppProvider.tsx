@@ -1,199 +1,266 @@
 //src/providers/AppProvider.tsx
-import React, { useState, useCallback, useEffect, useRef, FC, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useRef, FC } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { PieoutClient } from '../contracts/Pieout'
 import { AppClient } from '@algorandfoundation/algokit-utils/types/app-client'
-import { Arc56Contract } from '@algorandfoundation/algokit-utils/types/app-arc56'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { algorand } from '../utils/network/getAlgorandClient'
 import { PieoutMethods } from '../methods'
 import { createMethodHandler } from '../methodHandler'
 import { AppCtx } from '../contexts/App'
 
-// Create App provider that initializes and supplies the application creator, client, methods and method handler its children
 export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
   // --- States ---
   const [appCreator, setAppCreator] = useState<string | undefined>(undefined)
   const [appClient, setAppClient] = useState<PieoutClient | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(true)
+  const [initError, setInitError] = useState<string | undefined>(undefined)
 
   // --- Wallet ---
   const { activeAddress, transactionSigner } = useWallet()
-  algorand.setDefaultSigner(transactionSigner)
 
-  // // useEffect: Set default signer only when transactionSigner changes
-  // useEffect(() => {
-  //   algorand.setDefaultSigner(transactionSigner)
-  // }, [transactionSigner])
+  // --- Refs for persistent instances ---
+  const appMethodsRef = useRef<PieoutMethods | undefined>()
+  const appMethodHandlerRef = useRef<ReturnType<typeof createMethodHandler> | undefined>()
+  const isInitializingRef = useRef(false)
+  const hasHydratedRef = useRef(false)
+  const lastActiveAddressRef = useRef<string | null>(null)
 
-  // --- Refs ---
-  const isHydrating = useRef(false)
-  const isInitializing = useRef(false)
+  // --- Clear all instances when activeAddress changes ---
+  const clearInstances = useCallback(() => {
+    appMethodsRef.current = undefined
+    appMethodHandlerRef.current = undefined
+    hasHydratedRef.current = false
+  }, [])
 
-  // --- Memos ---
-  // useMemo: Memoize application methods
-  const appMethods = useMemo(() => {
-    if (!algorand || !activeAddress) return undefined
-    return new PieoutMethods(algorand, activeAddress)
-  }, [algorand, activeAddress])
+  // --- Initialize app methods (only once per activeAddress) ---
+  const initializeAppMethods = useCallback(() => {
+    if (!activeAddress || appMethodsRef.current) return
 
-  // useMemo: Memoize application method handler
-  const appMethodHandler = useMemo(() => {
-    if (!algorand || !activeAddress || !appMethods || !appClient) return undefined
-    return createMethodHandler({ activeAddress: activeAddress, appMethods: appMethods, appClient: appClient })
-  }, [algorand, activeAddress, appMethods, appClient])
+    try {
+      algorand.setDefaultSigner(transactionSigner)
+      appMethodsRef.current = new PieoutMethods(algorand, activeAddress)
+      consoleLogger.info('[AppProvider] Initialized app methods for:', activeAddress)
+    } catch (error) {
+      consoleLogger.error('[AppProvider] Failed to initialize app methods:', error)
+      setInitError('Failed to initialize app methods')
+    }
+  }, [activeAddress, transactionSigner])
 
-  // --- Hydration ---
-  // useEffect: Hydrate app data from localStorage on mount
-  useEffect(() => {
-    const hydrateFromStorage = async () => {
-      // If app client exists, or is hydrating, return
-      if (appClient || isHydrating.current) {
-        consoleLogger.info('No need to hydrate App.')
-        setIsLoading(false)
-        return
-      }
+  // --- Initialize method handler (only once per appClient) ---
+  const initializeMethodHandler = useCallback(() => {
+    if (!activeAddress || !appMethodsRef.current || !appClient || appMethodHandlerRef.current) {
+      return
+    }
 
-      isHydrating.current = true
-      setIsLoading(true)
+    try {
+      appMethodHandlerRef.current = createMethodHandler({
+        activeAddress,
+        appMethods: appMethodsRef.current,
+        appClient,
+      })
+      consoleLogger.info('[AppProvider] Initialized method handler')
+    } catch (error) {
+      consoleLogger.error('[AppProvider] Failed to initialize method handler:', error)
+      setInitError('Failed to initialize method handler')
+    }
+  }, [activeAddress, appClient])
 
-      // Try Block
-      try {
-        // Get application data item from localStorage
-        const storedAppId = localStorage.getItem('appId')
-        const storedAppCreator = localStorage.getItem('appCreator')
-        const storedAppSpec = localStorage.getItem('appSpec')
+  // --- Hydrate from localStorage ---
+  const hydrateFromStorage = useCallback(async () => {
+    if (!activeAddress || hasHydratedRef.current || isInitializingRef.current) {
+      return
+    }
 
-        // If stored application data exists
-        if (storedAppId && appCreator && storedAppSpec) {
-          // Parse the appSpec string into an Arc56Contract object
-          // const parsedAppSpec: Arc56Contract = JSON.parse(storedAppSpec)
+    hasHydratedRef.current = true
+    setIsLoading(true)
+    setInitError(undefined)
 
-          // Create a new application client
-          const newAppClient = new AppClient({
-            appId: BigInt(storedAppId), // Pass appId (cast from string to bigint)
-            appSpec: storedAppSpec, // Pass appSpec
-            algorand, // Pass the AlgorandClient
-          })
-          const client = new PieoutClient(newAppClient)
+    try {
+      const storedAppId = localStorage.getItem('appId')
+      const storedAppCreator = localStorage.getItem('appCreator')
+      const storedAppSpec = localStorage.getItem('appSpec')
 
-          // Access creator address from the application info
-          const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
+      if (storedAppId && storedAppSpec) {
+        consoleLogger.info('[AppProvider] Attempting to hydrate from storage...')
 
-          // Set app client and app creator states
-          setAppClient(client)
-          setAppCreator(creator)
+        // Create new app client from stored data
+        const newAppClient = new AppClient({
+          appId: BigInt(storedAppId),
+          appSpec: storedAppSpec,
+          algorand,
+        })
+        const client = new PieoutClient(newAppClient)
 
-          // Store app creator address into localStorage if empty
-          if (!storedAppCreator) {
-            localStorage.setItem('appCreator', creator)
+        // Get creator address
+        const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
+
+        // Set states
+        setAppClient(client)
+        setAppCreator(creator)
+
+        // Initialize method handler immediately after hydration
+        if (appMethodsRef.current && !appMethodHandlerRef.current) {
+          try {
+            appMethodHandlerRef.current = createMethodHandler({
+              activeAddress,
+              appMethods: appMethodsRef.current,
+              appClient: client, // Use the client directly, not from state
+            })
+            consoleLogger.info('[AppProvider] Initialized method handler after hydration')
+          } catch (error) {
+            consoleLogger.error('[AppProvider] Failed to initialize method handler:', error)
           }
-          // Log
-          consoleLogger.info('[AppProvider] Hydrated app from storage:', client.appId)
         }
-        // Catch error
-      } catch (err) {
-        // Warn that hydration failed and remove items from localStorage
-        consoleLogger.warn('[AppProvider] Failed hydration, clearing storage:', err)
-        localStorage.removeItem('appId')
-        localStorage.removeItem('appCreator')
-        localStorage.removeItem('appSpec')
-      } finally {
-        setIsLoading(false)
-        isHydrating.current = false
+
+        // Store creator if not already stored
+        if (!storedAppCreator) {
+          localStorage.setItem('appCreator', creator)
+        }
+
+        consoleLogger.info('[AppProvider] Successfully hydrated app from storage:', client.appId)
+        return true
       }
+
+      consoleLogger.info('[AppProvider] No stored app data found')
+      return false
+    } catch (error) {
+      consoleLogger.warn('[AppProvider] Hydration failed, clearing storage:', error)
+      localStorage.removeItem('appId')
+      localStorage.removeItem('appCreator')
+      localStorage.removeItem('appSpec')
+      setInitError('Failed to hydrate from storage')
+      return false
+    } finally {
+      setIsLoading(false)
     }
+  }, [activeAddress])
 
-    // Run hydrateFromStorage
-    hydrateFromStorage()
-  }, []) // No appClient dependency to avoid loops
-
-  // // --
-  // // useEffect: Hydrate app data from localStorage on mount
-  // useEffect(() => {
-  //   if (!activeAddress) {
-  //     setAppClient(undefined)
-  //     setAppCreator(undefined)
-  //     isInitializing.current = false
-  //   }
-  // }, [activeAddress])
-
-  // useCallback to memoize getAppClient and avoid recreating on each render
+  // --- Generate new app client ---
   const getAppClient = useCallback(async (): Promise<PieoutClient> => {
-    // Return cached client if it already exists
-    if (appClient) return appClient
-
-    // Throw error if required dependencies are missing
-    if (!algorand || !activeAddress || !appMethods) {
-      throw new Error('Missing algorand/activeAddress/appMethods')
+    // Return existing client if available
+    if (appClient) {
+      return appClient
     }
 
-    // Wait if another initialization is already in progress
-    if (isInitializing.current) {
+    if (!activeAddress) {
+      throw new Error('No active wallet address')
+    }
+
+    // Prevent concurrent initialization
+    if (isInitializingRef.current) {
       return new Promise((resolve, reject) => {
-        const checkInitialization = () => {
-          if (!isInitializing.current) {
+        const checkInit = () => {
+          if (!isInitializingRef.current) {
             if (appClient) {
               resolve(appClient)
             } else {
               reject(new Error('Initialization failed'))
             }
           } else {
-            setTimeout(checkInitialization, 100)
+            setTimeout(checkInit, 100)
           }
         }
-        checkInitialization()
+        checkInit()
       })
     }
 
-    // Begin init
-    isInitializing.current = true
+    isInitializingRef.current = true
     setIsLoading(true)
+    setInitError(undefined)
 
-    // Try block
     try {
-      // call generateApp from the appMethods object to create a new smart contract client
-      const client = await appMethods.generate(activeAddress)
-      // Access creator address from the application info
+      // Ensure app methods are initialized
+      if (!appMethodsRef.current) {
+        algorand.setDefaultSigner(transactionSigner)
+        appMethodsRef.current = new PieoutMethods(algorand, activeAddress)
+      }
+
+      // Generate new app
+      consoleLogger.info('[AppProvider] Generating new app...')
+      const client = await appMethodsRef.current.generate(activeAddress)
+
+      // Get creator address
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
-      // Set app client and app creator states
+      // Update states
       setAppClient(client)
       setAppCreator(creator)
 
-      // Set application data item in localStorage (can only use string as value)
+      // Initialize method handler immediately after setting client
+      if (appMethodsRef.current && !appMethodHandlerRef.current) {
+        try {
+          appMethodHandlerRef.current = createMethodHandler({
+            activeAddress,
+            appMethods: appMethodsRef.current,
+            appClient: client, // Use the client directly, not from state
+          })
+          consoleLogger.info('[AppProvider] Initialized method handler after generation')
+        } catch (error) {
+          consoleLogger.error('[AppProvider] Failed to initialize method handler:', error)
+        }
+      }
+
+      // Store in localStorage
       localStorage.setItem('appId', client.appId.toString())
       localStorage.setItem('appCreator', creator)
       localStorage.setItem('appSpec', JSON.stringify(client.appClient.appSpec))
 
-      // Log
-      consoleLogger.info('[AppProvider] Successfully generated app client:', client.appId)
-
-      // Return the app client
+      consoleLogger.info('[AppProvider] Successfully generated new app:', client.appId)
       return client
-      // Catch error
-    } catch (err) {
-      // Console log and throw error if application client did not generate successfully
-      consoleLogger.error('[AppProvider] Failed to generate client:', err)
-      throw new Error('Failed to create app client')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      consoleLogger.error('[AppProvider] Failed to generate app client:', error)
+      setInitError(`Failed to generate app: ${errorMessage}`)
+      throw error
     } finally {
       setIsLoading(false)
-      isInitializing.current = false
+      isInitializingRef.current = false
     }
-  }, [algorand, activeAddress, appMethods, appClient])
+  }, [activeAddress, appClient, transactionSigner])
 
-  // Memoize value to avoid unnecessary re-renders
-  const value = useMemo(
-    () => ({
-      appClient,
-      appCreator,
-      appMethods,
-      appMethodHandler,
-      getAppClient,
-      isLoading,
-    }),
-    [appClient, appCreator, appMethods, appMethodHandler, getAppClient, isLoading],
-  )
-  // Provide the context to child components
+  // --- Effect: Handle activeAddress changes ---
+  useEffect(() => {
+    // If activeAddress changed, clear everything
+    if (lastActiveAddressRef.current !== activeAddress) {
+      if (lastActiveAddressRef.current !== undefined) {
+        consoleLogger.info('[AppProvider] Active address changed, clearing instances')
+        clearInstances()
+      }
+      lastActiveAddressRef.current = activeAddress
+    }
+
+    if (!activeAddress) {
+      setIsLoading(false)
+      return
+    }
+
+    // Initialize app methods first
+    initializeAppMethods()
+
+    // Then try to hydrate
+    hydrateFromStorage()
+  }, [activeAddress, initializeAppMethods, hydrateFromStorage])
+
+  // --- Effect: Initialize method handler when appClient is available (fallback) ---
+  useEffect(() => {
+    if (appClient && activeAddress && appMethodsRef.current && !appMethodHandlerRef.current) {
+      // This is a fallback in case the direct initialization didn't work
+      consoleLogger.info('[AppProvider] Initializing method handler via effect (fallback)')
+      initializeMethodHandler()
+    }
+  }, [appClient, activeAddress, initializeMethodHandler])
+
+  // --- Context value ---
+  const value = {
+    appClient,
+    appCreator,
+    appMethods: appMethodsRef.current,
+    appMethodHandler: appMethodHandlerRef.current,
+    getAppClient,
+    isLoading,
+    initError,
+  }
+
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }

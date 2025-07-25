@@ -60,14 +60,20 @@ class Pieout(ARC4Contract):
     def read_gen_unix(self) -> UInt64:
         return TemplateVar[UInt64]("GEN_UNIX")
 
+    # Read the smart contract game register box for any given player account
+    @arc4.abimethod(readonly=True)
+    def does_box_game_trophy_exist(self) -> bool:
+        return self.box_game_trophy.maybe()[1]
+
+    # Read the smart contract game register box for any given player account
+    @arc4.abimethod(readonly=True)
+    def does_box_game_register_exist(self, player: Account) -> bool:
+        return self.box_game_register.maybe(key=player)[1]
+
     # Read the smart contract game state box for any given existing game id
     @arc4.abimethod(readonly=True)
-    def read_box_game_state(self, game_id: UInt64) -> stc.GameState:
-        # Fail transaction unless the assertion below evaluates True
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
-
-        # Return values from the game state box using the game id parameter
-        return self.box_game_state[game_id]
+    def does_box_game_state_exist(self, game_id: UInt64) -> bool:
+        return self.box_game_state.maybe(key=game_id)[1]
 
     # Read the smart contract game players box for any given existing game id
     @arc4.abimethod(readonly=True)
@@ -92,15 +98,6 @@ class Pieout(ARC4Contract):
 
         # Return the array containing the remaining players
         return players
-
-    # Read the smart contract game register box for any given player account
-    @arc4.abimethod(readonly=True)
-    def read_box_game_register(self, player: Account) -> stc.GameRegister:
-        # Fail transaction unless the assertion below evaluates True
-        assert player in self.box_game_register, err.BOX_NOT_FOUND
-
-        # Return values from game register box using the player account parameter
-        return self.box_game_register[player]
 
     # Generate the smart contract application client with default values
     @arc4.abimethod(create="require")
@@ -197,6 +194,78 @@ class Pieout(ARC4Contract):
             box_game_register=self.box_game_register,
             account=Txn.sender,
             round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
+        )
+
+    # Allow sender to delete box game register contents for their own account
+    @arc4.abimethod
+    def del_box_game_register_for_self(
+        self,
+        game_id: UInt64,
+    ) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+        assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
+
+        assert (self.box_game_register[Txn.sender].game_id.native == 0 or
+            self.box_game_register[Txn.sender].game_id.native == game_id
+        ), err.INVALID_GAME_ID
+
+        # Check if game register box game id value is not equal to zero
+        if self.box_game_register[Txn.sender].game_id.native != 0:
+            # Fail transaction unless the assertion below evaluates True
+            assert (
+                srt.check_acc_in_game(  # noqa: E712, RUF100
+                    game_id=game_id,
+                    account=Txn.sender,
+                    box_game_players=self.box_game_players,
+                    player_count=self.box_game_state[game_id].max_players.native,
+                    clear_player=False,
+                )
+                == False
+            ), err.PLAYER_ACTIVE
+
+        # Delete sender game register box from the smart contract storage
+        del self.box_game_register[Txn.sender]
+
+        # Issue MBR refund for game register box deletion via a payment inner transaction
+        srt.payout_itxn(
+            receiver=Txn.sender,
+            amount=UInt64(cst.BOX_R_COST),
+            note=String(
+                'pieout:j{"method":"del_box_game_register_for_self","concern":"txn.app_c;mbr_box_r_refund"}'
+            ),
+        )
+
+    # Allow sender to delete box game register contents for another account
+    @arc4.abimethod
+    def del_box_game_register_for_other(self, player: Account) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+
+        assert player in self.box_game_register, err.BOX_NOT_FOUND
+        assert player != Txn.sender, err.INVALID_CALLER
+
+        assert self.box_game_register[player].commit_rand_round.native == 0, err.NON_ZERO_COMMIT_RAND_ROUND
+        assert self.box_game_register[player].expiry_round.native < Global.round, err.TIME_CONSTRAINT_VIOLATION
+
+        # Delete game register box from contract storage
+        del self.box_game_register[player]
+
+        # Resolve game register box deletion MBR refund receiver by priority
+        receiver = srt.resolve_receiver_by_prio(
+            acc1=player,
+            acc2=Txn.sender,
+            acc3=Global.creator_address,
+        )
+
+        # Issue MBR refund for game register box deletion via a payment inner transaction
+        srt.payout_itxn(
+            receiver=receiver,
+            amount=UInt64(cst.BOX_R_COST),
+            note=String(
+                'pieout:j{"method":"del_box_game_register_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
+            ),
         )
 
     # Set new values to game register box data that will be used by player to get on-chain randomness and play the game
@@ -381,78 +450,6 @@ class Pieout(ARC4Contract):
 
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
-
-    # Allow sender to delete box game register contents for their own account
-    @arc4.abimethod
-    def del_box_game_register_for_self(
-        self,
-        game_id: UInt64,
-    ) -> None:
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
-        assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
-
-        assert (self.box_game_register[Txn.sender].game_id.native == 0 or
-            self.box_game_register[Txn.sender].game_id.native == game_id
-        ), err.INVALID_GAME_ID
-
-        # Check if game register box game id value is not equal to zero
-        if self.box_game_register[Txn.sender].game_id.native != 0:
-            # Fail transaction unless the assertion below evaluates True
-            assert (
-                srt.check_acc_in_game(  # noqa: E712, RUF100
-                    game_id=game_id,
-                    account=Txn.sender,
-                    box_game_players=self.box_game_players,
-                    player_count=self.box_game_state[game_id].max_players.native,
-                    clear_player=False,
-                )
-                == False
-            ), err.PLAYER_ACTIVE
-
-        # Delete sender game register box from the smart contract storage
-        del self.box_game_register[Txn.sender]
-
-        # Issue MBR refund for game register box deletion via a payment inner transaction
-        srt.payout_itxn(
-            receiver=Txn.sender,
-            amount=UInt64(cst.BOX_R_COST),
-            note=String(
-                'pieout:j{"method":"del_box_game_register_for_self","concern":"txn.app_c;mbr_box_r_refund"}'
-            ),
-        )
-
-    # Allow sender to delete box game register contents for another account
-    @arc4.abimethod
-    def del_box_game_register_for_other(self, player: Account) -> None:
-        # Fail transaction unless the assertion below evaluates True
-        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-
-        assert player in self.box_game_register, err.BOX_NOT_FOUND
-        assert player != Txn.sender, err.INVALID_CALLER
-
-        assert self.box_game_register[player].commit_rand_round.native == 0, err.NON_ZERO_COMMIT_RAND_ROUND
-        assert self.box_game_register[player].expiry_round.native < Global.round, err.TIME_CONSTRAINT_VIOLATION
-
-        # Delete game register box from contract storage
-        del self.box_game_register[player]
-
-        # Resolve game register box deletion MBR refund receiver by priority
-        receiver = srt.resolve_receiver_by_prio(
-            acc1=player,
-            acc2=Txn.sender,
-            acc3=Global.creator_address,
-        )
-
-        # Issue MBR refund for game register box deletion via a payment inner transaction
-        srt.payout_itxn(
-            receiver=receiver,
-            amount=UInt64(cst.BOX_R_COST),
-            note=String(
-                'pieout:j{"method":"del_box_game_register_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
-            ),
-        )
 
     # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     @arc4.abimethod

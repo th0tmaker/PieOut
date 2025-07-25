@@ -6,6 +6,7 @@ import { GameIdCtx } from '../contexts/GameId'
 export const GameIdProvider = ({ children }: { children: React.ReactNode }) => {
   // --- States ---
   const [gameId, setGameId] = useState<bigint | null>(null)
+
   // Provide the context to child components
   return <GameIdCtx.Provider value={{ gameId, setGameId }}>{children}</GameIdCtx.Provider>
 }

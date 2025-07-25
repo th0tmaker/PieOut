@@ -14,7 +14,7 @@ export type PollGameBoxDataProps = {
   setGameStateData: (data: GameState | undefined) => void
   gamePlayersData: string[] | undefined
   setGamePlayersData: (data: string[] | undefined) => void
+  isLoadingGameData: boolean // Add this line
+  setIsLoadingGameData: (loading: boolean) => void // Add this line
   pollingInterval?: number | null
-  isAbleToPollTrophyData: boolean
-  isAbleToPollRegisterData: boolean
 }

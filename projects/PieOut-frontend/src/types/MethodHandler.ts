@@ -7,8 +7,6 @@ export type MethodHandlerProps = {
   activeAddress: string | null
   appMethods: PieoutMethods | undefined
   appClient: PieoutClient | undefined
-  // setTrophyData: (data: GameTrophy) => void
-  // setRegisterData: (data: GameRegister) => void
   maxPlayers?: bigint | null
   gameId?: bigint | null
   triggerId?: bigint | null
@@ -24,9 +22,10 @@ export type MethodNames =
   | 'terminate'
   | 'calcSingleBoxCost'
   | 'readGenUnix'
-  | 'readBoxGameState'
+  | 'doesBoxGameTrophyExist'
+  | 'doesBoxGameRegisterExist'
+  | 'doesBoxGameStateExist'
   | 'readBoxGamePlayers'
-  | 'readBoxGameRegister'
   | 'mintTrophy'
   | 'claimTrophy'
   | 'newGame'

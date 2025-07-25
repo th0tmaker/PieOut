@@ -1,152 +1,113 @@
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-import { GameTrophy, PieoutClient } from './contracts/Pieout'
+import { PieoutClient } from './contracts/Pieout'
 import { PieoutMethods } from './methods'
 
-// Generic try and catch error wrapper
-async function callWithTryandCatch<T>(method: () => Promise<T>, methodName: string, successMsg?: string): Promise<T | null> {
-  try {
-    const result = await method()
-    if (successMsg) {
-      alert(successMsg)
-    }
-    return result
-  } catch (e) {
-    consoleLogger.error(`Error calling '${methodName}' function:`, e)
-    alert(`Error calling '${methodName}' function`)
-    return null
-  }
+export const handleDeploy = async (appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.deploy(sender)
 }
 
-// Define handlers that call the app methods in a try and catch block
-export const handleDeploy = (appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(() => appMethods.deploy(sender), 'handleDeploy', 'Smart contract deployment successfully set!')
+export const handleGenerate = async (appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.generate(sender)
+}
 
-export const handleGenerate = (appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(() => appMethods.generate(sender), 'handleGenerate', 'Smart contract successfully generated!')
+export const handleTerminate = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.terminate(appClient.appId, sender)
+}
 
-export const handleTerminate = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(() => appMethods.terminate(appClient.appId, sender), 'handleTerminate', 'Smart contract successfully terminated!')
-
-export const handleCalcSingleBoxCost = (
+export const handleCalcSingleBoxCost = async (
   appClient: PieoutClient,
   appMethods: PieoutMethods,
   sender: string,
   keySize: number | bigint,
   valueSize: number | bigint,
-) =>
-  callWithTryandCatch(async () => {
-    const result = await appMethods.calcSingleBoxCost(appClient.appId, sender, keySize, valueSize)
-    consoleLogger.info(`Box MBR amount: ${result.toString()}`)
-    return result
-  }, 'handleCalcSingleBoxCost')
+) => {
+  return await appMethods.calcSingleBoxCost(appClient.appId, sender, keySize, valueSize)
+}
 
-export const handleReadGenUnix = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(async () => {
-    const result = await appMethods.readGenUnix(appClient.appId, sender)
-    consoleLogger.info(`Smart contract genesis unix timestamp: ${result.toString()}`)
-    return result
-  }, 'handleReadGenUnix')
+export const handleReadGenUnix = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.readGenUnix(appClient.appId, sender)
+}
 
-export const handleReadBoxGameState = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(async () => {
-    const result = await appMethods.readBoxGameState(appClient.appId, sender, gameId)
-    consoleLogger.info('Box Game state:', result)
-    return result
-  }, 'handleReadBoxGameState')
+export const handleDoesBoxGameStateExist = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.doesBoxGameStateExist(appClient.appId, sender, gameId)
+}
 
-export const handleReadBoxGamePlayers = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(async () => {
-    const result = await appMethods.readBoxGamePlayers(appClient.appId, sender, gameId)
-    consoleLogger.info('Box Game players:', result)
-    return result
-  }, 'handleReadBoxGamePlayers')
+export const handleReadBoxGamePlayers = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.readBoxGamePlayers(appClient.appId, sender, gameId)
+}
 
-export const handleReadBoxGameRegister = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, player: string) =>
-  callWithTryandCatch(async () => {
-    const result = await appMethods.readBoxGameRegister(appClient.appId, sender, player)
-    consoleLogger.info(`Box Game Register for address ${player}: ${result}`)
-    return result
-  }, 'handleReadBoxGameRegister')
-
-export const handleMintTrophy = (
+export const handleDoesBoxGameRegisterExist = async (
   appClient: PieoutClient,
   appMethods: PieoutMethods,
   sender: string,
-  // setTrophyData?: (data: GameTrophy) => void,
-) => callWithTryandCatch(() => appMethods.mintTrophy(appClient.appId, sender), 'handleMintTrophy', 'Trophy asset minted successfully!')
+  player: string,
+) => {
+  return await appMethods.doesBoxGameRegisterExist(appClient.appId, sender, player)
+}
 
-// withErrorHandling(
-//   async () => {
-//     await appMethods.mintTrophy(appClient.appId, sender)
+export const handleDoesBoxGameTrophyExist = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.doesBoxGameTrophyExist(appClient.appId, sender)
+}
 
-//     if (setTrophyData) {
-//       const boxGameTrophy = await appClient.state.box.boxGameTrophy()
-//       setTrophyData({
-//         highScore: boxGameTrophy?.highScore ?? 0,
-//         assetId: boxGameTrophy?.assetId ?? 0n,
-//         highscorerAddress: boxGameTrophy?.highscorerAddress ?? 'not-found',
-//       })
-//     }
-//   },
-//   'handleMintTrophy',
-//   'Trophy minted successfully!',
-// )
+export const handleMintTrophy = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.mintTrophy(appClient.appId, sender)
+}
 
-export const handleClaimTrophy = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(() => appMethods.claimTrophy(appClient.appId, sender), 'handleClaimTrophy', 'Trophy claimed successfully!')
+export const handleClaimTrophy = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.claimTrophy(appClient.appId, sender)
+}
 
-export const handleNewGame = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, maxPlayers: bigint) =>
-  callWithTryandCatch(() => appMethods.newGame(appClient.appId, sender, maxPlayers), 'handleNewGame', 'New game created successfully!')
+export const handleNewGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, maxPlayers: bigint) => {
+  return await appMethods.newGame(appClient.appId, sender, maxPlayers)
+}
 
-export const handleJoinGame = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(() => appMethods.joinGame(appClient.appId, sender, gameId), 'handleJoinGame', 'Game joined successfully!')
+export const handleJoinGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.joinGame(appClient.appId, sender, gameId)
+}
 
-export const handlePlayGame = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(() => appMethods.playGame(appClient.appId, sender, gameId), 'handlePlayGame', 'Game played successfully!')
+export const handlePlayGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.playGame(appClient.appId, sender, gameId)
+}
 
-export const handleResetGame = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(() => appMethods.resetGame(appClient.appId, sender, gameId), 'handleResetGame', 'Game reset successfully!')
+export const handleResetGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.resetGame(appClient.appId, sender, gameId)
+}
 
-export const handleDeleteGame = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(() => appMethods.deleteGame(appClient.appId, sender, gameId), 'handleDeleteGame', 'Game deleted successfully!')
+export const handleDeleteGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.deleteGame(appClient.appId, sender, gameId)
+}
 
-export const handleGetBoxGameRegister = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) =>
-  callWithTryandCatch(
-    () => appMethods.getBoxGameRegister(appClient.appId, sender),
-    'handleGetBoxGameRegister',
-    'Game Register box obtained successfully!',
-  )
+export const handleGetBoxGameRegister = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.getBoxGameRegister(appClient.appId, sender)
+}
 
-export const handleSetGameCommit = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(
-    () => appMethods.setGameCommit(appClient.appId, sender, gameId),
-    'handleSetGameCommit',
-    'Game comittment set successfully!',
-  )
+export const handleDelBoxGameRegisterForSelf = async (
+  appClient: PieoutClient,
+  appMethods: PieoutMethods,
+  sender: string,
+  gameId: bigint,
+) => {
+  return await appMethods.delBoxGameRegisterForSelf(appClient.appId, sender, gameId)
+}
 
-export const handleDelBoxGameRegisterForSelf = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) =>
-  callWithTryandCatch(
-    () => appMethods.delBoxGameRegisterForSelf(appClient.appId, sender, gameId),
-    'handleDelBoxGameRegisterForSelf',
-    'Game register box deleted successfully for self!',
-  )
+export const handleDelBoxGameRegisterForOther = async (
+  appClient: PieoutClient,
+  appMethods: PieoutMethods,
+  sender: string,
+  player: string,
+) => {
+  return await appMethods.delBoxGameRegisterForOther(appClient.appId, sender, player)
+}
 
-export const handleDelBoxGameRegisterForOther = (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, player: string) =>
-  callWithTryandCatch(
-    () => appMethods.delBoxGameRegisterForOther(appClient.appId, sender, player),
-    'handleDelBoxGameRegisterForOther',
-    'Game register box deleted successfully for other!',
-  )
+export const handleSetGameCommit = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+  return await appMethods.setGameCommit(appClient.appId, sender, gameId)
+}
 
-export const handleTriggerGameEvent = (
+export const handleTriggerGameEvent = async (
   appClient: PieoutClient,
   appMethods: PieoutMethods,
   sender: string,
   gameId: bigint,
   triggerId: bigint,
-) =>
-  callWithTryandCatch(
-    () => appMethods.triggerGameEvent(appClient.appId, sender, gameId, triggerId),
-    'handleTriggerGameEvent',
-    'Game event triggered successfully!',
-  )
+) => {
+  return await appMethods.triggerGameEvent(appClient.appId, sender, gameId, triggerId)
+}

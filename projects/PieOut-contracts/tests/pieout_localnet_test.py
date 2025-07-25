@@ -196,6 +196,13 @@ def test_mint_trophy(
     # Get smart contract application from from apps dict
     app = apps["pieout_client_1"]
 
+    read_box_game_trophy_before_txn = app.send.does_box_game_trophy_exist(
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        )
+    )
+
     # Define nested function that attemps to call the `mint_trophy` method
     def try_mint_trophy_txn(
         sender: SigningAccount,
@@ -240,6 +247,17 @@ def test_mint_trophy(
     #     sender=creator,
     #     note=b'pieout:j{"method":"mint_trophy","concern":"txn.app_call;mint_trophy_asset2"}',
     #     )
+
+    read_box_game_trophy_after_txn = app.send.does_box_game_trophy_exist(
+        params=CommonAppCallParams(
+            sender=creator.address,
+            signer=creator.signer,
+        )
+    )
+
+    # Log
+    logger.info(f"Before mint: {read_box_game_trophy_before_txn.abi_return}")
+    logger.info(f"After mint: {read_box_game_trophy_after_txn.abi_return}")
 
 
 # Test case for app call transaction to call `get_box_commit_rand` method of the smart contract

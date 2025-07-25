@@ -107,11 +107,24 @@ export class PieoutMethods {
     return result
   }
 
-  // Read game state box data
-  async readBoxGameState(appId: bigint, sender: string, gameId: bigint) {
+  async doesBoxGameTrophyExist(appId: bigint, sender: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const result = await client.readBoxGameState({
+    const result = await client.doesBoxGameTrophyExist({
+      sender: sender,
+      signer: this.algorand.account.getSigner(sender),
+      args: [],
+      note: note,
+    })
+
+    return result
+  }
+
+  // Read game state box data
+  async doesBoxGameStateExist(appId: bigint, sender: string, gameId: bigint) {
+    const client = this.factory.getAppClientById({ appId })
+
+    const result = await client.doesBoxGameStateExist({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
@@ -134,11 +147,11 @@ export class PieoutMethods {
     return result
   }
 
-  // Read commit rand box data
-  async readBoxGameRegister(appId: bigint, sender: string, player: string, note?: string | Uint8Array) {
+  // Check if Game Register box exists for the given player account address
+  async doesBoxGameRegisterExist(appId: bigint, sender: string, player: string, note?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
-    const result = await client.readBoxGameRegister({
+    const result = await client.doesBoxGameRegisterExist({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { player: player },
@@ -408,9 +421,9 @@ export class PieoutMethods {
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
       args: { gameId: gameId },
+      maxFee: microAlgo(10_000),
+      coverAppCallInnerTransactionFees: true,
       note: noteDeleteGame,
-      maxFee: microAlgo(100_000),
-      populateAppCallResources: true,
     })
   }
 }
