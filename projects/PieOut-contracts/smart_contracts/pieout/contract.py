@@ -162,7 +162,9 @@ class Pieout(ARC4Contract):
     def claim_trophy(self) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert Txn.sender == self.box_game_trophy.value.highscorer_address.native, err.INVALID_TROPHY_RECEIVER
+        assert (
+            Txn.sender == self.box_game_trophy.value.highscorer_address.native
+        ), err.INVALID_TROPHY_RECEIVER
         assert Txn.sender.is_opted_in(
             Asset(self.box_game_trophy.value.asset_id.native)
         ), err.ASSET_OPT_IN_REQUIRED
@@ -321,7 +323,9 @@ class Pieout(ARC4Contract):
         assert self.box_game_trophy, err.BOX_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
 
-        assert self.box_game_register[Txn.sender].hosting_game == False, err.HOSTING_GAME_FLAG  # noqa: E712
+        assert (
+            self.box_game_register[Txn.sender].hosting_game == False
+        ), err.HOSTING_GAME_FLAG  # noqa: E712
 
         assert (
             max_players >= cst.MAX_PLAYERS_BOT_BOUND
@@ -368,7 +372,9 @@ class Pieout(ARC4Contract):
         )
 
         # Set the hosting game flag in sender's box game register to True
-        self.box_game_register[Txn.sender].hosting_game = arc4.Bool(True)  # noqa: FBT003
+        self.box_game_register[Txn.sender].hosting_game = arc4.Bool(
+            True
+        )  # noqa: FBT003
 
         # Initialize game players box with zeroed bytes to store all player addresses (32 bytes per player)
         self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * max_players)
@@ -418,8 +424,12 @@ class Pieout(ARC4Contract):
             == False
         ), err.PLAYER_ACTIVE
 
-        assert game_state.staking_finalized == False, err.STAKING_FINAL_FLAG  # noqa: E712
-        assert game_state.expiry_ts >= Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
+        assert (
+            game_state.staking_finalized == False
+        ), err.STAKING_FINAL_FLAG  # noqa: E712
+        assert (
+            game_state.expiry_ts >= Global.latest_timestamp
+        ), err.TIME_CONSTRAINT_VIOLATION
         assert game_state.active_players <= game_state.max_players, err.FULL_GAME_LOBBY
         assert (
             game_state.box_p_start_pos.native
@@ -451,6 +461,86 @@ class Pieout(ARC4Contract):
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
+<<<<<<< HEAD
+=======
+    # Allow sender to delete box game register contents for their own account
+    @arc4.abimethod
+    def del_box_game_register_for_self(
+        self,
+        game_id: UInt64,
+    ) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
+        assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
+
+        assert (
+            self.box_game_register[Txn.sender].game_id.native == 0
+            or self.box_game_register[Txn.sender].game_id.native == game_id
+        ), err.INVALID_GAME_ID
+
+        # Check if game register box game id value is not equal to zero
+        if self.box_game_register[Txn.sender].game_id.native != 0:
+            # Fail transaction unless the assertion below evaluates True
+            assert (
+                srt.check_acc_in_game(  # noqa: E712, RUF100
+                    game_id=game_id,
+                    account=Txn.sender,
+                    box_game_players=self.box_game_players,
+                    player_count=self.box_game_state[game_id].max_players.native,
+                    clear_player=False,
+                )
+                == False
+            ), err.PLAYER_ACTIVE
+
+        # Delete sender game register box from the smart contract storage
+        del self.box_game_register[Txn.sender]
+
+        # Issue MBR refund for game register box deletion via a payment inner transaction
+        srt.payout_itxn(
+            receiver=Txn.sender,
+            amount=UInt64(cst.BOX_R_COST),
+            note=String(
+                'pieout:j{"method":"del_box_game_register_for_self","concern":"txn.app_c;mbr_box_r_refund"}'
+            ),
+        )
+
+    # Allow sender to delete box game register contents for another account
+    @arc4.abimethod
+    def del_box_game_register_for_other(self, player: Account) -> None:
+        # Fail transaction unless the assertion below evaluates True
+        assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
+
+        assert player in self.box_game_register, err.BOX_NOT_FOUND
+        assert player != Txn.sender, err.INVALID_CALLER
+
+        assert (
+            self.box_game_register[player].commit_rand_round.native == 0
+        ), err.NON_ZERO_COMMIT_RAND_ROUND
+        assert (
+            self.box_game_register[player].expiry_round.native < Global.round
+        ), err.TIME_CONSTRAINT_VIOLATION
+
+        # Delete game register box from contract storage
+        del self.box_game_register[player]
+
+        # Resolve game register box deletion MBR refund receiver by priority
+        receiver = srt.resolve_receiver_by_prio(
+            acc1=player,
+            acc2=Txn.sender,
+            acc3=Global.creator_address,
+        )
+
+        # Issue MBR refund for game register box deletion via a payment inner transaction
+        srt.payout_itxn(
+            receiver=receiver,
+            amount=UInt64(cst.BOX_R_COST),
+            note=String(
+                'pieout:j{"method":"del_box_game_register_for_other","concern":"itxn.pay;mbr_box_c_refund"}'
+            ),
+        )
+
+>>>>>>> 7d5ce2cdb7276d8fa076813c26691081467b2040
     # Make app call to add extra resource reference budget, must be grouped w/ play game abimethod
     @arc4.abimethod
     def up_ref_budget_for_play_game(self, game_id: UInt64) -> None:
@@ -459,15 +549,19 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.group_index == 0, err.INVALID_GROUP_IDX
+        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
         assert second_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
         assert second_txn.sender == Txn.sender, err.SENDER_MISMATCH
-        assert second_txn.app_args(0) == arc4.arc4_signature("play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
+        assert second_txn.app_args(0) == arc4.arc4_signature(
+            "play_game(uint64)void"
+        ), err.INVALID_METHOD_SELECTOR
 
         assert second_txn.app_args(1) == op.itob(game_id), err.INVALID_GAME_ID
-        assert second_txn.app_args(1) == op.itob(self.box_game_register[Txn.sender].game_id.native)
+        assert second_txn.app_args(1) == op.itob(
+            self.box_game_register[Txn.sender].game_id.native
+        )
         assert self.box_game_register[Txn.sender].game_id.native == game_id
 
     # Play the game, resolve the player's score associated with the game instance, update game state accordingly
@@ -490,10 +584,13 @@ class Pieout(ARC4Contract):
         assert first_txn.app_id == Global.current_application_id, err.APP_ID_MISMATCH
         assert first_txn.sender == Txn.sender, err.SENDER_MISMATCH
         assert first_txn.app_args(0) == arc4.arc4_signature(
-            "up_ref_budget_for_play_game(uint64)void"), err.INVALID_METHOD_SELECTOR
+            "up_ref_budget_for_play_game(uint64)void"
+        ), err.INVALID_METHOD_SELECTOR
 
         assert first_txn.app_args(1) == Txn.application_args(1), err.INVALID_GAME_ID
-        assert first_txn.app_args(1) == op.itob(self.box_game_register[Txn.sender].game_id.native)
+        assert first_txn.app_args(1) == op.itob(
+            self.box_game_register[Txn.sender].game_id.native
+        )
 
         assert (
             srt.check_acc_in_game(  # noqa: E712, RUF100
@@ -517,8 +614,12 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
-        assert game_state.staking_finalized == True, err.STAKING_FINAL_FLAG  # noqa: E712
-        assert game_state.expiry_ts >= Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
+        assert (
+            game_state.staking_finalized == True
+        ), err.STAKING_FINAL_FLAG  # noqa: E712
+        assert (
+            game_state.expiry_ts >= Global.latest_timestamp
+        ), err.TIME_CONSTRAINT_VIOLATION
         assert (
             self.box_game_register[Txn.sender].game_id.native == game_id
         ), err.INVALID_GAME_ID
@@ -549,7 +650,10 @@ class Pieout(ARC4Contract):
             self.box_game_trophy.value.high_score = game_state.first_place_score
 
             # If highscorer address is not empty
-            if self.box_game_trophy.value.highscorer_address.native != Global.zero_address:
+            if (
+                self.box_game_trophy.value.highscorer_address.native
+                != Global.zero_address
+            ):
                 # Use box game trophy contents to check account asset balance for trophy
                 asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
                     self.box_game_trophy.value.highscorer_address.native,
@@ -594,9 +698,7 @@ class Pieout(ARC4Contract):
 
     # Allow an active player to check for a game event and trigger its progression
     @arc4.abimethod
-    def trigger_game_event(
-        self, game_id: UInt64, trigger_id: arc4.UInt8
-    ) -> None:
+    def trigger_game_event(self, game_id: UInt64, trigger_id: arc4.UInt8) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
@@ -609,16 +711,24 @@ class Pieout(ARC4Contract):
         # If trigger id 0 corresponds w/ event: Game Live
         if trigger_id.native == 0:
             # Fail transaction unless the assertion below evaluates True
-            assert game_state.staking_finalized == False, err.STAKING_FINAL_FLAG  # noqa: E712
-            assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
+            assert (
+                game_state.staking_finalized == False
+            ), err.STAKING_FINAL_FLAG  # noqa: E712
+            assert (
+                game_state.expiry_ts < Global.latest_timestamp
+            ), err.TIME_CONSTRAINT_VIOLATION
 
             srt.is_game_live(game_id=game_id, game_state=game_state)
 
         # EIif trigger id 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
             # Fail transaction unless the assertion below evaluates True
-            assert game_state.staking_finalized == True, err.STAKING_FINAL_FLAG  # noqa: E712
-            assert game_state.expiry_ts < Global.latest_timestamp, err.TIME_CONSTRAINT_VIOLATION
+            assert (
+                game_state.staking_finalized == True
+            ), err.STAKING_FINAL_FLAG  # noqa: E712
+            assert (
+                game_state.expiry_ts < Global.latest_timestamp
+            ), err.TIME_CONSTRAINT_VIOLATION
 
             srt.is_game_over(
                 game_id=game_id,
@@ -656,7 +766,9 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertion below evaluates True
-        assert game_state.staking_finalized == True, err.STAKING_FINAL_FLAG  # noqa: E712
+        assert (
+            game_state.staking_finalized == True
+        ), err.STAKING_FINAL_FLAG  # noqa: E712
         assert game_state.admin_address == Txn.sender, err.INVALID_ADMIN
         assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
         assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
@@ -706,10 +818,11 @@ class Pieout(ARC4Contract):
         admin = self.box_game_state[game_id].admin_address.native
 
         # Fail transaction unless the assertions below evaluate True
-        assert self.box_game_register[admin].hosting_game == True, err.HOSTING_GAME_FLAG  # noqa: E712
         assert (
-            Txn.sender == admin
-            or Txn.sender == Global.creator_address
+            self.box_game_register[admin].hosting_game == True
+        ), err.HOSTING_GAME_FLAG  # noqa: E712
+        assert (
+            Txn.sender == admin or Txn.sender == Global.creator_address
         ), err.INVALID_CALLER
 
         # Ensure game has zero active players OR only player left is the admin
@@ -781,7 +894,8 @@ class Pieout(ARC4Contract):
                 srt.burn_itxn(
                     asset_id=self.box_game_trophy.value.asset_id.native,
                     note=String(
-                        'pieout:j{"method":"terminate","concern":"itxn.asset_config;burn_trophy_asset"}'),
+                        'pieout:j{"method":"terminate","concern":"itxn.asset_config;burn_trophy_asset"}'
+                    ),
                 )
             # Delete box game trophy from contract storage if it exsists
             del self.box_game_trophy.value

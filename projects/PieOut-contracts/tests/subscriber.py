@@ -13,7 +13,7 @@ pieout_events = {
                 {"name": "game_id", "type": "uint64"},
                 {"name": "staking_finalized", "type": "bool"},
                 {"name": "expiry_ts", "type": "uint64"},
-            ]
+            ],
         },
         {
             "name": "player_score",
@@ -21,7 +21,7 @@ pieout_events = {
                 {"name": "game_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
                 {"name": "score", "type": "uint8"},
-            ]
+            ],
         },
         {
             "name": "game_over",
@@ -31,31 +31,44 @@ pieout_events = {
                 {"name": "first_place_address", "type": "address"},
                 {"name": "second_place_address", "type": "address"},
                 {"name": "third_place_address", "type": "address"},
-            ]
+            ],
         },
     ],
-    "continue_on_error": False
+    "continue_on_error": False,
 }
 
 
 # --- Create the AlgorandSubscriber ---
 def create_subscriber(
+<<<<<<< HEAD
+    algod_client: algod.AlgodClient,
+    indexer_client: indexer.IndexerClient,
+    max_rounds_to_sync: int,
+) -> AlgorandSubscriber:
+    global watermark
+    pieout_group = pieout_events.get("group_name", "default_group")
+=======
         algod_client: algod.AlgodClient,
         indexer_client: indexer.IndexerClient,
         max_rounds_to_sync: int
     ) -> AlgorandSubscriber:
     global watermark
     group_name = pieout_events.get("group_name", "default_group")
+>>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
     config = {
         "filters": [
             {
                 "name": "pieout_filter",
                 "filter": {
                     "arc28_events": [
+<<<<<<< HEAD
+                        {"group_name": pieout_group, "event_name": event["name"]}
+=======
                         {
                             "group_name": group_name,
                             "event_name": event["name"]
                         }
+>>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
                         for event in pieout_events["events"]
                     ]
                 },
