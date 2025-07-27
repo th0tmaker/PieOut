@@ -1,11 +1,11 @@
-import { useWallet } from '@txnlab/use-wallet-react'
-import { ellipseAddress } from '../utils/ellipseAddress'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-import BlurbPortal from './BlurbPortal'
+import { useWallet } from '@txnlab/use-wallet-react'
 import ProfileBlurbContent from '../blurbs/ProfileBlurb'
-import { ModalInterface } from '../interfaces/modal'
-import { useModal } from '../hooks/useModal'
 import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
+import { useModal } from '../hooks/useModal'
+import { ModalInterface } from '../interfaces/modal'
+import { ellipseAddress } from '../utils/ellipseAddress'
+import BlurbPortal from './BlurbPortal'
 import { CopyAddressBtn } from './CopyAddressBtn'
 
 interface ProfileModalInterface extends ModalInterface {}
@@ -57,11 +57,28 @@ const ProfileModal = ({ openModal, closeModal }: ProfileModalInterface) => {
                   <CopyAddressBtn value={activeAddress!} title="Copy full address" />
                 </span>
               </p>
+              {/* Hosting Game */}
+              <p>
+                Hosting Game:{' '}
+                {gameRegisterData?.hostingGame !== undefined ? (
+                  <span className="text-cyan-300">{`${gameRegisterData.hostingGame.toString()}`}</span>
+                ) : (
+                  'N/D'
+                )}
+              </p>
               {/* Game ID */}
               <p>
                 Game ID:{' '}
-                {gameRegisterData?.gameId !== undefined && gameRegisterData?.gameId !== null ? (
+                {gameRegisterData?.gameId !== undefined ? (
                   <span className="text-cyan-300">{`${gameRegisterData.gameId.toString()} #`}</span>
+                ) : (
+                  'N/D'
+                )}
+              </p>
+              <p>
+                PB Score:{' '}
+                {gameRegisterData?.ptScore !== undefined ? (
+                  <span className="text-cyan-300">{`${gameRegisterData.ptScore.toString()} ☆`}</span>
                 ) : (
                   'N/D'
                 )}

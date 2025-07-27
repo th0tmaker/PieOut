@@ -1,17 +1,17 @@
+import { microAlgos } from '@algorandfoundation/algokit-utils'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ellipseAddress } from '../utils/ellipseAddress'
-import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
-import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
-import ProfileModal from './ProfileModal'
-import { useModal } from '../hooks/useModal'
-import { useGameIdCtx } from '../hooks/useGameIdCtx'
-import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
-import { useMethodHandler } from '../hooks/useMethodHandler'
-import { CopyAddressBtn } from './CopyAddressBtn'
 import { useAppCtx } from '../hooks/useAppCtx'
-import { microAlgos } from '@algorandfoundation/algokit-utils'
+import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
+import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
+import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
+import { useGameIdCtx } from '../hooks/useGameIdCtx'
+import { useMethodHandler } from '../hooks/useMethodHandler'
+import { useModal } from '../hooks/useModal'
+import { ellipseAddress } from '../utils/ellipseAddress'
+import { CopyAddressBtn } from './CopyAddressBtn'
+import ProfileModal from './ProfileModal'
 
 const GameTable: React.FC = () => {
   const { activeAddress } = useWallet()
@@ -20,7 +20,7 @@ const GameTable: React.FC = () => {
   const [inputedGameId, setInputedGameId] = useState('')
 
   const { gameId, setGameId } = useGameIdCtx()
-  const { gameRegisterData, gameStateData, gamePlayersData, isLoadingGameData, setIsLoadingGameData } = useGameBoxDataCtx() // Add isLoadingGameData
+  const { gameRegisterData, gameStateData, gamePlayersData, isLoadingGameData, setIsLoadingGameData } = useGameBoxDataCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
@@ -166,7 +166,7 @@ const GameTable: React.FC = () => {
     if (gameId === 0n) {
       return (
         <tr>
-          <td colSpan={8} className="relative text-center py-4 px-2 text-white">
+          <td colSpan={9} className="relative text-center py-4 px-2 text-white">
             Invalid input. Game ID must not be zero.
           </td>
         </tr>
@@ -177,9 +177,9 @@ const GameTable: React.FC = () => {
     if (isLoadingGameData && gameId != null) {
       return (
         <tr>
-          <td colSpan={8} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
+          <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
             <div className="flex items-center justify-center gap-2">
-              <span>Loading</span>
+              <span>Loading...</span>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-200"></div>
             </div>
           </td>
@@ -191,7 +191,7 @@ const GameTable: React.FC = () => {
     if (!gameStateData && gameId != null && !isLoadingGameData) {
       return (
         <tr>
-          <td colSpan={8} className="relative text-center py-4 px-2 text-white">
+          <td colSpan={9} className="relative text-center py-4 px-2 text-white">
             Game ID not found. Ensure Game ID is valid.
           </td>
         </tr>
@@ -258,7 +258,7 @@ const GameTable: React.FC = () => {
             ) : (
               <span className="flex items-center gap-2">
                 {ellipseAddress(gameStateData.adminAddress)}
-                <CopyAddressBtn value={gameStateData.adminAddress!} title="Copy full address" />
+                <CopyAddressBtn value={gameStateData.adminAddress} title="Copy full address" />
               </span>
             )}
           </td>
@@ -311,7 +311,10 @@ const GameTable: React.FC = () => {
           </td>
           {/* Set */}
           <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-            {gameStateData.stakingFinalized && gameStateData.prizePool !== 0n && gameRegisterData?.gameId === 0n ? (
+            {gameStateData.stakingFinalized &&
+            gameStateData.prizePool !== 0n &&
+            gameRegisterData?.gameId === 0n &&
+            gamePlayersData?.includes(activeAddress!) ? (
               <button
                 className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                 onClick={() => handleMethod('setGameCommit', { gameId })}
@@ -323,11 +326,13 @@ const GameTable: React.FC = () => {
               <div className="group inline-block relative">
                 <span className="text-indigo-200 cursor-help">Set</span>
                 <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                  {!gameStateData.stakingFinalized
-                    ? 'Unavailable: This game has not started yet.'
-                    : gameStateData.prizePool === 0n
-                      ? 'Unavailable: This game already ended.'
-                      : 'Unavailable: Previous commit is still active.'}
+                  {!gamePlayersData?.includes(activeAddress ?? '')
+                    ? 'Unavailable: You are not an active player in this game.'
+                    : !gameStateData.stakingFinalized
+                      ? 'Unavailable: This game has not started yet.'
+                      : gameStateData.prizePool === 0n
+                        ? 'Unavailable: This game already ended.'
+                        : 'Unavailable: Previous commit is still active.'}
                 </div>
               </div>
             )}
@@ -414,7 +419,7 @@ const GameTable: React.FC = () => {
                         >
                           <span className="mx-auto flex items-center gap-2">
                             {ellipseAddress(address)}
-                            <CopyAddressBtn value={address!} title="Copy full address" />
+                            <CopyAddressBtn value={address} title="Copy full address" />
                           </span>
                         </li>
                       ))
@@ -426,7 +431,6 @@ const GameTable: React.FC = () => {
               )}
             </div>
           </td>
-
           {/* Leaderboard */}
           <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
             <button
@@ -436,6 +440,16 @@ const GameTable: React.FC = () => {
               Open
             </button>
           </td>
+          {/* Top score */}
+          <td className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+            <div className="font-bold flex items-center justify-center gap-1">
+              <span className="text-cyan-300">{gameStateData.topScore.toString()}</span>
+            </div>
+            <div className="text-xs text-white">
+              {ellipseAddress(gameStateData.topscorerAddress, 6)}
+              <CopyAddressBtn value={gameStateData.topscorerAddress} title="Copy full address" />
+            </div>
+          </td>
         </tr>
       )
     }
@@ -443,7 +457,7 @@ const GameTable: React.FC = () => {
     // Default empty state when no gameId is selected
     return (
       <tr>
-        <td colSpan={8} className="relative text-center py-4 px-2 text-white">
+        <td colSpan={9} className="relative text-center py-4 px-2 text-white">
           {activeAddress
             ? "Enter number and click the 'Input' button to look up a game"
             : 'Please connect your wallet in order to continue.'}
@@ -458,7 +472,10 @@ const GameTable: React.FC = () => {
 
       try {
         const activeGames = await appClient!.state.box.boxGameState.getMap()
-
+        consoleLogger.info('register box game id:')
+        consoleLogger.info(gameRegisterData?.gameId?.toString() ?? 'undefined')
+        consoleLogger.info('register box game hosting game:')
+        consoleLogger.info(String(gameRegisterData?.hostingGame))
         activeGames.forEach((value, key) => {
           consoleLogger.info('Game ID:', key.toString(), value)
         })
@@ -518,12 +535,13 @@ const GameTable: React.FC = () => {
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Trigger</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Players</th>
             <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Leaderboard</th>
+            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Top Score</th>
           </tr>
         </thead>
         <tbody>
           {!activeAddress ? (
             <tr>
-              <td colSpan={8} className="text-center py-4 px-2 text-white">
+              <td colSpan={9} className="text-center py-4 px-2 text-white">
                 Please connect your wallet in order to continue.
               </td>
             </tr>

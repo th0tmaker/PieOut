@@ -80,25 +80,17 @@ def resolve_receiver_by_prio(
     else:
         return Global.current_application_address
 
-<<<<<<< HEAD
 
-# Reset box commit rand values back to its initial default state
-=======
-# Reset game register box contents back to their initial original default state
->>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
+# Reset game commit values inside the game register box back to their initial default state
 @subroutine
-def reset_box_game_register(
+def reset_game_commit_values(
     box_game_register: BoxMap[Account, stc.GameRegister],
     account: Account,
     round_delta: UInt64,
 ) -> None:
-    box_game_register[account] = stc.GameRegister(
-        hosting_game=arc4.Bool(False),  # noqa: FBT003
-        best_score=arc4.UInt8(0),
-        game_id=arc4.UInt64(0),
-        commit_rand_round=arc4.UInt64(0),
-        expiry_round=arc4.UInt64(Global.round + round_delta),
-    )
+    box_game_register[account].game_id = arc4.UInt64(0)
+    box_game_register[account].commit_rand_round = arc4.UInt64(0)
+    box_game_register[account].expiry_round = arc4.UInt64(Global.round + round_delta)
 
 
 # Check if account is an active player of a valid game instance
@@ -182,21 +174,14 @@ def calc_score_get_place(
         arc4.UInt8(score),
     )
 
-<<<<<<< HEAD
-    # Check if score is greater than the game state best score
-    if score > game_state.best_score.native:
-        game_state.best_score = arc4.UInt8(score)
+    # Check if score is greater than the game state's top score
+    if score > game_state.top_score.native:
+        game_state.top_score = arc4.UInt8(score)  # Update top score
+        game_state.topscorer_address = arc4.Address(player)  # Update topscorer address
 
-    # Check if score is greater than the game register account's personal best score across every game played
-=======
-    # Check if score is greater than the game state's best score
-    if score > game_state.best_score.native:
-        game_state.best_score = arc4.UInt8(score)
-
-    # Check if score is greater than the game register account's best score across every game played
->>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
-    if score > game_register.best_score.native:
-        game_register.best_score = arc4.UInt8(score)
+    # Check if score is greater than the game register account's personal top score across every game played
+    if score > game_register.pt_score.native:
+        game_register.pt_score = arc4.UInt8(score)  # Update personal top score
 
     # Check if score is great enough for a top three placement and arrange leaderboard accordingly
     if (
@@ -264,8 +249,8 @@ def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
 def is_game_over(
     game_id: UInt64,
     game_state: stc.GameState,
-    box_game_players: BoxMap[UInt64, Bytes],
     box_game_register: BoxMap[Account, stc.GameRegister],
+    box_game_players: BoxMap[UInt64, Bytes],
 ) -> None:
     # Check game over criteria
     if (
@@ -278,11 +263,11 @@ def is_game_over(
             player_addr_bytes = game_players_bref.extract(i, 32)
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player = Account.from_bytes(player_addr_bytes)
-                # Reset game register fields back to their original starting values
-                reset_box_game_register(
+                # Reset game commit values in game register box for player after theyobtained a score
+                reset_game_commit_values(
                     box_game_register=box_game_register,
                     account=player,
-                    round_delta=UInt64(cst.BOX_C_EXP_ROUND_DELTA),
+                    round_delta=UInt64(cst.BOX_R_EXP_ROUND_DELTA),
                 )
 
         # Clear box game players data by setting its value to all zeroes

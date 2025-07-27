@@ -236,7 +236,7 @@ export class PieoutMethods {
         sender: sender,
         signer: this.algorand.account.getSigner(sender),
         receiver: client.appAddress,
-        amount: microAlgo(67_700),
+        amount: microAlgo(80_500),
         note: noteBoxSPay,
       }),
       this.algorand.createTransaction.payment({

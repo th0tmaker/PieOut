@@ -44,17 +44,17 @@ const HonorsModal = ({ openModal, closeModal }: HonorsModalInterface) => {
             {/* High Score */}
             <div className="space-y-1 pt-2 text-indigo-200 font-bold">
               <p>
-                High Score: <span className="text-yellow-300">{gameTrophyData?.highScore && `${gameTrophyData.highScore} ♕️`}</span>
+                High Score: <span className="text-yellow-300">{gameTrophyData?.athScore && `${gameTrophyData.athScore} ♕️`}</span>
               </p>
               {/* Highscorer */}
               <p className="flex items-center">
                 Highscorer:
                 <span className="text-yellow-300 ml-1 flex items-center">
-                  {gameTrophyData ? ellipseAddress(gameTrophyData.highscorerAddress, 4) : ''}
+                  {gameTrophyData ? ellipseAddress(gameTrophyData.athAddress, 4) : ''}
                   {gameTrophyData && (
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(gameTrophyData.highscorerAddress)
+                        navigator.clipboard.writeText(gameTrophyData.athAddress)
                         consoleLogger.info('Address copied to clipboard:', activeAddress)
                       }}
                       title="Copy full address"
