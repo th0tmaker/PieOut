@@ -5,7 +5,10 @@ type ModalState = {
   wallet: boolean
   profile: boolean
   profileBlurb: boolean
+  game: boolean
+  gameBlurb: boolean
   leaderboard: boolean
+  activePlayers: boolean
   honors: boolean
   honorsBlurb: boolean
   profileUserMsg: boolean
@@ -18,7 +21,10 @@ export function useModal() {
     wallet: false,
     profile: false,
     profileBlurb: false,
+    game: false,
+    gameBlurb: false,
     leaderboard: false,
+    activePlayers: false,
     honors: false,
     honorsBlurb: false,
     profileUserMsg: false,

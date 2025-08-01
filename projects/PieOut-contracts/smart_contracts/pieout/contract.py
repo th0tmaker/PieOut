@@ -177,7 +177,7 @@ class Pieout(ARC4Contract):
             note=b'pieout:j{"method":"claim_trophy","concern":"itxn.asset_transfer;transfer_trophy_asset"}',
         ).submit()
 
-    # Get box game register contents with default start values
+    # Get game register box contents with default start values
     @arc4.abimethod
     def get_box_game_register(self, box_r_pay: gtxn.PaymentTransaction) -> None:
         # Fail transaction unless the assertion below evaluates True
@@ -200,7 +200,7 @@ class Pieout(ARC4Contract):
             expiry_round=arc4.UInt64(Global.round + cst.BOX_R_EXP_ROUND_DELTA),
         )
 
-    # Allow sender to delete box game register contents for their own account
+    # Allow sender to delete game register box contents for their own account
     @arc4.abimethod
     def del_box_game_register_for_self(
         self,
@@ -230,7 +230,7 @@ class Pieout(ARC4Contract):
                 == False
             ), err.PLAYER_ACTIVE
 
-        # Delete sender game register box from the smart contract storage
+        # Delete game register box from the smart contract storage under sender key
         del self.box_game_register[Txn.sender]
 
         # Issue MBR refund for game register box deletion via a payment inner transaction

@@ -1,4 +1,4 @@
-//src/providers/AppProvider.tsx
+//src/providers/AppCtxProvider.tsx
 import React, { useState, useCallback, useEffect, useRef, FC } from 'react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { PieoutClient } from '../contracts/Pieout'
@@ -9,7 +9,8 @@ import { PieoutMethods } from '../methods'
 import { createMethodHandler } from '../methodHandler'
 import { AppCtx } from '../contexts/App'
 
-export const AppProvider: FC<React.PropsWithChildren> = ({ children }) => {
+// Create an App Context Provider that supplies the application data to its children
+export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
   // --- States ---
   const [appCreator, setAppCreator] = useState<string | undefined>(undefined)
   const [appClient, setAppClient] = useState<PieoutClient | undefined>(undefined)

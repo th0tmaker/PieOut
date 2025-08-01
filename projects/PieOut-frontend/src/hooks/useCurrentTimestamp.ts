@@ -26,6 +26,6 @@ export function useCurrentTimestamp(intervalMs = 1000) {
     }
   }, [intervalMs])
 
-  // Return the current timestamp value from the hook
-  return currentTimestamp
+  // Convert currentTimestamp value from milis to seconds and return
+  return Math.floor(currentTimestamp / 1000)
 }

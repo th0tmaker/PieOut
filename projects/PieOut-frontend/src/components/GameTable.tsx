@@ -1,26 +1,107 @@
 import { microAlgos } from '@algorandfoundation/algokit-utils'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState, useCallback } from 'react'
 import { useAppCtx } from '../hooks/useAppCtx'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
-import { useGameBoxDataCtx } from '../hooks/useGameBoxDataCtx'
+import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useGameIdCtx } from '../hooks/useGameIdCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { CopyAddressBtn } from './CopyAddressBtn'
-import ProfileModal from './ProfileModal'
+import LeaderboardModal from './LeaderboardModal'
+import ActivePlayersModal from './ActivePlayersModal'
+import { useLastRound } from '../hooks/useLastRound'
+import { algorand } from '../utils/network/getAlgorandClient'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 
-const GameTable: React.FC = () => {
+// Reusable components
+const ActionButton = ({
+  onClick,
+  disabled = false,
+  loading = false,
+  children,
+  className = '',
+}: {
+  onClick: () => void
+  disabled?: boolean
+  loading?: boolean
+  children: React.ReactNode
+  className?: string
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled || loading}
+    className={`font-bold focus:outline-none ${className} ${
+      disabled || loading ? 'text-gray-400 cursor-not-allowed' : 'text-lime-400 hover:underline hover:decoration-2 hover:underline-offset-2'
+    }`}
+  >
+    {loading ? (
+      <div className="inline-flex items-center gap-1">
+        <div className="w-3 h-3 border-2 border-t-transparent border-gray-400 rounded-full animate-spin"></div>
+      </div>
+    ) : (
+      children
+    )}
+  </button>
+)
+
+const Tooltip = ({ children, message }: { children: React.ReactNode; message: string }) => (
+  <div className="group inline-block relative">
+    <span className="text-indigo-200 cursor-help">{children}</span>
+    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+      {message}
+    </div>
+  </div>
+)
+
+const DropdownItem = ({
+  enabled,
+  onClick,
+  children,
+  tooltipMessage,
+}: {
+  enabled: boolean
+  onClick: () => void
+  children: React.ReactNode
+  tooltipMessage?: string
+}) => (
+  <li
+    className={`relative px-4 py-2 group ${
+      enabled
+        ? 'text-lime-400 bg-slate-800 border border-lime-400 hover:bg-slate-700 cursor-pointer'
+        : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
+    }`}
+    onClick={() => enabled && onClick()}
+  >
+    <span className={enabled ? 'text-lime-400 font-bold' : ''}>{children}</span>
+    {!enabled && tooltipMessage && (
+      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+        {tooltipMessage}
+      </div>
+    )}
+  </li>
+)
+
+const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <td className={`font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 ${className}`}>{children}</td>
+)
+
+const GameTable: React.FC = React.memo(() => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { appCreator, appClient } = useAppCtx()
+  const { appCreator } = useAppCtx()
   const [inputedGameId, setInputedGameId] = useState('')
 
   const { gameId, setGameId } = useGameIdCtx()
-  const { gameRegisterData, gameStateData, gamePlayersData, isLoadingGameData, setIsLoadingGameData } = useGameBoxDataCtx()
+  const {
+    gameRegisterData,
+    gameStateData,
+    gamePlayersData,
+    isGameDataLoading: isLoadingGameData,
+    setIsGameDataLoading: setIsLoadingGameData,
+  } = useGameDataCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
@@ -28,63 +109,40 @@ const GameTable: React.FC = () => {
     adminActions: false,
     triggerEvents: false,
     gamePlayers: false,
-    // add more as needed
   })
 
-  // Create refs for each dropdown (useRef is fine here since refs don't change)
+  // Memoized refs - fix the undefined error
   const dropdownListRefs = {
     adminActions: useRef<HTMLDivElement>(null),
     triggerEvents: useRef<HTMLDivElement>(null),
     gamePlayers: useRef<HTMLDivElement>(null),
-    // add more as needed
   }
 
-  // Add button refs alongside your dropdown refs
   const dropdownBtnRefs = {
     adminActionsBtn: useRef<HTMLButtonElement>(null),
     triggerEventsBtn: useRef<HTMLButtonElement>(null),
     gamePlayersBtn: useRef<HTMLButtonElement>(null),
   }
 
-  // Function closes all dropdowns
-  const closeAll = () =>
-    setOpenDropdowns({
-      adminActions: false,
-      triggerEvents: false,
-      gamePlayers: false,
-      // reset others too
-    })
+  // Memoized computed states
+  const gameInfo = useMemo(() => {
+    const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
+    const adminIsSolePlayer =
+      Number(gameStateData?.activePlayers) === 1 && (activeAddress === gameStateData?.adminAddress || activeAddress === appCreator)
+    const gameIsEmpty = Number(gameStateData?.activePlayers) === 0 && Number(gameStateData?.prizePool) === 0
+    const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress
+    const canDeleteGame = isAuthorized && (adminIsSolePlayer || gameIsEmpty)
+    const gameEnded = Number(gameStateData?.prizePool) === 0
+    const isExpired = currentTimestamp > Number(gameStateData?.expiryTs || 0)
 
-  useDropdownEventListener({
-    dropdownListRefs: Object.values(dropdownListRefs),
-    dropdownBtnRefs: Object.values(dropdownBtnRefs),
-    isOpen: Object.values(openDropdowns), // or just a single boolean
-    onClose: closeAll,
-    listenEscape: true,
-  })
-
-  // Example toggle handler
-  const toggleDropdown = (name: keyof typeof openDropdowns) => {
-    setOpenDropdowns((prev) => {
-      const isCurrentlyOpen = prev[name]
-
-      if (isCurrentlyOpen) {
-        // If clicking the same button, close it
-        return {
-          adminActions: false,
-          triggerEvents: false,
-          gamePlayers: false,
-        }
-      } else {
-        // If opening a different dropdown, close all others and open this one
-        return {
-          adminActions: name === 'adminActions',
-          triggerEvents: name === 'triggerEvents',
-          gamePlayers: name === 'gamePlayers',
-        }
-      }
-    })
-  }
+    return {
+      isAuthorized,
+      canResetGame,
+      canDeleteGame,
+      gameEnded,
+      isExpired,
+    }
+  }, [activeAddress, gameStateData, appCreator, currentTimestamp])
 
   const eventTriggerConditions = useMemo(() => {
     if (!gameStateData) {
@@ -119,50 +177,205 @@ const GameTable: React.FC = () => {
     }
   }, [gameStateData, currentTimestamp])
 
-  const handleNumOnlyGameId = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Memoized handlers
+  const closeAll = useCallback(
+    () =>
+      setOpenDropdowns({
+        adminActions: false,
+        triggerEvents: false,
+        gamePlayers: false,
+      }),
+    [],
+  )
+
+  const toggleDropdown = useCallback((name: keyof typeof openDropdowns) => {
+    setOpenDropdowns((prev) => {
+      const isCurrentlyOpen = prev[name]
+      if (isCurrentlyOpen) {
+        return { adminActions: false, triggerEvents: false, gamePlayers: false }
+      } else {
+        return {
+          adminActions: name === 'adminActions',
+          triggerEvents: name === 'triggerEvents',
+          gamePlayers: name === 'gamePlayers',
+        }
+      }
+    })
+  }, [])
+
+  const handleNumOnlyGameId = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const numOnlyInput = e.target.value.replace(/\D/g, '')
     setInputedGameId(numOnlyInput)
-  }
+    consoleLogger.info(currentTimestamp.toString())
+    consoleLogger.info(Number(gameStateData?.expiryTs).toString())
+  }, [])
 
-  // Match smart contract logic exactly
-  const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
-
-  // Two scenarios where deletion is allowed:
-  // 1. Admin is sole player (activePlayers = 1, admin is that player)
-  const adminIsSolePlayer =
-    Number(gameStateData?.activePlayers) === 1 && (activeAddress === gameStateData?.adminAddress || activeAddress === appCreator)
-  // 2. No players and no prize pool (activePlayers = 0, prize pool = 0)
-  const gameIsEmpty = Number(gameStateData?.activePlayers) === 0 && Number(gameStateData?.prizePool) === 0
-
-  const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress
-  const canDeleteGame = isAuthorized && (adminIsSolePlayer || gameIsEmpty)
-
-  const deleteGameClasses = canDeleteGame
-    ? 'text-lime-400 bg-slate-800 border border-lime-400 hover:bg-slate-700 cursor-pointer'
-    : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
-
-  const handleDeleteClick = async () => {
-    if (canDeleteGame && !isLoadingMethod) {
+  const handleDeleteClick = useCallback(async () => {
+    if (gameInfo.canDeleteGame && !isLoadingMethod) {
       await handleMethod('deleteGame', { gameId })
       setGameId(null)
     }
-  }
+  }, [gameInfo.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
 
-  // Handle input button click
-  const handleInputGameId = () => {
+  const handleInputGameId = useCallback(() => {
     const newGameId = BigInt(inputedGameId)
-
-    // Set loading state IMMEDIATELY for valid gameIds, before updating gameId
     if (newGameId !== 0n) {
       setIsLoadingGameData(true)
     }
-
     setGameId(newGameId)
-  }
+  }, [inputedGameId, setIsLoadingGameData, setGameId])
 
-  // Determine what to show in the table body
-  const renderTableBody = () => {
-    // Show validation error for invalid game IDs (handle this FIRST, before loading)
+  useDropdownEventListener({
+    dropdownListRefs: Object.values(dropdownListRefs),
+    dropdownBtnRefs: Object.values(dropdownBtnRefs),
+    isOpen: Object.values(openDropdowns),
+    onClose: closeAll,
+    listenEscape: true,
+  })
+
+  // Render functions
+  const renderAdminDropdown = useCallback(() => {
+    if (!openDropdowns.adminActions) return null
+
+    return (
+      <div
+        ref={dropdownListRefs.adminActions}
+        className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+      >
+        <ul className="text-sm text-gray-700">
+          <DropdownItem
+            enabled={gameInfo.canResetGame}
+            onClick={() => !isLoadingMethod && handleMethod('resetGame', { gameId })}
+            tooltipMessage="You must be the admin and the game must be over to reset it."
+          >
+            Reset Game
+          </DropdownItem>
+          <DropdownItem
+            enabled={gameInfo.canDeleteGame}
+            onClick={handleDeleteClick}
+            tooltipMessage="Game must have no active players or admin must be sole active player."
+          >
+            Delete Game
+          </DropdownItem>
+        </ul>
+      </div>
+    )
+  }, [openDropdowns.adminActions, gameInfo, isLoadingMethod, handleMethod, gameId, handleDeleteClick])
+
+  const renderTriggerDropdown = useCallback(() => {
+    if (!openDropdowns.triggerEvents || !activeAddress) return null
+
+    return (
+      <div
+        ref={dropdownListRefs.triggerEvents}
+        className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
+      >
+        <ul className="text-sm text-gray-700">
+          <DropdownItem
+            enabled={eventTriggerConditions.triggersEvent0}
+            onClick={() => handleMethod('triggerGameEvent', { gameId: gameId, triggerId: 0n })}
+            tooltipMessage={eventTriggerConditions.tooltipMessage0}
+          >
+            0 - Game Live
+          </DropdownItem>
+          <DropdownItem
+            enabled={eventTriggerConditions.triggersEvent2}
+            onClick={() => handleMethod('triggerGameEvent', { gameId: gameId, triggerId: 2n })}
+            tooltipMessage={eventTriggerConditions.tooltipMessage2}
+          >
+            2 - Game Over
+          </DropdownItem>
+        </ul>
+      </div>
+    )
+  }, [openDropdowns.triggerEvents, activeAddress, eventTriggerConditions, handleMethod, gameId])
+
+  const renderPhaseContent = useCallback(() => {
+    if (!gameStateData) return null
+
+    const isGameOver = Number(gameStateData.prizePool) === 0
+    const isPlayerInGame = activeAddress && gamePlayersData?.includes(activeAddress)
+    const isAdmin = activeAddress === gameStateData.adminAddress
+
+    if (isGameOver) {
+      return <span className="text-red-500">Over</span>
+    }
+
+    if (gameStateData.stakingFinalized) {
+      // LIVE PHASE - Play conditions
+      const canPlay =
+        gameStateData.stakingFinalized &&
+        isPlayerInGame &&
+        gameRegisterData !== undefined &&
+        currentTimestamp > Number(gameStateData?.expiryTs)
+
+      return (
+        <>
+          <span className="text-cyan-300">Live</span>
+          {isPlayerInGame && (
+            <>
+              {' / '}
+              <ActionButton onClick={() => handleMethod('playGame', { gameId })} disabled={!canPlay} loading={isLoadingMethod}>
+                Play
+              </ActionButton>
+            </>
+          )}
+        </>
+      )
+    } else {
+      // QUEUE/JOIN PHASE - Join conditions
+      const canJoin =
+        !gameStateData.stakingFinalized &&
+        !isPlayerInGame &&
+        gameRegisterData !== undefined &&
+        currentTimestamp > Number(gameStateData?.expiryTs)
+
+      return (
+        <>
+          <span className="text-cyan-300 font-bold">Queue</span>
+          {activeAddress && !isAdmin && !isPlayerInGame && (
+            <>
+              {' / '}
+              <ActionButton onClick={() => handleMethod('joinGame', { gameId })} disabled={!canJoin} loading={isLoadingMethod}>
+                Join
+              </ActionButton>
+            </>
+          )}
+        </>
+      )
+    }
+  }, [gameStateData, currentTimestamp, activeAddress, gamePlayersData, isLoadingMethod, gameRegisterData, gameId, handleMethod])
+
+  const renderSetContent = useCallback(() => {
+    if (!gameStateData) return null
+
+    const canSet =
+      gameStateData.stakingFinalized &&
+      gameStateData.prizePool !== 0n &&
+      gameRegisterData?.gameId === 0n &&
+      gamePlayersData?.includes(activeAddress!)
+
+    if (canSet) {
+      return (
+        <ActionButton onClick={() => handleMethod('setGameCommit', { gameId })} disabled={!canSet} loading={isLoadingMethod}>
+          Set
+        </ActionButton>
+      )
+    }
+
+    const tooltipMessage = !gamePlayersData?.includes(activeAddress ?? '')
+      ? 'Unavailable: You are not an active player in this game.'
+      : !gameStateData.stakingFinalized
+        ? 'Unavailable: This game has not started yet.'
+        : gameStateData.prizePool === 0n
+          ? 'Unavailable: This game already ended.'
+          : 'Unavailable: Previous commit is still active.'
+
+    return <Tooltip message={tooltipMessage}>Set</Tooltip>
+  }, [gameStateData, gameRegisterData, gamePlayersData, activeAddress, handleMethod, gameId, isLoadingMethod])
+
+  const renderTableBody = useCallback(() => {
+    // Validation error for invalid game IDs
     if (gameId === 0n) {
       return (
         <tr>
@@ -173,13 +386,13 @@ const GameTable: React.FC = () => {
       )
     }
 
-    // Show loading state when fetching new game data (only for valid gameIds)
+    // Loading state
     if (isLoadingGameData && gameId != null) {
       return (
         <tr>
           <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
             <div className="flex items-center justify-center gap-2">
-              <span>Loading...</span>
+              <span>Processing...</span>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-200"></div>
             </div>
           </td>
@@ -187,7 +400,7 @@ const GameTable: React.FC = () => {
       )
     }
 
-    // Show "Game ID not found" only if we're not loading and have no data for the current gameId
+    // Game not found
     if (!gameStateData && gameId != null && !isLoadingGameData) {
       return (
         <tr>
@@ -198,62 +411,24 @@ const GameTable: React.FC = () => {
       )
     }
 
-    // Show the actual game data
+    // Game data
     if (gameStateData && gameId != null) {
       return (
         <tr>
-          {/* Game ID */}
-          <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-2 py-1">{gameId?.toString()}</td>
-          {/* Admin */}
-          <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 relative">
-            {isAuthorized ? (
+          <TableCell>{gameId?.toString()}</TableCell>
+
+          <TableCell className="relative">
+            {gameInfo.isAuthorized ? (
               <div className="flex items-center gap-2 relative">
                 <button
-                  ref={dropdownBtnRefs.adminActionsBtn} // Add this ref
+                  ref={dropdownBtnRefs.adminActionsBtn}
                   onClick={() => toggleDropdown('adminActions')}
                   className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
                 >
                   {ellipseAddress(gameStateData.adminAddress)}
                 </button>
                 <CopyAddressBtn value={gameStateData.adminAddress!} title="Copy full address" />
-                {openDropdowns.adminActions && (
-                  <div
-                    ref={dropdownListRefs.adminActions}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
-                  >
-                    <ul className="text-sm text-gray-700">
-                      <li
-                        className={`relative px-4 py-2 ${
-                          canResetGame
-                            ? 'text-lime-400 bg-slate-800 border border-lime-400 hover:bg-slate-700 cursor-pointer'
-                            : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
-                        } group`}
-                        onClick={() => {
-                          if (canResetGame && !isLoadingMethod) {
-                            handleMethod('resetGame', { gameId })
-                          }
-                        }}
-                      >
-                        <span className={canResetGame ? 'text-lime-400 font-bold' : ''}>Reset Game</span>
-
-                        {!canResetGame && (
-                          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                            You must be the admin and the game must be over to reset it.
-                          </div>
-                        )}
-                      </li>
-
-                      <li className={`relative px-4 py-2 ${deleteGameClasses} group`} onClick={handleDeleteClick}>
-                        <span className={canDeleteGame ? 'text-lime-400 font-bold' : ''}>Delete Game</span>
-                        {!canDeleteGame && (
-                          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                            Game must have no active players or admin must be sole active player.
-                          </div>
-                        )}
-                      </li>
-                    </ul>
-                  </div>
-                )}
+                {renderAdminDropdown()}
               </div>
             ) : (
               <span className="flex items-center gap-2">
@@ -261,245 +436,125 @@ const GameTable: React.FC = () => {
                 <CopyAddressBtn value={gameStateData.adminAddress} title="Copy full address" />
               </span>
             )}
-          </td>
-          {/* Prize Pool */}
-          <td className="font-bold text-center text-cyan-300 bg-slate-800 border border-indigo-300 px-4 py-2">
-            {`${microAlgos(gameStateData.prizePool!).algo} Ⱥ`}
-          </td>
-          {/* Status */}
-          <td className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-            <div className="font-bold flex items-center justify-center gap-1">
-              {Number(gameStateData.prizePool) === 0 ? (
-                <span className="text-red-500">Over</span>
-              ) : gameStateData.stakingFinalized ? (
-                <>
-                  <span className="text-cyan-300">Live</span>
-                  {activeAddress && gamePlayersData?.includes(activeAddress ?? '') ? (
-                    <>
-                      {' / '}
-                      <button
-                        onClick={() => handleMethod('playGame', { gameId })}
-                        disabled={isLoadingMethod}
-                        className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                      >
-                        Play
-                      </button>
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <span className="text-cyan-300 font-bold">Queue</span>
-                  {activeAddress && activeAddress !== gameStateData.adminAddress && !gamePlayersData?.includes(activeAddress) && (
-                    <>
-                      {' / '}
-                      <button
-                        onClick={() => handleMethod('joinGame', { gameId })}
-                        disabled={isLoadingMethod}
-                        className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                      >
-                        Join
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
+          </TableCell>
+
+          <TableCell className="text-cyan-300">{`${microAlgos(gameStateData.prizePool!).algo} Ⱥ`}</TableCell>
+
+          <TableCell className="text-indigo-200">
+            <div className="font-bold flex items-center justify-center gap-1">{renderPhaseContent()}</div>
             {Number(gameStateData.prizePool) !== 0 && (
               <div className="text-xs text-white">{new Date(Number(gameStateData.expiryTs) * 1000).toLocaleString()}</div>
-            )}{' '}
-          </td>
-          {/* Set */}
-          <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-            {gameStateData.stakingFinalized &&
-            gameStateData.prizePool !== 0n &&
-            gameRegisterData?.gameId === 0n &&
-            gamePlayersData?.includes(activeAddress!) ? (
-              <button
-                className="text-lime-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                onClick={() => handleMethod('setGameCommit', { gameId })}
-                disabled={isLoadingMethod}
-              >
-                Set
-              </button>
-            ) : (
-              <div className="group inline-block relative">
-                <span className="text-indigo-200 cursor-help">Set</span>
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                  {!gamePlayersData?.includes(activeAddress ?? '')
-                    ? 'Unavailable: You are not an active player in this game.'
-                    : !gameStateData.stakingFinalized
-                      ? 'Unavailable: This game has not started yet.'
-                      : gameStateData.prizePool === 0n
-                        ? 'Unavailable: This game already ended.'
-                        : 'Unavailable: Previous commit is still active.'}
-                </div>
-              </div>
             )}
-          </td>
-          {/* Trigger */}
-          <td className=" relative font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
+          </TableCell>
+
+          <TableCell>{renderSetContent()}</TableCell>
+
+          <TableCell className="relative">
             <button
-              ref={dropdownBtnRefs.triggerEventsBtn} // Add this ref
+              ref={dropdownBtnRefs.triggerEventsBtn}
               className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
               onClick={() => toggleDropdown('triggerEvents')}
             >
               Check
             </button>
+            {renderTriggerDropdown()}
+          </TableCell>
 
-            {activeAddress && openDropdowns.triggerEvents && (
-              <div
-                ref={dropdownListRefs.triggerEvents}
-                className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
-              >
-                <ul className="text-sm text-gray-700">
-                  <li
-                    className={`relative px-4 py-2 ${
-                      eventTriggerConditions.triggersEvent0
-                        ? 'text-indigo-200 bg-slate-800 border hover:bg-slate-700 border-lime-400 cursor-pointer'
-                        : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
-                    } group`} // group is required for group-hover
-                    onClick={() => handleMethod('triggerGameEvent', { gameId: gameId, triggerId: 0n })}
-                  >
-                    <span className={eventTriggerConditions.triggersEvent0 ? 'text-lime-400 font-bold hover:bg-slate-700' : ''}>
-                      0 - Game Live
-                    </span>
+          <TableCell>
+            <button
+              className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
+              onClick={() => toggleModal('activePlayers')}
+            >
+              Open
+            </button>
+          </TableCell>
 
-                    {/* Tooltip shown only when not triggerable */}
-                    {!eventTriggerConditions.triggersEvent0 && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                        {eventTriggerConditions.tooltipMessage0}
-                      </div>
-                    )}
-                  </li>
-
-                  <li
-                    className={`relative px-4 py-2 ${
-                      eventTriggerConditions.triggersEvent2
-                        ? 'text-indigo-200 bg-slate-800 border border-lime-400 cursor-pointer'
-                        : 'bg-slate-800 text-gray-400 cursor-help hover:bg-slate-700'
-                    } group`} // group is required for group-hover
-                    onClick={() => handleMethod('triggerGameEvent', { gameId: gameId, triggerId: 2n })}
-                  >
-                    <span className={eventTriggerConditions.triggersEvent2 ? 'text-lime-400 font-bold' : ''}>2 - Game Over</span>
-
-                    {/* Tooltip shown only when not triggerable */}
-                    {!eventTriggerConditions.triggersEvent2 && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
-                        {eventTriggerConditions.tooltipMessage2}
-                      </div>
-                    )}
-                  </li>
-                </ul>
-              </div>
-            )}
-          </td>
-          {/* Players */}
-          <td className="font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300">
-            <div className="relative inline-block">
-              <button
-                ref={dropdownBtnRefs.gamePlayersBtn} // Add this ref
-                className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
-                onClick={() => toggleDropdown('gamePlayers')}
-              >
-                View
-              </button>
-
-              {openDropdowns.gamePlayers && (
-                <div
-                  ref={dropdownListRefs.gamePlayers}
-                  className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
-                >
-                  <ul className="text-sm text-gray-700">
-                    {gamePlayersData && gamePlayersData.length > 0 ? (
-                      gamePlayersData.map((address: string, index: number) => (
-                        <li
-                          key={index}
-                          className="bg-slate-800 text-indigo-200 hover:bg-slate-700 px-4 py-2 flex justify-between items-center text-center"
-                        >
-                          <span className="mx-auto flex items-center gap-2">
-                            {ellipseAddress(address)}
-                            <CopyAddressBtn value={address} title="Copy full address" />
-                          </span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-gray-500 px-4 py-2 text-center">Lobby empty</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </td>
-          {/* Leaderboard */}
-          <td className="font-bold text-center  text-indigo-200 bg-slate-800 border border-indigo-300">
+          <TableCell>
             <button
               className="text-pink-400 font-bold hover:underline hover:decoration-2 hover:underline-offset-2 focus:outline-none"
               onClick={() => toggleModal('leaderboard')}
             >
               Open
             </button>
-          </td>
-          {/* Top score */}
-          <td className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+          </TableCell>
+
+          <TableCell className="text-indigo-200">
             <div className="font-bold flex items-center justify-center gap-1">
               <span className="text-cyan-300">{gameStateData.topScore.toString()}</span>
             </div>
-            <div className="text-xs text-white">
-              {ellipseAddress(gameStateData.topscorerAddress, 6)}
-              <CopyAddressBtn value={gameStateData.topscorerAddress} title="Copy full address" />
+            <div className="text-xs text-white flex items-center gap-1">
+              <span>{ellipseAddress(gameStateData.topscorerAddress, 6)}</span>
+              <CopyAddressBtn className="text-sm" value={gameStateData.topscorerAddress} title="Copy full address" />
             </div>
-          </td>
+          </TableCell>
         </tr>
       )
     }
 
-    // Default empty state when no gameId is selected
+    // Default empty state
     return (
       <tr>
         <td colSpan={9} className="relative text-center py-4 px-2 text-white">
-          {activeAddress
-            ? "Enter number and click the 'Input' button to look up a game"
-            : 'Please connect your wallet in order to continue.'}
+          {activeAddress ? "Enter Game ID and click 'Input' to look up game state" : 'Wallet connection required.'}
         </td>
       </tr>
     )
+  }, [
+    gameId,
+    isLoadingGameData,
+    gameStateData,
+    gameInfo,
+    activeAddress,
+    renderAdminDropdown,
+    renderPhaseContent,
+    renderSetContent,
+    renderTriggerDropdown,
+    toggleDropdown,
+    toggleModal,
+  ])
+
+  // Early return if no active wallet
+  if (!activeAddress) {
+    return (
+      <div>
+        <div className="mb-4 flex items-center gap-4">
+          <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
+          <input
+            className="w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 opacity-50 cursor-not-allowed"
+            type="text"
+            disabled
+            placeholder="Game ID"
+          />
+          <span className="font-bold text-indigo-200">:</span>
+          <button
+            className="bg-slate-800 text-gray-400 border-2 border-gray-500 px-3 py-1 rounded cursor-not-allowed font-semibold"
+            disabled
+          >
+            Input
+          </button>
+        </div>
+        <table className="min-w-min border border-indigo-300 rounded-md">
+          <thead className="bg-gray-100">
+            <tr>
+              {['Game ID', 'Admin', 'Prize Pool', 'Phase', 'Commit', 'Trigger', 'Players', 'Leaderboard', 'Top Score'].map((header) => (
+                <th key={header} className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={9} className="text-center py-4 px-2 text-white">
+                Please connect your wallet in order to continue.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
   }
 
-  useEffect(() => {
-    const fetchActiveGames = async () => {
-      consoleLogger.info('Fetching active games...')
-
-      try {
-        const activeGames = await appClient!.state.box.boxGameState.getMap()
-        consoleLogger.info('register box game id:')
-        consoleLogger.info(gameRegisterData?.gameId?.toString() ?? 'undefined')
-        consoleLogger.info('register box game hosting game:')
-        consoleLogger.info(String(gameRegisterData?.hostingGame))
-        activeGames.forEach((value, key) => {
-          consoleLogger.info('Game ID:', key.toString(), value)
-        })
-      } catch (err) {
-        consoleLogger.error('Failed to fetch active games:', err)
-      }
-
-      consoleLogger.info('Players:', gameStateData?.activePlayers?.toString() ?? 'No active players')
-    }
-
-    if (gameId && appClient) {
-      fetchActiveGames()
-    }
-  }, [gameId, gameStateData])
-
-  useEffect(() => {
-    consoleLogger.info('bla', gameStateData?.activePlayers?.toString() ?? 'No active players')
-    consoleLogger.info(String(eventTriggerConditions.triggersEvent2))
-    // consoleLogger.info(String(adminIsSolePlayer))
-    // consoleLogger.info(String(gameIsEmpty))
-    // consoleLogger.info(gameStateData?.activePlayers.toString() ?? 'abc')
-  }, [gameId, gameStateData])
-
-  // Render JSX
   return (
     <div>
       <div className="mb-4 flex items-center gap-4">
@@ -524,35 +579,24 @@ const GameTable: React.FC = () => {
           {isLoadingGameData ? 'Loading...' : 'Input'}
         </button>
       </div>
+
       <table className="min-w-min border border-indigo-300 rounded-md">
         <thead className="bg-gray-100">
           <tr>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Game ID</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Admin</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Prize Pool</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Phase</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Commit</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Trigger</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Players</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Leaderboard</th>
-            <th className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">Top Score</th>
+            {['Game ID', 'Admin', 'Prize Pool', 'Phase', 'Commit', 'Trigger', 'Players', 'Leaderboard', 'Top Score'].map((header) => (
+              <th key={header} className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody>
-          {!activeAddress ? (
-            <tr>
-              <td colSpan={9} className="text-center py-4 px-2 text-white">
-                Please connect your wallet in order to continue.
-              </td>
-            </tr>
-          ) : (
-            renderTableBody()
-          )}
-        </tbody>{' '}
+        <tbody>{renderTableBody()}</tbody>
       </table>
-      <ProfileModal {...getModalProps('leaderboard')} />
+
+      <ActivePlayersModal {...getModalProps('activePlayers')} />
+      <LeaderboardModal {...getModalProps('leaderboard')} />
     </div>
   )
-}
+})
 
 export default GameTable

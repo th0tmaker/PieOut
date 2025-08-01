@@ -1,7 +1,7 @@
 import { GameRegister, GameState, GameTrophy, PieoutClient } from '../contracts/Pieout'
 import { PieoutMethods } from '../methods'
 
-export type PollGameBoxDataProps = {
+export type PollGameDataProps = {
   appClient: PieoutClient | undefined
   appMethods: PieoutMethods | undefined
   gameId: bigint | null
@@ -14,7 +14,17 @@ export type PollGameBoxDataProps = {
   setGameStateData: (data: GameState | undefined) => void
   gamePlayersData: string[] | undefined
   setGamePlayersData: (data: string[] | undefined) => void
-  isLoadingGameData: boolean // Add this line
-  setIsLoadingGameData: (loading: boolean) => void // Add this line
+
+  activeGames: [bigint, string][] | undefined
+  setActiveGames: (data: [bigint, string][] | undefined) => void
+
+  accsWithTrophyBalance: string[] | undefined
+  setAccsWithTrophyBalance: (data: string[] | undefined) => void
+
+  trophyHolderAddress: string | undefined
+  setTrophyHolderAddress: (data: string | undefined) => void
+
+  isGameDataLoading: boolean
+  setIsGameDataLoading: (loading: boolean) => void
   pollingInterval?: number | null
 }
