@@ -1,10 +1,11 @@
-import { ellipseAddress } from '../utils/ellipseAddress'
-import { ModalInterface } from '../interfaces/modal'
-import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { CopyAddressBtn } from '../components/CopyAddressBtn'
+import { useGameDataCtx } from '../hooks/useGameDataCtx'
+import { ModalInterface } from '../interfaces/modal'
+import { ellipseAddress } from '../utils/ellipseAddress'
 
 const ActivePlayersModal = ({ openModal, closeModal }: ModalInterface) => {
   const { gameStateData, gamePlayersData } = useGameDataCtx()
+  if (!gameStateData || !gamePlayersData) return null
 
   return (
     <dialog id="active_players_modal" className={`modal ${openModal ? 'modal-open' : ''}`}>

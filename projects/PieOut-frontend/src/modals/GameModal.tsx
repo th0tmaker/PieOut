@@ -1,13 +1,13 @@
-import { ellipseAddress } from '../utils/ellipseAddress'
-import BlurbPortal from './BlurbPortal'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import GameBlurbContent from '../blurbs/GameBlurb'
-import { ModalInterface } from '../interfaces/modal'
-import { useModal } from '../hooks/useModal'
+import BlurbPortal from '../components/BlurbPortal'
+import { CopyAddressBtn } from '../components/CopyAddressBtn'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
-import { CopyAddressBtn } from '../components/CopyAddressBtn'
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import { useModal } from '../hooks/useModal'
+import { ModalInterface } from '../interfaces/modal'
+import { ellipseAddress } from '../utils/ellipseAddress'
 
 interface GameModalInterface extends ModalInterface {}
 
@@ -38,24 +38,28 @@ const ModalButton = ({
 
 const GameItem = ({ gameId, adminAddress }: { gameId: bigint; adminAddress: string }) => (
   <div className="bg-slate-700 border border-slate-600 rounded px-2 py-1 hover:bg-slate-600 transition-colors duration-200 cursor-pointer">
-    <div className="flex items-center gap-3">
-      <div className="text-xs text-slate-300">
+    <div className="flex items-center gap-2 text-xs text-slate-300">
+      <div className="flex items-center gap-1">
         <span className="font-medium text-green-300">Game ID:</span>
-        <span className="ml-1 font-mono">{gameId.toString()}</span>
+        <span className="font-mono">{gameId.toString()}</span>
       </div>
-      <div className="text-xs text-slate-300">
+
+      <span className="text-white">•</span>
+
+      <div className="flex items-center gap-1">
         <span className="font-medium text-orange-300">Admin:</span>
-        <span className="font-mono ml-1">{ellipseAddress(adminAddress, 4)}</span>
-        <CopyAddressBtn className="text-sm" value={adminAddress} title="Copy full address" />
+        <span className="font-mono">{ellipseAddress(adminAddress, 6)}</span>
+        <CopyAddressBtn className="text-sm align-middle" value={adminAddress} title="Copy full address" />
       </div>
     </div>
   </div>
 )
 
 const GameModal = React.memo(({ openModal, closeModal }: GameModalInterface) => {
+  const { gameTrophyData, gameRegisterData, isGameDataLoading, activeGames } = useGameDataCtx()
+
   const { getModalProps, toggleModal } = useModal()
   const { openModal: isGameBlurbOpen } = getModalProps('gameBlurb')
-  const { gameTrophyData, gameRegisterData, isGameDataLoading, activeGames } = useGameDataCtx()
   const { handle: handleMethod, isLoading: isMethodLoading } = useMethodHandler()
 
   // Local state

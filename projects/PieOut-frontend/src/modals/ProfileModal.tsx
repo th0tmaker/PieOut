@@ -1,14 +1,14 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import ProfileBlurbContent from '../blurbs/ProfileBlurb'
+import BlurbPortal from '../components/BlurbPortal'
+import { CopyAddressBtn } from '../components/CopyAddressBtn'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
+import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
 import { ModalInterface } from '../interfaces/modal'
 import { ellipseAddress } from '../utils/ellipseAddress'
-import BlurbPortal from './BlurbPortal'
-import { CopyAddressBtn } from './CopyAddressBtn'
-import { useMethodHandler } from '../hooks/useMethodHandler'
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
 
 interface ProfileModalInterface extends ModalInterface {}
 
@@ -17,21 +17,13 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
   const { gameRegisterData, gameStateData, gamePlayersData } = useGameDataCtx()
   const { toggleModal, getModalProps } = useModal()
   const { openModal: isProfileBlurbOpen } = getModalProps('profileBlurb')
-  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  const { handle: handleMethod } = useMethodHandler()
 
   // Processing state tracking
-  const [expectedProcessingState, setExpectedProcessingState] = useState(false)
+  const [expectedRegisterState, setExpectedRegisterState] = useState(false)
 
-  // Reset processing state when gameRegisterData changes (indicating transaction complete)
-  useEffect(() => {
-    if (expectedProcessingState) {
-      // Reset when registration state actually changes
-      setExpectedProcessingState(false)
-    }
-  }, [gameRegisterData, expectedProcessingState])
-
-  // Memoized context data to prevent re-renders
-  const gameData = useMemo(
+  // Memoize Profile modal data and relevant account related boolean states
+  const data = useMemo(
     () => ({
       gameRegisterData,
       gameStateData,
@@ -40,44 +32,45 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
     [gameRegisterData, gameStateData, gamePlayersData],
   )
 
-  // Memoized computed states
-  const profileState = useMemo(() => {
-    const isRegistered = !!gameData.gameRegisterData
+  const accState = useMemo(() => {
+    const isRegistered = !!data.gameRegisterData
     const isInActiveGame =
-      gameData.gameRegisterData?.gameId !== undefined &&
-      gameData.gameRegisterData.gameId !== 0n &&
-      gameData.gamePlayersData?.some((player) => player === activeAddress)
+      data.gameRegisterData?.gameId !== undefined &&
+      data.gameRegisterData.gameId !== 0n &&
+      data.gamePlayersData?.some((player) => player === activeAddress)
 
     return {
       isRegistered,
       isInActiveGame,
       canUnregister: isRegistered && !isInActiveGame,
-      displayData: gameData.gameRegisterData
+      displayData: data.gameRegisterData
         ? {
-            hostingGame: gameData.gameRegisterData.hostingGame?.toString() ?? 'N/D',
-            gameId: (gameData.gameRegisterData.gameId?.toString() ?? 'N/D') + (gameData.gameRegisterData.gameId !== undefined ? ' #' : ''),
-            ptScore:
-              (gameData.gameRegisterData.ptScore?.toString() ?? 'N/D') + (gameData.gameRegisterData.ptScore !== undefined ? ' ☆' : ''),
+            hostingGame: data.gameRegisterData.hostingGame?.toString() ?? 'N/D',
+            gameId: (data.gameRegisterData.gameId?.toString() ?? 'N/D') + (data.gameRegisterData.gameId !== undefined ? ' #' : ''),
+            bestScore: (data.gameRegisterData.bestScore?.toString() ?? 'N/D') + (data.gameRegisterData.bestScore !== undefined ? ' ☆' : ''),
             commitRound:
-              (gameData.gameRegisterData.commitRandRound?.toString() ?? 'N/D') +
-              (gameData.gameRegisterData.commitRandRound !== undefined ? ' ❒' : ''),
+              (data.gameRegisterData.commitRandRound?.toString() ?? 'N/D') +
+              (data.gameRegisterData.commitRandRound !== undefined ? ' ❒' : ''),
             expiryRound:
-              (gameData.gameRegisterData.expiryRound?.toString() ?? 'N/D') +
-              (gameData.gameRegisterData.expiryRound !== undefined ? ' ❒' : ''),
+              (data.gameRegisterData.expiryRound?.toString() ?? 'N/D') + (data.gameRegisterData.expiryRound !== undefined ? ' ❒' : ''),
           }
         : null,
     }
-  }, [gameData, activeAddress])
+  }, [data, activeAddress])
 
-  // Processing and disabled states
-  const isProcessing = expectedProcessingState || isLoadingMethod
-  const isCloseDisabled = isProcessing
+  // Reset processing state when gameRegisterData changes (indicating transaction complete)
+  useEffect(() => {
+    if (expectedRegisterState && accState.isRegistered && expectedRegisterState) {
+      // Reset when registration state actually changes
+      setExpectedRegisterState(false)
+    }
+  }, [gameRegisterData, expectedRegisterState])
 
   // Memoized handlers
-  const handleRegisterToggle = useCallback(async () => {
+  const handleRegisterBtnToggle = useCallback(async () => {
     try {
-      setExpectedProcessingState(true)
-      if (profileState.isRegistered) {
+      setExpectedRegisterState(true)
+      if (accState.isRegistered) {
         consoleLogger.info('Unregister button clicked')
         await handleMethod('delBoxGameRegisterForSelf', { gameId: gameRegisterData?.gameId })
       } else {
@@ -86,11 +79,11 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
       }
     } catch (error) {
       consoleLogger.error('Register/Unregister failed', error)
-      setExpectedProcessingState(false)
+      setExpectedRegisterState(false)
     }
-  }, [profileState.isRegistered, handleMethod])
+  }, [accState.isRegistered, handleMethod])
 
-  const handleUnregisterOther = useCallback(() => {
+  const handleUnregisterClick = useCallback(() => {
     consoleLogger.info('Unregister another account clicked')
   }, [])
 
@@ -151,8 +144,8 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
         <div className="space-y-1 pt-2 text-indigo-200 font-bold">
           <DataRow
             label="Status"
-            value={profileState.isRegistered ? 'Registered' : 'Not Registered'}
-            className={profileState.isRegistered ? 'text-green-400' : 'text-red-400'}
+            value={accState.isRegistered ? 'Registered' : 'Not Registered'}
+            className={accState.isRegistered ? 'text-green-400' : 'text-red-400'}
           />
 
           <p>
@@ -163,20 +156,20 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
             </span>
           </p>
 
-          {profileState.displayData && (
+          {accState.displayData && (
             <>
-              <DataRow label="Hosting Game" value={profileState.displayData.hostingGame} />
-              <DataRow label="Game ID" value={profileState.displayData.gameId} />
-              <DataRow label="PB Score" value={profileState.displayData.ptScore} />
-              <DataRow label="Commit Round" value={profileState.displayData.commitRound} />
-              <DataRow label="Expiry Round" value={profileState.displayData.expiryRound} />
+              <DataRow label="Hosting Game" value={accState.displayData.hostingGame} />
+              <DataRow label="Game ID" value={accState.displayData.gameId} />
+              <DataRow label="Best Score" value={accState.displayData.bestScore} />
+              <DataRow label="Commit Round" value={accState.displayData.commitRound} />
+              <DataRow label="Expiry Round" value={accState.displayData.expiryRound} />
             </>
           )}
         </div>
         <hr className="border-t-[2px] border-cyan-300 opacity-80 mt-4" />
       </div>
     ),
-    [profileState, activeAddress, DataRow],
+    [accState, activeAddress, DataRow],
   )
 
   return (
@@ -211,7 +204,7 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
             </p>
 
             {/* Processing State or Unregister Other Button */}
-            {isProcessing ? (
+            {expectedRegisterState ? (
               <div className="mt-1">
                 <span className="inline-flex items-center gap-1">
                   <span className="text-gray-400">PROCESSING...</span>
@@ -219,7 +212,7 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
                 </span>
               </div>
             ) : (
-              <ActionButton onClick={handleUnregisterOther} disabled={isProcessing}>
+              <ActionButton onClick={handleUnregisterClick} disabled={expectedRegisterState}>
                 CLICK HERE
               </ActionButton>
             )}
@@ -228,13 +221,13 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ProfileModalInterfac
           {/* Action Buttons */}
           <div className="modal-action flex justify-center gap-2">
             <ModalButton
-              onClick={handleRegisterToggle}
-              disabled={isProcessing || (profileState.isRegistered && !profileState.canUnregister)}
+              onClick={handleRegisterBtnToggle}
+              disabled={expectedRegisterState || (accState.isRegistered && !accState.canUnregister)}
             >
-              {profileState.isRegistered ? 'Unregister' : 'Register'}
+              {accState.isRegistered ? 'Unregister' : 'Register'}
             </ModalButton>
 
-            <ModalButton onClick={closeModal} disabled={isCloseDisabled}>
+            <ModalButton onClick={closeModal} disabled={expectedRegisterState}>
               Close
             </ModalButton>
           </div>

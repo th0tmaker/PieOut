@@ -1,5 +1,5 @@
 //src/hooks/useCurrentTimestamp.ts
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Define a custom React hook that tracks the current timestamp based on the user's local machine system clock
 export function useCurrentTimestamp(intervalMs = 1000) {

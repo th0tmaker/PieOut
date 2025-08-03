@@ -20,7 +20,7 @@ from . import constants as cst
 from . import structs as stc
 
 
-# Execute burn asset config inner transaction
+# Define am asset config inner transaction that burns the asset
 @subroutine
 def burn_itxn(
     asset_id: UInt64,
@@ -32,7 +32,7 @@ def burn_itxn(
     ).submit()
 
 
-# Execute clawback asset transfer inner transaction of single amount
+# Define a clawback asset transfer inner transaction of single amount
 @subroutine
 def clawback_itxn(
     asset_id: UInt64,
@@ -49,7 +49,7 @@ def clawback_itxn(
     ).submit()
 
 
-# Execute a payout payment inner transaction
+# Define a payout payment inner transaction
 @subroutine
 def payout_itxn(receiver: Account, amount: UInt64, note: String) -> None:
     itxn.Payment(
@@ -93,7 +93,7 @@ def reset_game_commit_values(
     box_game_register[account].expiry_round = arc4.UInt64(Global.round + round_delta)
 
 
-# Check if account is an active player of a valid game instance
+# Check if account is an active player of a game
 @subroutine
 def check_acc_in_game(
     game_id: UInt64,
@@ -179,9 +179,9 @@ def calc_score_get_place(
         game_state.top_score = arc4.UInt8(score)  # Update top score
         game_state.topscorer_address = arc4.Address(player)  # Update topscorer address
 
-    # Check if score is greater than the game register account's personal top score across every game played
-    if score > game_register.pt_score.native:
-        game_register.pt_score = arc4.UInt8(score)  # Update personal top score
+    # Check if score is greater than the game register account's best score across every game played
+    if score > game_register.best_score.native:
+        game_register.best_score = arc4.UInt8(score)  # Update personal top score
 
     # Check if score is great enough for a top three placement and arrange leaderboard accordingly
     if (

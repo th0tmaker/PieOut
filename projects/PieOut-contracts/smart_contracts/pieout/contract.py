@@ -41,7 +41,7 @@ class Pieout(ARC4Contract):
         self.box_game_register = BoxMap(Account, stc.GameRegister, key_prefix="r_")
         self.box_game_trophy = Box(stc.GameTrophy, key="t_")
 
-    # Calculate the minimum balance requirement (MBR) cost for storing a single box unit
+    # READ-ONLY: Calculate the minimum balance requirement (MBR) cost for storing a single box unit
     @arc4.abimethod(readonly=True)
     def calc_single_box_cost(
         self, key_size: arc4.UInt8, value_size: arc4.UInt16
@@ -55,51 +55,51 @@ class Pieout(ARC4Contract):
         # Return single box total cost amount
         return base_cost.native + size_cost
 
-    # Read the smart contract application genesis timestamp in Unix format
+    # READ-ONLY: Return the app genesis timestamp in Unix format
     @arc4.abimethod(readonly=True)
     def read_gen_unix(self) -> UInt64:
         return TemplateVar[UInt64]("GEN_UNIX")
 
-    # Read the smart contract game register box for any given player account
+    # READ-ONLY: Return True if game trophy box data exists, else False
     @arc4.abimethod(readonly=True)
     def does_box_game_trophy_exist(self) -> bool:
         return self.box_game_trophy.maybe()[1]
 
-    # Read the smart contract game register box for any given player account
+    # READ-ONLY: Return True if game register box data exists, else False
     @arc4.abimethod(readonly=True)
     def does_box_game_register_exist(self, player: Account) -> bool:
         return self.box_game_register.maybe(key=player)[1]
 
-    # Read the smart contract game state box for any given existing game id
+    # READ-ONLY: Return True if game state box data exists, else False
     @arc4.abimethod(readonly=True)
     def does_box_game_state_exist(self, game_id: UInt64) -> bool:
         return self.box_game_state.maybe(key=game_id)[1]
 
-    # Read the smart contract game players box for any given existing game id
+    # READ-ONLY: Return an array of all active players at time of call
     @arc4.abimethod(readonly=True)
     def read_box_game_players(self, game_id: UInt64) -> ta.GamePlayersArr:
         # Fail transaction unless the assertion below evaluates True
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
-        # Retrieve current game players from the box using the game id parameter
-        game_players = self.box_game_players[game_id]
+        # Retrieve byte array of current player addresses from the box using the game id parameter
+        players_b_arr = self.box_game_players[game_id]
 
-        # Define a dynamic array to append all remaining players
-        players = ta.GamePlayersArr()
+        # Define a dynamic array to append all remaining active players
+        active_players = ta.GamePlayersArr()
 
-        # Iterate through the game players byte array
-        for i in urange(0, game_players.length, cst.ADDRESS_SIZE):
+        # Iterate through the players byte array
+        for i in urange(0, players_b_arr.length, cst.ADDRESS_SIZE):
             # Extract the bytes representing the player address
-            player_addr_bytes = op.extract(game_players, i, cst.ADDRESS_SIZE)
+            player_addr_bytes = op.extract(players_b_arr, i, cst.ADDRESS_SIZE)
             # Only append address if its bytes do NOT equal to a zeroed byte array of size 32
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player_account = Account.from_bytes(player_addr_bytes)
-                players.append(arc4.Address(player_account))
+                active_players.append(arc4.Address(player_account))
 
-        # Return the array containing the remaining players
-        return players
+        # Return the array containing the remaining active players
+        return active_players
 
-    # Generate the smart contract application client with default values
+    # Generate the smart contract application client
     @arc4.abimethod(create="require")
     def generate(
         self,
@@ -107,10 +107,10 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
 
-        # Assign Global State variables with their default starting value
+        # Set Global State variables to their default starting values
         self.game_id = UInt64(1)
 
-    # Allow app creator to mint a one-time NFT asset used as trophy token to honor the ath address
+    # Allow app creator to mint a one-time NFT asset used as a trophy token to honor the ath address
     @arc4.abimethod
     def mint_trophy(
         self,
@@ -139,7 +139,7 @@ class Pieout(ARC4Contract):
         acfg_itxn = itxn.AssetConfig(
             total=1,
             unit_name="TRFY",
-            asset_name="Pieout-Trophy",
+            asset_name="Pieout_Trophy",
             decimals=0,
             default_frozen=False,
             manager=Global.current_application_address,
@@ -157,7 +157,7 @@ class Pieout(ARC4Contract):
             ath_address=arc4.Address(Global.zero_address),
         )
 
-    # Allow the ath address to add the trophy to their asset balance via an asset transfer inner transaction
+    # Allow ath address to claim the trophy and add it to their asset balance via an asset transfer inner transaction
     @arc4.abimethod
     def claim_trophy(self) -> None:
         # Fail transaction unless the assertion below evaluates True
@@ -177,7 +177,7 @@ class Pieout(ARC4Contract):
             note=b'pieout:j{"method":"claim_trophy","concern":"itxn.asset_transfer;transfer_trophy_asset"}',
         ).submit()
 
-    # Get game register box contents with default start values
+    # Create a game register box that is a prerequiste to interact with game-related features
     @arc4.abimethod
     def get_box_game_register(self, box_r_pay: gtxn.PaymentTransaction) -> None:
         # Fail transaction unless the assertion below evaluates True
@@ -185,22 +185,23 @@ class Pieout(ARC4Contract):
         assert Txn.sender not in self.box_game_register, err.BOX_FOUND
         assert self.box_game_trophy, err.BOX_NOT_FOUND
 
+        # -- BOX R PAY --
         assert box_r_pay.amount == cst.BOX_R_COST, err.INVALID_BOX_PAY_FEE
         assert box_r_pay.sender == Txn.sender, err.INVALID_BOX_PAY_SENDER
         assert (
             box_r_pay.receiver == Global.current_application_address
         ), err.INVALID_BOX_PAY_RECEIVER
 
-        # Set up game register box properties to their default starting values
+        # Create a game register box with sender as key and assign its default starting values
         self.box_game_register[Txn.sender] = stc.GameRegister(
             hosting_game=arc4.Bool(False),  # noqa: FBT003
-            pt_score=arc4.UInt8(0),
+            best_score=arc4.UInt8(0),
             game_id=arc4.UInt64(0),
             commit_rand_round=arc4.UInt64(0),
             expiry_round=arc4.UInt64(Global.round + cst.BOX_R_EXP_ROUND_DELTA),
         )
 
-    # Allow sender to delete game register box contents for their own account
+    # Delete the game register box data for their own account
     @arc4.abimethod
     def del_box_game_register_for_self(
         self,
@@ -216,7 +217,7 @@ class Pieout(ARC4Contract):
             or self.box_game_register[Txn.sender].game_id.native == game_id
         ), err.INVALID_GAME_ID
 
-        # Check if game register box game id value is not equal to zero
+        # Check if game register box game game id value is not equal to zero
         if self.box_game_register[Txn.sender].game_id.native != 0:
             # Fail transaction unless the assertion below evaluates True
             assert (
@@ -242,7 +243,7 @@ class Pieout(ARC4Contract):
             ),
         )
 
-    # Allow sender to delete box game register contents for another account
+    # Delete the game register box data for another account
     @arc4.abimethod
     def del_box_game_register_for_other(self, player: Account) -> None:
         # Fail transaction unless the assertion below evaluates True
@@ -258,7 +259,7 @@ class Pieout(ARC4Contract):
             self.box_game_register[player].expiry_round.native < Global.round
         ), err.TIME_CONSTRAINT_VIOLATION
 
-        # Delete game register box from contract storage
+        # Delete game register box from the smart contract storage under player key
         del self.box_game_register[player]
 
         # Resolve game register box deletion MBR refund receiver by priority
@@ -321,7 +322,7 @@ class Pieout(ARC4Contract):
             box_p_pay.receiver == Global.current_application_address
         ), err.INVALID_BOX_PAY_RECEIVER
 
-        # Initialize a new game state with a unique game ID and write the default starting values inside
+        # Create a game state box with unique game ID as key and assign its default starting values
         self.box_game_state[self.game_id] = stc.GameState(
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
             max_players=arc4.UInt8(max_players),
@@ -340,12 +341,13 @@ class Pieout(ARC4Contract):
             topscorer_address=arc4.Address(Global.zero_address),
         )
 
-        # Set the hosting game flag in sender's box game register to True
+        # Set the hosting game flag property in sender's game register box to True
         self.box_game_register[Txn.sender].hosting_game = arc4.Bool(
-            True
-        )  # noqa: FBT003
+            True  # noqa: FBT003
+        )
 
-        # Initialize game players box with zeroed bytes to store all player addresses (32 bytes per player)
+        # Create a game players box with unique game ID as key
+        # Assign zeroed bytes to store all player addresses (32 bytes per player)
         self.box_game_players[self.game_id] = op.bzero(cst.ADDRESS_SIZE * max_players)
 
         # For game players box, replace the sender's address at index 0
@@ -368,7 +370,7 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 2, err.INVALID_GROUP_SIZE
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
-        # Retrieve current game state from box using the game id parameter
+        # Retrieve current game state data from box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
@@ -430,7 +432,7 @@ class Pieout(ARC4Contract):
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
-    # Commit to a game by setting values that will be used by player to get on-chain randomness and play the game
+    # Set a commitment that will be used to get on-chain randomness and play the game
     @arc4.abimethod
     def set_game_commit(
         self,
@@ -454,7 +456,7 @@ class Pieout(ARC4Contract):
             == True
         ), err.PLAYER_NOT_FOUND
 
-        # Get game register box data
+        # Retrieve current game register data from box using the game id parameter
         game_register = self.box_game_register[
             Txn.sender
         ].copy()  # Make a copy of the game state else immutable
@@ -462,7 +464,7 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert game_register.commit_rand_round == 0, err.NON_ZERO_COMMIT_RAND_ROUND
 
-        # Update game register box commit rand round and game id fields with new values
+        # Update game register box data commit rand round and game id properties with new values
         game_register.commit_rand_round = arc4.UInt64(Global.round + 4)
         game_register.game_id = arc4.UInt64(game_id)
 
@@ -569,7 +571,7 @@ class Pieout(ARC4Contract):
             game_state=game_state,
             game_register=game_register,
             player=Txn.sender,
-            seed=Txn.sender.bytes,  # Use VRF output as seed outside LocalNet env
+            seed=Txn.sender.bytes,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
         )
 
         # If game state first place score is higher than ath score
@@ -579,7 +581,7 @@ class Pieout(ARC4Contract):
 
             # If ath address is not empty
             if self.box_game_trophy.value.ath_address.native != Global.zero_address:
-                # Use box game trophy contents to check account asset balance for trophy
+                # Use box game trophy data to check account asset balance for trophy
                 asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
                     self.box_game_trophy.value.ath_address.native,
                     self.box_game_trophy.value.asset_id.native,
@@ -602,7 +604,7 @@ class Pieout(ARC4Contract):
         # Decrement number of active players by 1
         game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
 
-        # Reset game commit values in game register box for sender after they obtained a score
+        # Reset game commit values in game register box after score is obtained
         game_register.game_id = arc4.UInt64(0)
         game_register.commit_rand_round = arc4.UInt64(0)
         game_register.expiry_round = arc4.UInt64(
@@ -623,19 +625,19 @@ class Pieout(ARC4Contract):
         # Update the game state box data with a copy containing its modified values
         self.box_game_state[game_id] = game_state.copy()
 
-    # Allow an active player to check for a game event and trigger its progression
+    # Allow any valid account to check and trigger game event progression
     @arc4.abimethod
     def trigger_game_event(self, game_id: UInt64, trigger_id: arc4.UInt8) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
-        # Retrieve current game state from box using the game id parameter
+        # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
 
-        # If trigger id 0 corresponds w/ event: Game Live
+        # Trigger ID 0 corresponds w/ event: Game Live
         if trigger_id.native == 0:
             # Fail transaction unless the assertion below evaluates True
             assert (
@@ -648,7 +650,7 @@ class Pieout(ARC4Contract):
             # Check if game is live
             srt.is_game_live(game_id=game_id, game_state=game_state)
 
-        # EIif trigger id 2 corresponds w/ event: Game Over
+        # Trigger ID 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
             # Fail transaction unless the assertion below evaluates True
             assert (
@@ -669,6 +671,7 @@ class Pieout(ARC4Contract):
         else:
             assert False, err.TRIGGER_ID_NOT_FOUND  # noqa: B011
 
+        # Update the game state box data with a copy containing its modified values
         self.box_game_state[game_id] = game_state.copy()
 
     # Allow admin to reset an existing game instance
@@ -688,7 +691,7 @@ class Pieout(ARC4Contract):
         ), err.INVALID_STAKE_PAY_RECEIVER
         assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
 
-        # Retrieve current game state from box using the game id parameter
+        # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
@@ -707,7 +710,7 @@ class Pieout(ARC4Contract):
         )
         game_players_bref.replace(0, Txn.sender.bytes)
 
-        # Reset game state fields back to their new game values
+        # Reset game state properties back to their default starting values
         game_state.staking_finalized = arc4.Bool(False)  # noqa: FBT003
         game_state.active_players = arc4.UInt8(1)
         game_state.first_place_score = arc4.UInt8(0)
@@ -737,7 +740,7 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
-        # Retrieve current game state from box using the game id parameter
+        # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[
             game_id
         ].copy()  # Make a copy of the game state else immutable
@@ -767,7 +770,7 @@ class Pieout(ARC4Contract):
             # Fail transaction unless the assertion below evaluates True
             assert acc_in_game == True, err.ADMIN_SOLE_PLAYER  # noqa: E712
 
-            # Issue prize pool payouts of admin stake if they delete a game where they the sole player
+            # Issue prize pool payouts equal to admin stake
             srt.payout_itxn(
                 receiver=Txn.sender,
                 amount=game_state.prize_pool.native,
@@ -794,7 +797,7 @@ class Pieout(ARC4Contract):
             value_size=arc4.UInt16(cst.ADDRESS_SIZE * game_state.max_players.native),
         )
 
-        # Issue MBR refund for box game state and box game players deletion via a payment inner transaction
+        # Issue MBR refund for game state box and game players box deletion via a payment inner transaction
         srt.payout_itxn(
             receiver=Txn.sender,
             amount=cst.BOX_S_COST + box_p_cost,
@@ -810,9 +813,9 @@ class Pieout(ARC4Contract):
         assert TemplateVar[bool]("DELETABLE"), err.DELETEABLE_NOT_TRUE
         assert Txn.sender == Global.creator_address, err.INVALID_CREATOR
 
-        # Check if box game trophy exists
+        # Check if game trophy box exists
         if self.box_game_trophy:
-            # Use box game trophy contents to check app account asset balance for trophy
+            # Use game trophy box data asset id property to check app account asset balance for trophy
             asset_balance, asset_exists = op.AssetHoldingGet.asset_balance(
                 Global.current_application_address,
                 self.box_game_trophy.value.asset_id.native,

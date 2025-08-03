@@ -1,56 +1,74 @@
+// HANDLE UNREGISTER LOGIC FOR SELF AND OTHER
+// IMPLEMENT ANIMATE-SPIN PROCESSING INTO DROP DOWN 'ADMIN' + 'TRIGGER' MENUS
+// ADD ANIMATION TO CHECK IF -> currentTimestamp > Number(gameStateData?.expiryTs)
 import { microAlgos } from '@algorandfoundation/algokit-utils'
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useMemo, useRef, useState, useCallback } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppCtx } from '../hooks/useAppCtx'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useGameIdCtx } from '../hooks/useGameIdCtx'
+import { useLastRound } from '../hooks/useLastRound'
 import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
+import ActivePlayersModal from '../modals/ActivePlayersModal'
+import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
-import { CopyAddressBtn } from './CopyAddressBtn'
-import LeaderboardModal from './LeaderboardModal'
-import ActivePlayersModal from './ActivePlayersModal'
-import { useLastRound } from '../hooks/useLastRound'
 import { algorand } from '../utils/network/getAlgorandClient'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import { CopyAddressBtn } from './CopyAddressBtn'
 
 // Reusable components
 const ActionButton = ({
   onClick,
   disabled = false,
-  loading = false,
   children,
   className = '',
+  tooltipMessage,
 }: {
   onClick: () => void
   disabled?: boolean
-  loading?: boolean
   children: React.ReactNode
   className?: string
-}) => (
-  <button
-    onClick={onClick}
-    disabled={disabled || loading}
-    className={`font-bold focus:outline-none ${className} ${
-      disabled || loading ? 'text-gray-400 cursor-not-allowed' : 'text-lime-400 hover:underline hover:decoration-2 hover:underline-offset-2'
-    }`}
-  >
-    {loading ? (
-      <div className="inline-flex items-center gap-1">
-        <div className="w-3 h-3 border-2 border-t-transparent border-gray-400 rounded-full animate-spin"></div>
-      </div>
-    ) : (
-      children
-    )}
-  </button>
-)
+  tooltipMessage?: string
+}) => {
+  // Show tooltip for disabled (non-loading) buttons
+  if (disabled && tooltipMessage) {
+    return (
+      <Tooltip message={tooltipMessage}>
+        <span className="text-gray-400">{children}</span>
+      </Tooltip>
+    )
+  }
 
-const Tooltip = ({ children, message }: { children: React.ReactNode; message: string }) => (
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`font-bold focus:outline-none ${className} ${
+        disabled
+          ? 'text-lime-400'
+          : disabled
+            ? 'text-gray-400 cursor-help'
+            : 'text-lime-400 hover:underline hover:decoration-2 hover:underline-offset-2'
+      }`}
+    >
+      {disabled ? (
+        <div className="inline-flex items-center gap-1">
+          {/* <span>Processing...</span> */}
+          <div className="w-3 h-3 border-2 border-t-transparent border-lime-400 rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        children
+      )}
+    </button>
+  )
+}
+
+export const Tooltip = ({ children, message }: { children: React.ReactNode; message: React.ReactNode }) => (
   <div className="group inline-block relative">
-    <span className="text-indigo-200 cursor-help">{children}</span>
-    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
+    <span className="text-gray-400 cursor-help">{children}</span>
+    <div className="absolute left-full top-full -ml-10 mt-2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
       {message}
     </div>
   </div>
@@ -84,26 +102,31 @@ const DropdownItem = ({
   </li>
 )
 
-const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <td className={`font-bold text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2 ${className}`}>{children}</td>
-)
+const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
+  const defaultClasses = 'font-bold text-center bg-slate-800 border border-indigo-300 px-4 py-2'
+  const hasTextColor = /\btext-(?:\w+)-\d{3}\b/.test(className)
+  const textClass = hasTextColor ? '' : 'text-indigo-200'
+
+  return <td className={`${defaultClasses} ${textClass} ${className}`}>{children}</td>
+}
 
 const GameTable: React.FC = React.memo(() => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
   const { appCreator } = useAppCtx()
   const [inputedGameId, setInputedGameId] = useState('')
-
+  const { lastRound } = useLastRound(algorand.client.algod)
   const { gameId, setGameId } = useGameIdCtx()
-  const {
-    gameRegisterData,
-    gameStateData,
-    gamePlayersData,
-    isGameDataLoading: isLoadingGameData,
-    setIsGameDataLoading: setIsLoadingGameData,
-  } = useGameDataCtx()
+  const { gameRegisterData, gameStateData, gamePlayersData, isGameDataLoading, setIsGameDataLoading } = useGameDataCtx()
+
   const currentTimestamp = useCurrentTimestamp()
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+
+  // Expected state management for buttons
+  const [expectedJoinState, setExpectedJoinState] = useState(false)
+  const [expectedPlayState, setExpectedPlayState] = useState(false)
+  const [expectedSetState, setExpectedSetState] = useState(false)
+  const [waitingForCommitRound, setWaitingForCommitRound] = useState(false)
 
   const [openDropdowns, setOpenDropdowns] = useState({
     adminActions: false,
@@ -125,22 +148,20 @@ const GameTable: React.FC = React.memo(() => {
   }
 
   // Memoized computed states
-  const gameInfo = useMemo(() => {
+  const accState = useMemo(() => {
     const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
-    const adminIsSolePlayer =
+    const isAdminSolePlayer =
       Number(gameStateData?.activePlayers) === 1 && (activeAddress === gameStateData?.adminAddress || activeAddress === appCreator)
     const gameIsEmpty = Number(gameStateData?.activePlayers) === 0 && Number(gameStateData?.prizePool) === 0
     const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress
-    const canDeleteGame = isAuthorized && (adminIsSolePlayer || gameIsEmpty)
+    const canDeleteGame = isAuthorized && (isAdminSolePlayer || gameIsEmpty)
     const gameEnded = Number(gameStateData?.prizePool) === 0
-    const isExpired = currentTimestamp > Number(gameStateData?.expiryTs || 0)
 
     return {
       isAuthorized,
       canResetGame,
       canDeleteGame,
       gameEnded,
-      isExpired,
     }
   }, [activeAddress, gameStateData, appCreator, currentTimestamp])
 
@@ -206,24 +227,140 @@ const GameTable: React.FC = React.memo(() => {
   const handleNumOnlyGameId = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const numOnlyInput = e.target.value.replace(/\D/g, '')
     setInputedGameId(numOnlyInput)
-    consoleLogger.info(currentTimestamp.toString())
-    consoleLogger.info(Number(gameStateData?.expiryTs).toString())
   }, [])
 
   const handleDeleteClick = useCallback(async () => {
-    if (gameInfo.canDeleteGame && !isLoadingMethod) {
+    if (accState.canDeleteGame && !isLoadingMethod) {
       await handleMethod('deleteGame', { gameId })
       setGameId(null)
     }
-  }, [gameInfo.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
+  }, [accState.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
 
-  const handleInputGameId = useCallback(() => {
+  const handleInputClick = useCallback(() => {
     const newGameId = BigInt(inputedGameId)
     if (newGameId !== 0n) {
-      setIsLoadingGameData(true)
+      setIsGameDataLoading(true)
     }
     setGameId(newGameId)
-  }, [inputedGameId, setIsLoadingGameData, setGameId])
+  }, [inputedGameId, setIsGameDataLoading, setGameId])
+
+  // Enhanced method handlers with expected state
+  const handleJoinClick = useCallback(async () => {
+    if (!activeAddress) return
+    try {
+      setExpectedJoinState(true)
+      await handleMethod('joinGame', { gameId })
+    } catch (error) {
+      // Reset expected state on error
+      setExpectedJoinState(false)
+      throw error
+    }
+  }, [handleMethod, gameId, activeAddress])
+
+  const handlePlayClick = useCallback(async () => {
+    try {
+      setExpectedPlayState(true)
+      await handleMethod('playGame', { gameId })
+    } catch (error) {
+      // Reset expected state on error
+      setExpectedPlayState(false)
+      throw error
+    }
+  }, [handleMethod, gameId])
+
+  const handleSetClick = useCallback(async () => {
+    try {
+      setExpectedSetState(true)
+      await handleMethod('setGameCommit', { gameId })
+    } catch (error) {
+      // Reset expected state on error
+      setExpectedSetState(false)
+      throw error
+    }
+  }, [handleMethod, gameId])
+
+  // Reset all expected states when active address changes
+  useEffect(() => {
+    setExpectedJoinState(false)
+    setExpectedPlayState(false)
+    setExpectedSetState(false)
+    setWaitingForCommitRound(false)
+  }, [activeAddress])
+
+  // Reset expected states based on actual game state changes, not just loading states
+  useEffect(() => {
+    if (!expectedJoinState || !activeAddress) return
+
+    // Reset join state when player actually appears in the game
+    if (gamePlayersData?.includes(activeAddress)) {
+      setExpectedJoinState(false)
+    }
+
+    // Fallback timeout to prevent infinite spinning (30 seconds)
+    const timeout = setTimeout(() => {
+      setExpectedJoinState(false)
+    }, 30000)
+
+    return () => clearTimeout(timeout)
+  }, [expectedJoinState, activeAddress, gamePlayersData])
+
+  useEffect(() => {
+    if (!expectedPlayState || !gameStateData) return
+
+    // Reset play state when game actually ends (prize pool becomes 0)
+    if (Number(gameStateData.prizePool) === 0) {
+      setExpectedPlayState(false)
+    }
+
+    // Fallback timeout to prevent infinite spinning (30 seconds)
+    const timeout = setTimeout(() => {
+      setExpectedPlayState(false)
+    }, 30000)
+
+    return () => clearTimeout(timeout)
+  }, [expectedPlayState, gameStateData])
+
+  useEffect(() => {
+    if (!expectedSetState || !gameRegisterData) return
+
+    // When set state is expected and commit is actually set (gameId is no longer 0)
+    if (gameRegisterData.gameId !== 0n) {
+      setExpectedSetState(false)
+      // Only start waiting for commit round if the round hasn't been reached yet
+      const wasCommitRandRoundReached =
+        typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= gameRegisterData.commitRandRound
+      if (!wasCommitRandRoundReached) {
+        setWaitingForCommitRound(true)
+      }
+    }
+
+    // Fallback timeout to prevent infinite spinning (30 seconds)
+    const timeout = setTimeout(() => {
+      setExpectedSetState(false)
+      setWaitingForCommitRound(false)
+    }, 30000)
+
+    return () => clearTimeout(timeout)
+  }, [expectedSetState, gameRegisterData, lastRound])
+
+  // Reset waiting for commit round when the round is actually reached
+  useEffect(() => {
+    if (!waitingForCommitRound || !gameRegisterData || !lastRound) return
+
+    const wasCommitRandRoundReached = (lastRound: number | null, commitRandRound: bigint) =>
+      typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= commitRandRound
+
+    if (wasCommitRandRoundReached(lastRound, gameRegisterData.commitRandRound)) {
+      setWaitingForCommitRound(false)
+    }
+
+    // Fallback timeout (60 seconds for round to be reached)
+    const timeout = setTimeout(() => {
+      setWaitingForCommitRound(false)
+    }, 60000)
+
+    return () => clearTimeout(timeout)
+  }, [waitingForCommitRound, gameRegisterData, lastRound])
 
   useDropdownEventListener({
     dropdownListRefs: Object.values(dropdownListRefs),
@@ -244,14 +381,14 @@ const GameTable: React.FC = React.memo(() => {
       >
         <ul className="text-sm text-gray-700">
           <DropdownItem
-            enabled={gameInfo.canResetGame}
+            enabled={accState.canResetGame}
             onClick={() => !isLoadingMethod && handleMethod('resetGame', { gameId })}
             tooltipMessage="You must be the admin and the game must be over to reset it."
           >
             Reset Game
           </DropdownItem>
           <DropdownItem
-            enabled={gameInfo.canDeleteGame}
+            enabled={accState.canDeleteGame}
             onClick={handleDeleteClick}
             tooltipMessage="Game must have no active players or admin must be sole active player."
           >
@@ -260,7 +397,7 @@ const GameTable: React.FC = React.memo(() => {
         </ul>
       </div>
     )
-  }, [openDropdowns.adminActions, gameInfo, isLoadingMethod, handleMethod, gameId, handleDeleteClick])
+  }, [openDropdowns.adminActions, accState, isLoadingMethod, handleMethod, gameId, handleDeleteClick])
 
   const renderTriggerDropdown = useCallback(() => {
     if (!openDropdowns.triggerEvents || !activeAddress) return null
@@ -291,11 +428,12 @@ const GameTable: React.FC = React.memo(() => {
   }, [openDropdowns.triggerEvents, activeAddress, eventTriggerConditions, handleMethod, gameId])
 
   const renderPhaseContent = useCallback(() => {
-    if (!gameStateData) return null
+    if (!gameStateData || !activeAddress) return null
 
     const isGameOver = Number(gameStateData.prizePool) === 0
-    const isPlayerInGame = activeAddress && gamePlayersData?.includes(activeAddress)
+    const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
     const isAdmin = activeAddress === gameStateData.adminAddress
+    const hasGameRegisterData = gameRegisterData !== undefined
 
     if (isGameOver) {
       return <span className="text-red-500">Over</span>
@@ -303,11 +441,32 @@ const GameTable: React.FC = React.memo(() => {
 
     if (gameStateData.stakingFinalized) {
       // LIVE PHASE - Play conditions
-      const canPlay =
-        gameStateData.stakingFinalized &&
+      const wasCommitRandRoundReached = (lastRound: number | null, commitRandRound: bigint) =>
+        typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= commitRandRound
+
+      const canPlay = gameRegisterData?.gameId === gameId
+      gameStateData.stakingFinalized &&
         isPlayerInGame &&
-        gameRegisterData !== undefined &&
-        currentTimestamp > Number(gameStateData?.expiryTs)
+        hasGameRegisterData &&
+        currentTimestamp <= Number(gameStateData?.expiryTs) &&
+        wasCommitRandRoundReached(lastRound, gameRegisterData.commitRandRound)
+
+      // Updated loading condition - keep spinning until either method is loading OR we expect a state change
+      // Also disable when Set is in progress since Set must complete before Play can be used
+      // Keep spinning until the commit round condition is properly evaluated
+      const isPlayLoading = isLoadingMethod || expectedPlayState || expectedSetState || waitingForCommitRound
+
+      const playTooltipMessage = !hasGameRegisterData
+        ? 'Unavailable: Game register profile required.'
+        : !isPlayerInGame
+          ? 'Unavailable: You are not an active player in this game.'
+          : !gameStateData.stakingFinalized
+            ? 'Unavailable: This game has not started yet.'
+            : currentTimestamp > Number(gameStateData?.expiryTs)
+              ? 'Unavailable: Live phase timer expired.'
+              : !wasCommitRandRoundReached(lastRound, gameRegisterData.commitRandRound)
+                ? 'Unavailable: Randomness commitment round not yet reached'
+                : 'Unavailable: Transaction is processing.'
 
       return (
         <>
@@ -315,7 +474,11 @@ const GameTable: React.FC = React.memo(() => {
           {isPlayerInGame && (
             <>
               {' / '}
-              <ActionButton onClick={() => handleMethod('playGame', { gameId })} disabled={!canPlay} loading={isLoadingMethod}>
+              <ActionButton
+                onClick={handlePlayClick}
+                disabled={!canPlay || isPlayLoading}
+                tooltipMessage={!canPlay && !isPlayLoading ? playTooltipMessage : undefined}
+              >
                 Play
               </ActionButton>
             </>
@@ -325,10 +488,20 @@ const GameTable: React.FC = React.memo(() => {
     } else {
       // QUEUE/JOIN PHASE - Join conditions
       const canJoin =
-        !gameStateData.stakingFinalized &&
-        !isPlayerInGame &&
-        gameRegisterData !== undefined &&
-        currentTimestamp > Number(gameStateData?.expiryTs)
+        !gameStateData.stakingFinalized && !isPlayerInGame && hasGameRegisterData && currentTimestamp <= Number(gameStateData?.expiryTs)
+
+      // Updated loading condition - keep spinning until either method is loading OR we expect a state change
+      const isJoinLoading = isLoadingMethod || expectedJoinState
+
+      const joinTooltipMessage = !hasGameRegisterData
+        ? 'Unavailable: Game register profile required.'
+        : gameStateData.stakingFinalized
+          ? 'Unavailable: This game has already started.'
+          : isPlayerInGame
+            ? 'Unavailable: You are already in this game.'
+            : currentTimestamp > Number(gameStateData?.expiryTs)
+              ? 'Unavailable: Queue phase timer expired.'
+              : 'Unavailable: Transaction is processing.'
 
       return (
         <>
@@ -336,7 +509,11 @@ const GameTable: React.FC = React.memo(() => {
           {activeAddress && !isAdmin && !isPlayerInGame && (
             <>
               {' / '}
-              <ActionButton onClick={() => handleMethod('joinGame', { gameId })} disabled={!canJoin} loading={isLoadingMethod}>
+              <ActionButton
+                onClick={handleJoinClick}
+                disabled={!canJoin || isJoinLoading}
+                tooltipMessage={!canJoin && !isJoinLoading ? joinTooltipMessage : undefined}
+              >
                 Join
               </ActionButton>
             </>
@@ -344,35 +521,67 @@ const GameTable: React.FC = React.memo(() => {
         </>
       )
     }
-  }, [gameStateData, currentTimestamp, activeAddress, gamePlayersData, isLoadingMethod, gameRegisterData, gameId, handleMethod])
+  }, [
+    gameStateData,
+    currentTimestamp,
+    activeAddress,
+    gamePlayersData,
+    gameRegisterData,
+    lastRound,
+    handleJoinClick,
+    handlePlayClick,
+    expectedJoinState,
+    expectedPlayState,
+    isLoadingMethod,
+  ])
 
   const renderSetContent = useCallback(() => {
-    if (!gameStateData) return null
+    if (!gameStateData || !activeAddress) return null
 
+    const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
+
+    // Set is available if:
+    // 1. Game is live (stakingFinalized is true)
+    // 2. Player is in the game
+    // 3. gameRegisterData.gameId equals 0 (commit not set yet)
     const canSet =
       gameStateData.stakingFinalized &&
-      gameStateData.prizePool !== 0n &&
-      gameRegisterData?.gameId === 0n &&
-      gamePlayersData?.includes(activeAddress!)
+      isPlayerInGame &&
+      gameRegisterData !== undefined &&
+      gameRegisterData.gameId === 0n &&
+      currentTimestamp <= Number(gameStateData.expiryTs)
 
-    if (canSet) {
+    // Updated loading condition
+    const isSetLoading = isLoadingMethod || expectedSetState
+
+    const tooltipMessage = !gameStateData.stakingFinalized
+      ? 'Unavailable: Game has not started yet.'
+      : !isPlayerInGame
+        ? 'Unavailable: You are not an active player in this game.'
+        : gameRegisterData === undefined
+          ? 'Unavailable: Game register data not available.'
+          : gameRegisterData.gameId !== 0n
+            ? 'Unavailable: Commit already set for this game.'
+            : 'Unavailable: Transaction is processing.'
+
+    if (canSet && !isSetLoading) {
       return (
-        <ActionButton onClick={() => handleMethod('setGameCommit', { gameId })} disabled={!canSet} loading={isLoadingMethod}>
+        <ActionButton onClick={handleSetClick} disabled={false}>
           Set
         </ActionButton>
       )
     }
 
-    const tooltipMessage = !gamePlayersData?.includes(activeAddress ?? '')
-      ? 'Unavailable: You are not an active player in this game.'
-      : !gameStateData.stakingFinalized
-        ? 'Unavailable: This game has not started yet.'
-        : gameStateData.prizePool === 0n
-          ? 'Unavailable: This game already ended.'
-          : 'Unavailable: Previous commit is still active.'
+    if (isSetLoading) {
+      return (
+        <ActionButton onClick={() => {}} disabled={true}>
+          Set
+        </ActionButton>
+      )
+    }
 
     return <Tooltip message={tooltipMessage}>Set</Tooltip>
-  }, [gameStateData, gameRegisterData, gamePlayersData, activeAddress, handleMethod, gameId, isLoadingMethod])
+  }, [gameStateData, gameRegisterData, gamePlayersData, activeAddress, handleSetClick, expectedSetState, isLoadingMethod])
 
   const renderTableBody = useCallback(() => {
     // Validation error for invalid game IDs
@@ -387,7 +596,7 @@ const GameTable: React.FC = React.memo(() => {
     }
 
     // Loading state
-    if (isLoadingGameData && gameId != null) {
+    if (isGameDataLoading && gameId != null) {
       return (
         <tr>
           <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
@@ -401,7 +610,7 @@ const GameTable: React.FC = React.memo(() => {
     }
 
     // Game not found
-    if (!gameStateData && gameId != null && !isLoadingGameData) {
+    if (!gameStateData && gameId != null && !isGameDataLoading) {
       return (
         <tr>
           <td colSpan={9} className="relative text-center py-4 px-2 text-white">
@@ -418,7 +627,7 @@ const GameTable: React.FC = React.memo(() => {
           <TableCell>{gameId?.toString()}</TableCell>
 
           <TableCell className="relative">
-            {gameInfo.isAuthorized ? (
+            {accState.isAuthorized ? (
               <div className="flex items-center gap-2 relative">
                 <button
                   ref={dropdownBtnRefs.adminActionsBtn}
@@ -501,9 +710,9 @@ const GameTable: React.FC = React.memo(() => {
     )
   }, [
     gameId,
-    isLoadingGameData,
+    isGameDataLoading,
     gameStateData,
-    gameInfo,
+    accState,
     activeAddress,
     renderAdminDropdown,
     renderPhaseContent,
@@ -520,16 +729,13 @@ const GameTable: React.FC = React.memo(() => {
         <div className="mb-4 flex items-center gap-4">
           <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
           <input
-            className="w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 opacity-50 cursor-not-allowed"
+            className="w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 opacity-50 cursor-help"
             type="text"
             disabled
             placeholder="Game ID"
           />
           <span className="font-bold text-indigo-200">:</span>
-          <button
-            className="bg-slate-800 text-gray-400 border-2 border-gray-500 px-3 py-1 rounded cursor-not-allowed font-semibold"
-            disabled
-          >
+          <button className="bg-slate-800 text-gray-400 border-2 border-gray-500 px-3 py-1 rounded cursor-help font-semibold" disabled>
             Input
           </button>
         </div>
@@ -573,10 +779,10 @@ const GameTable: React.FC = React.memo(() => {
         <span className="font-bold text-indigo-200">:</span>
         <button
           className="bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
-          onClick={handleInputGameId}
-          disabled={!inputedGameId || isLoadingGameData}
+          onClick={handleInputClick}
+          disabled={!inputedGameId || isGameDataLoading}
         >
-          {isLoadingGameData ? 'Loading...' : 'Input'}
+          {isGameDataLoading ? 'Loading...' : 'Input'}
         </button>
       </div>
 
