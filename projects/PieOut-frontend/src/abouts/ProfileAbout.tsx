@@ -1,5 +1,7 @@
-//src/blurs/ProfileBlurb.tsx
-const ProfileBlurbContent = () => {
+// src/abouts/ProfileAbout.tsx
+
+// Create a description that informs the user what the profile modal is about and it's functionality
+const ProfileAboutContent = () => {
   return (
     <div className="text-xs text-white space-y-3">
       <p>
@@ -43,4 +45,4 @@ const ProfileBlurbContent = () => {
   )
 }
 
-export default ProfileBlurbContent
+export default ProfileAboutContent

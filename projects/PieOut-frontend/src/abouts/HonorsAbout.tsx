@@ -1,5 +1,7 @@
-//src/blurs/HonorsBlurb.tsx
-const HonorsBlurbContent = () => {
+// src/abouts/HonorsAbout.tsx
+
+// Create a description that informs the user what the honors modal is about and it's functionality
+const HonorsAboutContent = () => {
   return (
     <div className="text-sm text-white space-y-3">
       <p>
@@ -31,4 +33,4 @@ const HonorsBlurbContent = () => {
   )
 }
 
-export default HonorsBlurbContent
+export default HonorsAboutContent

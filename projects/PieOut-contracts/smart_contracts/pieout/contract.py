@@ -203,33 +203,13 @@ class Pieout(ARC4Contract):
 
     # Delete the game register box data for their own account
     @arc4.abimethod
-    def del_box_game_register_for_self(
-        self,
-        game_id: UInt64,
-    ) -> None:
+    def del_box_game_register_for_self(self) -> None:
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
-        assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
-
         assert (
-            self.box_game_register[Txn.sender].game_id.native == 0
-            or self.box_game_register[Txn.sender].game_id.native == game_id
-        ), err.INVALID_GAME_ID
-
-        # Check if game register box game game id value is not equal to zero
-        if self.box_game_register[Txn.sender].game_id.native != 0:
-            # Fail transaction unless the assertion below evaluates True
-            assert (
-                srt.check_acc_in_game(  # noqa: E712
-                    game_id=game_id,
-                    account=Txn.sender,
-                    box_game_players=self.box_game_players,
-                    player_count=self.box_game_state[game_id].max_players.native,
-                    clear_player=False,
-                )
-                == False
-            ), err.PLAYER_ACTIVE
+            self.box_game_register[Txn.sender].commit_rand_round.native == 0
+        ), err.NON_ZERO_COMMIT_RAND_ROUND
 
         # Delete game register box from the smart contract storage under sender key
         del self.box_game_register[Txn.sender]
@@ -255,6 +235,7 @@ class Pieout(ARC4Contract):
         assert (
             self.box_game_register[player].commit_rand_round.native == 0
         ), err.NON_ZERO_COMMIT_RAND_ROUND
+
         assert (
             self.box_game_register[player].expiry_round.native < Global.round
         ), err.TIME_CONSTRAINT_VIOLATION

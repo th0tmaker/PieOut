@@ -80,13 +80,8 @@ export const handleGetBoxGameRegister = async (appClient: PieoutClient, appMetho
   return await appMethods.getBoxGameRegister(appClient.appId, sender)
 }
 
-export const handleDelBoxGameRegisterForSelf = async (
-  appClient: PieoutClient,
-  appMethods: PieoutMethods,
-  sender: string,
-  gameId: bigint,
-) => {
-  return await appMethods.delBoxGameRegisterForSelf(appClient.appId, sender, gameId)
+export const handleDelBoxGameRegisterForSelf = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string) => {
+  return await appMethods.delBoxGameRegisterForSelf(appClient.appId, sender)
 }
 
 export const handleDelBoxGameRegisterForOther = async (

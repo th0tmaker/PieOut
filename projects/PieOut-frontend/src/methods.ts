@@ -318,16 +318,16 @@ export class PieoutMethods {
   }
 
   // Delete box commit rand for self
-  async delBoxGameRegisterForSelf(appId: bigint, sender: string, gameId: bigint, noteDelBoxGameRegisterForSelf?: string | Uint8Array) {
+  async delBoxGameRegisterForSelf(appId: bigint, sender: string, noteDelBoxGameRegisterForSelf?: string | Uint8Array) {
     const client = this.factory.getAppClientById({ appId })
 
     await client.send.delBoxGameRegisterForSelf({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
-      args: { gameId: gameId },
+      args: [],
       note: noteDelBoxGameRegisterForSelf,
       maxFee: microAlgo(10_000),
-      populateAppCallResources: true,
+      coverAppCallInnerTransactionFees: true,
     })
   }
 
@@ -341,7 +341,7 @@ export class PieoutMethods {
       args: { player: player },
       note: noteDelBoxGameRegisterForOther,
       maxFee: microAlgo(10_000),
-      populateAppCallResources: true,
+      coverAppCallInnerTransactionFees: true,
     })
   }
 

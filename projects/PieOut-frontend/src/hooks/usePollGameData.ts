@@ -98,12 +98,16 @@ export function usePollGameData({
       if (trophyExists) {
         const gameTrophyData = await appClient.state.box.boxGameTrophy()
         syncData(gameTrophyRef, gameTrophyData, setGameTrophyData)
+      } else {
+        setGameTrophyData(undefined)
       }
 
       const registerExists = await appMethods.doesBoxGameRegisterExist(appClient.appId, activeAddress, activeAddress)
       if (registerExists) {
         const gameRegisterData = await appClient.state.box.boxGameRegister.value(activeAddress)
         syncData(gameRegisterRef, gameRegisterData, setGameRegisterData)
+      } else {
+        setGameRegisterData(undefined)
       }
 
       if (gameId != null) {
@@ -123,6 +127,8 @@ export function usePollGameData({
           setIsLoadingGameData(false)
         } else {
           // Game doesn't exist, clear loading state
+          setGameStateData(undefined)
+          setGamePlayersData(undefined)
           setIsLoadingGameData(false)
         }
       }
@@ -166,6 +172,7 @@ export function usePollGameData({
     }
   }, [poll, activeAddress, appClient, pollingInterval])
 
+  // get game register data immediately when essentials dependancies change
   useEffect(() => {
     const getGameRegisterData = async () => {
       if (!activeAddress || !appClient || !appMethods) return

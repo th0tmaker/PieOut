@@ -5,6 +5,7 @@ import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } fr
 import { GameIdCtxProvider } from './providers/GameIdCtxProvider'
 import { GameDataCtxProvider } from './providers/GameDataCtxProvider'
 import { AppCtxProvider } from './providers/AppCtxProvider'
+import { AppSubscriberCtxProvider } from './providers/AppSubscriberCtxProvider'
 
 let supportedWallets: SupportedWallet[]
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
@@ -52,13 +53,15 @@ export default function App() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <GameIdCtxProvider>
-          <AppCtxProvider>
-            <GameDataCtxProvider>
-              <Home />
-            </GameDataCtxProvider>
-          </AppCtxProvider>
-        </GameIdCtxProvider>
+        <AppSubscriberCtxProvider>
+          <GameIdCtxProvider>
+            <AppCtxProvider>
+              <GameDataCtxProvider>
+                <Home />
+              </GameDataCtxProvider>
+            </AppCtxProvider>
+          </GameIdCtxProvider>
+        </AppSubscriberCtxProvider>
       </WalletProvider>
     </SnackbarProvider>
   )

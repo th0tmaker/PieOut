@@ -1,5 +1,7 @@
-// src/blurs/GameBlurb.tsx
-const GameBlurbContent = () => {
+// src/abouts/GameAbout.tsx
+
+// Create a description that informs the user what the game modal is about and it's functionality
+const GameAboutContent = () => {
   return (
     <div className="text-sm text-white space-y-3">
       <p>
@@ -29,4 +31,4 @@ const GameBlurbContent = () => {
   )
 }
 
-export default GameBlurbContent
+export default GameAboutContent

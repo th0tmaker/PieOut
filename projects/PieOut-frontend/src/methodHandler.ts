@@ -22,7 +22,7 @@ const METHOD_REQUIREMENTS: Record<MethodNames, (keyof MethodHandlerProps)[]> = {
   deleteGame: ['activeAddress', 'appMethods', 'appClient', 'gameId'],
   getBoxGameRegister: ['activeAddress', 'appMethods', 'appClient'],
   setGameCommit: ['activeAddress', 'appMethods', 'appClient', 'gameId'],
-  delBoxGameRegisterForSelf: ['activeAddress', 'appMethods', 'appClient', 'gameId'],
+  delBoxGameRegisterForSelf: ['activeAddress', 'appMethods', 'appClient'],
   delBoxGameRegisterForOther: ['activeAddress', 'appMethods', 'appClient', 'player'],
   triggerGameEvent: ['activeAddress', 'appMethods', 'appClient', 'gameId', 'triggerId'],
 }
@@ -50,8 +50,7 @@ const METHOD_HANDLERS: Record<MethodNames, MethodHandler> = {
   deleteGame: (props) => mW.handleDeleteGame(props.appClient!, props.appMethods!, props.activeAddress!, props.gameId!),
   getBoxGameRegister: (props) => mW.handleGetBoxGameRegister(props.appClient!, props.appMethods!, props.activeAddress!),
   setGameCommit: (props) => mW.handleSetGameCommit(props.appClient!, props.appMethods!, props.activeAddress!, props.gameId!),
-  delBoxGameRegisterForSelf: (props) =>
-    mW.handleDelBoxGameRegisterForSelf(props.appClient!, props.appMethods!, props.activeAddress!, props.gameId!),
+  delBoxGameRegisterForSelf: (props) => mW.handleDelBoxGameRegisterForSelf(props.appClient!, props.appMethods!, props.activeAddress!),
   delBoxGameRegisterForOther: (props) =>
     mW.handleDelBoxGameRegisterForOther(props.appClient!, props.appMethods!, props.activeAddress!, props.player!),
   triggerGameEvent: (props) =>

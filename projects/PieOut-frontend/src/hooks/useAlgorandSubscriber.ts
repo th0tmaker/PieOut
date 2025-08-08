@@ -1,5 +1,3 @@
-// Make another function that populates a database with the arc28event data (event, game id, transaction id, player, score)
-
 //src/hooks/useAlgorandSubscriber.ts
 import { AlgorandSubscriber } from '@algorandfoundation/algokit-subscriber'
 import { algorand } from '../utils/network/getAlgorandClient'

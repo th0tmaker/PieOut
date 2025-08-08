@@ -1,9 +1,9 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import HonorsBlurbContent from '../blurbs/HonorsBlurb'
+import React, { useEffect, useMemo, useState } from 'react'
+import HonorsAboutContent from '../abouts/HonorsAbout'
 import BlurbPortal from '../components/BlurbPortal'
-import { CopyAddressBtn } from '../components/CopyAddressBtn'
+import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
 import { useAppCtx } from '../hooks/useAppCtx'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
@@ -11,115 +11,174 @@ import { useModal } from '../hooks/useModal'
 import { ModalInterface } from '../interfaces/modal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { lookupTrophyAssetBalances } from '../utils/network/getAccTrophyBalance'
+import { AppBaseBtn } from '../buttons/AppBaseBtn'
+import { GameTrophy } from '../contracts/Pieout'
 
-const TxnBtn = React.memo(
-  ({
-    onClick,
-    disabled,
-    children,
-    className = 'font-bold underline transition-colors duration-200',
-  }: {
-    onClick: () => void
-    disabled: boolean
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <button
-      className={`${className} ${disabled ? 'text-gray-400' : 'text-pink-400 hover:text-lime-300'}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  ),
+// Trophy data display component
+const TrophyData = ({ gameTrophyData, trophyHolderAddress }: { gameTrophyData: GameTrophy; trophyHolderAddress: string | undefined }) => (
+  <div className="w-max mx-auto text-center">
+    <hr className="border-t-[2px] border-yellow-300 opacity-80 mt-2" />
+    <div className="space-y-1 pt-2 text-indigo-200 font-bold">
+      <p>
+        Trophy (Asset ID): <span className="text-yellow-300">{gameTrophyData.assetId.toString()} 🏆︎</span>
+      </p>
+      <p className="flex items-center">
+        Trophy (Holder):
+        <span className="text-yellow-300 ml-1 flex items-center">
+          {trophyHolderAddress ? ellipseAddress(trophyHolderAddress, 4) : ''}
+          {trophyHolderAddress && <CopyAddressBtn value={trophyHolderAddress} title="Copy full address" />}
+        </span>
+      </p>
+      <p>
+        ATH Score: <span className="text-yellow-300">{gameTrophyData.athScore.toString()} 🗲</span>
+      </p>
+      <p className="flex items-center">
+        ATH Address:
+        <span className="text-yellow-300 ml-1 flex items-center">
+          {ellipseAddress(gameTrophyData.athAddress, 4)}
+          <CopyAddressBtn value={gameTrophyData.athAddress} title="Copy full address" />
+        </span>
+      </p>
+    </div>
+    <hr className="border-t-[2px] border-yellow-300 opacity-80 mt-4" />
+  </div>
 )
 
-const ActionBtn = React.memo(({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) => (
-  <button
-    className={`px-3 py-1 rounded font-semibold transition-colors duration-200 border-2 ${
-      disabled
-        ? 'bg-gray-700 text-gray-300 border-gray-500'
-        : 'bg-slate-800 text-pink-300 border-pink-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200'
-    }`}
-    onClick={onClick}
-    disabled={disabled}
-  >
-    {children}
-  </button>
-))
+// User status message component
+const UserStatusMsg = ({ isTrophyHolder, isCurrentlyOptedIn }: { isTrophyHolder: boolean; isCurrentlyOptedIn: boolean | undefined }) => (
+  <>
+    {isTrophyHolder && <p className="text-green-400 text-sm mb-2">You are the current asset holder.</p>}
+    {!isTrophyHolder && (
+      <p className={`mb-2 text-sm ${isCurrentlyOptedIn ? 'text-green-400' : 'text-red-400'}`}>
+        {isCurrentlyOptedIn ? 'You are opted in successfully.' : 'You are not opted in yet.'}
+      </p>
+    )}
+  </>
+)
 
-interface HonorsModalInterface extends ModalInterface {}
+// Opt-in/out section component
+const OptSection = ({
+  isProcessing,
+  isTrophyHolder,
+  isCurrentlyOptedIn,
+  handleOptTxn,
+  isOptBtnDisabled,
+}: {
+  isProcessing: boolean // True if opt in/out method is processing
+  isTrophyHolder: boolean // True if `activeAddress` is holding trophy asset in balance
+  isCurrentlyOptedIn: boolean | undefined // True if the active address has opted in
+  handleOptTxn: (type: 'optIn' | 'optOut') => void // Callback to initiate opt-in/out method
+  isOptBtnDisabled: boolean // True if the opt button should be disabled
+}) => {
+  // If a transaction is being processed, render "PROCESSING..." message with load spin animation
+  if (isProcessing) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="text-gray-400">PROCESSING...</span>
+        <span className="w-3 h-3 border-2 border-t-transparent border-gray-400 rounded-full animate-spin"></span>
+      </span>
+    )
+  }
 
-const HonorsModal = React.memo(({ openModal, closeModal }: HonorsModalInterface) => {
+  // If the player is not the trophy holder, render opt-in/out button
+  if (!isTrophyHolder) {
+    return (
+      <AppBaseBtn onClick={() => handleOptTxn(isCurrentlyOptedIn ? 'optOut' : 'optIn')} disabled={isOptBtnDisabled} variant="text">
+        {isCurrentlyOptedIn ? 'OPT-OUT HERE' : 'OPT-IN HERE'}
+      </AppBaseBtn>
+    )
+  }
+
+  // If the user is the trophy holder, do not render any button (can't opt out while holding the trophy)
+  return null
+}
+// Create a modal component that displays the application honors
+const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
+  // Hooks
   const { activeAddress } = useWallet()
   const { appClient } = useAppCtx()
+  const { handle: handleMethod, isLoading: isMethodLoading } = useMethodHandler()
+  const { gameTrophyData, trophyHolderAddress, accsWithTrophyBalance, setAccsWithTrophyBalance, isGameDataLoading } = useGameDataCtx()
+
+  // Modal
   const { toggleModal, getModalProps } = useModal()
   const { openModal: isHonorsBlurbOpen } = getModalProps('honorsBlurb')
-  const { gameTrophyData, trophyHolderAddress, accsWithTrophyBalance, setAccsWithTrophyBalance, isGameDataLoading } = useGameDataCtx()
-  const { handle: handleMethod, isLoading: isMethodLoading } = useMethodHandler()
+
+  // States
   const [isOptTxnLoading, setIsOptTxnLoading] = useState(false)
   const [expectedClaimState, setExpectedClaimState] = useState(false)
   const [expectedOptInState, setExpectedOptInState] = useState<boolean | null>(null)
 
-  // Memoize context values to prevent unnecessary re-renders from reference changes
-  const data = useMemo(
+  // Memos
+  const accountStates = useMemo(
     () => ({
-      gameTrophyData,
-      trophyHolderAddress,
-      accsWithTrophyBalance,
-      isGameDataLoading,
+      // Check if the currently active account is in the list of accounts that have opted in to asset
+      isCurrentlyOptedIn: activeAddress ? accsWithTrophyBalance?.includes(activeAddress) : false,
+      // Check if the currently active account is holding the trophy in their asset balance
+      isTrophyHolder: activeAddress === trophyHolderAddress,
     }),
-    [
-      gameTrophyData?.assetId,
-      gameTrophyData?.athScore,
-      gameTrophyData?.athAddress,
-      trophyHolderAddress,
-      accsWithTrophyBalance?.length,
-      isGameDataLoading,
-    ],
+    [activeAddress, accsWithTrophyBalance, trophyHolderAddress],
   )
 
-  // Memoized computed states to prevent unnecessary recalculations
-  const accStates = useMemo(
+  const processingStates = useMemo(
     () => ({
-      isCurrentlyOptedIn: activeAddress ? data.accsWithTrophyBalance?.includes(activeAddress) : false,
-      isTrophyHolder: activeAddress === data.trophyHolderAddress,
+      // Indicate if a state is currently being processed
+      isProcessing: expectedOptInState !== null || expectedClaimState,
+      // Denote whether the 'Opt-In' button should be disabled (either due to loading or state mismatch)
+      isOptBtnDisabled: isOptTxnLoading || isGameDataLoading || expectedOptInState !== null,
     }),
-    [activeAddress, data.accsWithTrophyBalance, data.trophyHolderAddress],
+    [expectedOptInState, expectedClaimState, isOptTxnLoading, isGameDataLoading],
   )
 
-  const { isCurrentlyOptedIn, isTrophyHolder } = accStates
-
-  const isProcessingClick = expectedOptInState !== null || expectedClaimState
-  const isOptButtonDisabled = isOptTxnLoading || data.isGameDataLoading || expectedOptInState !== null
-  const isClaimDisabled = isProcessingClick || isMethodLoading || !isCurrentlyOptedIn || activeAddress !== data.gameTrophyData?.athAddress
-
-  // Reset states when conditions are met
+  // Effects
   useEffect(() => {
+    // If no opt-in expected, exit early
     if (expectedOptInState === null) return
-    if (isCurrentlyOptedIn === expectedOptInState) setExpectedOptInState(null)
-  }, [isCurrentlyOptedIn, expectedOptInState])
+    // If the active account's opt-in state matches the expected state (i.e., confirmed), clear the expectation
+    if (accountStates.isCurrentlyOptedIn === expectedOptInState) setExpectedOptInState(null)
+  }, [accountStates.isCurrentlyOptedIn, expectedOptInState])
 
   useEffect(() => {
-    if (expectedClaimState && activeAddress === data.trophyHolderAddress) {
+    // If a claim is expected and the active account is now the trophy holder, clear the claim state
+    if (expectedClaimState && activeAddress === trophyHolderAddress) {
       setExpectedClaimState(false)
     }
-  }, [data.trophyHolderAddress, activeAddress, expectedClaimState])
+  }, [trophyHolderAddress, activeAddress, expectedClaimState])
 
-  const handleOptTxnClick = async (transactionType: 'optIn' | 'optOut') => {
+  // Early return if no necessary data
+  if (!gameTrophyData?.assetId) return null
+
+  // Conditions
+  const { isCurrentlyOptedIn, isTrophyHolder } = accountStates
+  const { isProcessing, isOptBtnDisabled } = processingStates
+  const isClaimDisabled = // Claim button disabled:
+    processingStates.isProcessing || // If state is being processed
+    isMethodLoading || // If underlying method call is loading
+    !accountStates.isCurrentlyOptedIn || // If account is not currently opted in
+    activeAddress !== gameTrophyData?.athAddress // if `activeAddress` is not the ATH address
+
+  // Handlers
+  // Handle both `optIn` & `optOut` transaction sends
+  const handleOptTxn = async (transactionType: 'optIn' | 'optOut') => {
+    // Early return if no necessary data
     if (!appClient || !activeAddress || !gameTrophyData?.assetId) return
 
+    // Store transaction type `optIn`
     const isOptIn = transactionType === 'optIn'
 
+    // Try block
     try {
+      // Update load and expected state flags
       setIsOptTxnLoading(true)
       setExpectedOptInState(isOptIn)
 
+      // If transaction type is `optIn`, send `assetOptIn` transaction
       if (isOptIn) {
         await appClient.algorand.send.assetOptIn({
           sender: activeAddress,
           assetId: gameTrophyData.assetId,
         })
+        // If transaction type is `optOut`, send `assetOptOut` transaction
       } else {
         await appClient.algorand.send.assetOptOut({
           sender: activeAddress,
@@ -129,108 +188,47 @@ const HonorsModal = React.memo(({ openModal, closeModal }: HonorsModalInterface)
         })
       }
 
+      // Lookup every account that is opted in to trophy asset
       const { optedIn } = await lookupTrophyAssetBalances(gameTrophyData.assetId, appClient.algorand.client.indexer)
+
+      // Update the array of opted-in accounts
       setAccsWithTrophyBalance(optedIn)
+      // Catch error
     } catch (err) {
       consoleLogger.error(`Asset ${transactionType} failed`, err)
       setExpectedOptInState(null)
     } finally {
+      // Update loading flag
       setIsOptTxnLoading(false)
     }
   }
 
-  const handleClaimClick = async () => {
+  // Handle `claimTrophy` transaction send
+  const handleClaimTxn = async () => {
+    // Try block
     try {
+      // Update expected state flag
       setExpectedClaimState(true)
+      // Call app call transaction to `claimTrophy`
       await handleMethod('claimTrophy')
+      // Catch error
     } catch (error) {
       consoleLogger.error('Claim trophy failed', error)
+      // Update expected state flag
       setExpectedClaimState(false)
     }
   }
 
-  const renderTrophyData = useCallback(() => {
-    if (!data.gameTrophyData) return null
-
-    return (
-      <div className="w-max mx-auto text-center">
-        <hr className="border-t-[2px] border-yellow-300 opacity-80 mt-2" />
-        <div className="space-y-1 pt-2 text-indigo-200 font-bold">
-          <p>
-            Trophy (Asset ID): <span className="text-yellow-300">{data.gameTrophyData.assetId.toString()} 🏆︎</span>
-          </p>
-          <p className="flex items-center">
-            Trophy (Holder):
-            <span className="text-yellow-300 ml-1 flex items-center">
-              {data.trophyHolderAddress ? ellipseAddress(data.trophyHolderAddress, 4) : ''}
-              {data.trophyHolderAddress && <CopyAddressBtn value={data.trophyHolderAddress} title="Copy full address" />}
-            </span>
-          </p>
-          <p>
-            ATH Score: <span className="text-yellow-300">{data.gameTrophyData.athScore.toString()} 🗲</span>
-          </p>
-          <p className="flex items-center">
-            ATH Address:
-            <span className="text-yellow-300 ml-1 flex items-center">
-              {ellipseAddress(data.gameTrophyData.athAddress, 4)}
-              <CopyAddressBtn value={data.gameTrophyData.athAddress} title="Copy full address" />
-            </span>
-          </p>
-        </div>
-        <hr className="border-t-[2px] border-yellow-300 opacity-80 mt-4" />
-      </div>
-    )
-  }, [data.gameTrophyData, data.trophyHolderAddress])
-
-  const renderUserMsg = () => (
-    <>
-      {isTrophyHolder && <p className="text-green-400 text-sm mb-2">You are the current asset holder.</p>}
-      {!isTrophyHolder && (
-        <p className={`mb-2 text-sm ${isCurrentlyOptedIn ? 'text-green-400' : 'text-red-400'}`}>
-          {isCurrentlyOptedIn ? 'You are opted in.' : 'You are not opted in yet.'}
-        </p>
-      )}
-    </>
-  )
-
-  const renderOptButtons = () => {
-    if (isProcessingClick) {
-      return (
-        <div className="mt-1">
-          <span className="inline-flex items-center gap-1">
-            <span className="text-gray-400">PROCESSING...</span>
-            <span className="w-3 h-3 border-2 border-t-transparent border-gray-400 rounded-full animate-spin"></span>
-          </span>
-        </div>
-      )
-    }
-
-    if (!isTrophyHolder) {
-      return (
-        <TxnBtn onClick={() => handleOptTxnClick(isCurrentlyOptedIn ? 'optOut' : 'optIn')} disabled={isOptButtonDisabled}>
-          {isCurrentlyOptedIn ? 'OPT-OUT HERE' : 'OPT-IN HERE'}
-        </TxnBtn>
-      )
-    }
-
-    return null
-  }
-
-  if (!gameTrophyData?.assetId) return null
-
+  // Render JSX
   return (
     <>
       <dialog id="honors_modal" className={`modal ${openModal ? 'modal-open' : ''}`}>
         <form method="dialog" className="modal-box border-2 rounded-xl border-yellow-300 bg-slate-800">
           {/* Title */}
           <div className="mb-2 flex justify-center">
-            <button
-              className="tracking-wider cursor-pointer font-bold text-3xl text-pink-400 underline hover:text-lime-300 transition-colors duration-200 pb-1 px-2 text-center"
-              type="button"
-              onClick={() => toggleModal('honorsBlurb')}
-            >
+            <AppBaseBtn variant="text" textSize="xl3" onClick={() => toggleModal('honorsBlurb')} disabled={isProcessing}>
               HONORS
-            </button>
+            </AppBaseBtn>
           </div>
 
           {/* User help message */}
@@ -239,7 +237,7 @@ const HonorsModal = React.memo(({ openModal, closeModal }: HonorsModalInterface)
           </div>
 
           {/* Trophy Data */}
-          {renderTrophyData()}
+          <TrophyData gameTrophyData={gameTrophyData} trophyHolderAddress={trophyHolderAddress} />
 
           <div className="mt-2 text-center text-white space-y-1">
             <p>
@@ -248,25 +246,33 @@ const HonorsModal = React.memo(({ openModal, closeModal }: HonorsModalInterface)
               <br />● You must be the ATH address
             </p>
 
-            {renderUserMsg()}
-            {renderOptButtons()}
+            <UserStatusMsg isTrophyHolder={isTrophyHolder} isCurrentlyOptedIn={isCurrentlyOptedIn} />
+            <OptSection
+              isProcessing={isProcessing}
+              isTrophyHolder={isTrophyHolder}
+              isCurrentlyOptedIn={isCurrentlyOptedIn}
+              handleOptTxn={handleOptTxn}
+              isOptBtnDisabled={isOptBtnDisabled}
+            />
           </div>
 
-          {/* Action Buttons */}
-          <div className="modal-action flex justify-center gap-2">
-            <ActionBtn onClick={handleClaimClick} disabled={isClaimDisabled || isTrophyHolder}>
+          {/* Buttons */}
+          <div className="modal-action flex justify-center">
+            <AppBaseBtn onClick={handleClaimTxn} disabled={isClaimDisabled || isTrophyHolder}>
               Claim
-            </ActionBtn>
-            <ActionBtn onClick={closeModal} disabled={isProcessingClick}>
+            </AppBaseBtn>
+            <AppBaseBtn onClick={closeModal} disabled={isProcessing}>
               Close
-            </ActionBtn>
+            </AppBaseBtn>
           </div>
         </form>
       </dialog>
 
-      {isHonorsBlurbOpen && <BlurbPortal title="About Honors" text={HonorsBlurbContent()} onClose={() => toggleModal('honorsBlurb')} />}
+      {isHonorsBlurbOpen && <BlurbPortal title="About Honors" text={HonorsAboutContent()} onClose={() => toggleModal('honorsBlurb')} />}
     </>
   )
 })
+
+HonorsModal.displayName = 'HonorsModal'
 
 export default HonorsModal

@@ -1,3 +1,4 @@
+// src/interfaces/networks.ts
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import type { TokenHeader } from 'algosdk/dist/types/client/urlTokenBaseHTTPClient'
 

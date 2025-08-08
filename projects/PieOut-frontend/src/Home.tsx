@@ -1,8 +1,8 @@
 // src/components/Home.tsx
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import ConnectWallet from './components/ConnectWallet'
-import { CopyAddressBtn } from './components/CopyAddressBtn'
-import GameTable, { Tooltip } from './components/GameTable'
+import { CopyAddressBtn } from './buttons/CopyAddressBtn'
+import GameTable from './components/GameTable'
 import { useAppCtx } from './hooks/useAppCtx'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
 import { useGameDataCtx } from './hooks/useGameDataCtx'
@@ -14,6 +14,11 @@ import HonorsModal from './modals/HonorsModal'
 import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
+import { Tooltip } from './components/Tooltip'
+import Arc28EventLogger from './components/Arc28EventLogger'
+import { useAppSubscriberCtx } from './hooks/useAppSubscriberCtx'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+
 // Button configurations
 const NAVIGATION_BUTTONS = [
   { key: 'wallet', label: 'Wallet', modal: 'wallet' },
@@ -35,7 +40,6 @@ const Home: React.FC = () => {
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
   const { gameTrophyData, gameRegisterData } = useGameDataCtx()
-
   const handleMintTrophy = useCallback(() => handleMethod('mintTrophy'), [handleMethod])
 
   const getButtonColor = (color: string) => {
@@ -63,8 +67,6 @@ const Home: React.FC = () => {
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
-      {/* <h1 className="text-2xl text-indigo-200 font-bold mb-4">Welcome</h1> */}
-
       {/* Action Buttons - Only show if gameTrophyData is undefined */}
       {gameTrophyData === undefined && (
         <div className="flex gap-2 mb-2">
@@ -114,6 +116,7 @@ const Home: React.FC = () => {
           )
         })}
       </div>
+
       {/* App Info */}
       {appClient && (
         <div className="text-indigo-200 font-bold my-2">
@@ -143,6 +146,12 @@ const Home: React.FC = () => {
       )}
 
       <GameTable />
+      {/* <Arc28EventLogger /> */}
+
+      <div>
+        {/* Your home UI */}
+        <Arc28EventLogger />
+      </div>
 
       {/* Modals */}
       <ConnectWallet {...getModalProps('wallet')} />

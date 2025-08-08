@@ -1,37 +1,24 @@
 import { useState, useCallback } from 'react'
-
-// Define a modal state type - each modal has a boolean open/closed state
-type ModalState = {
-  wallet: boolean
-  profile: boolean
-  profileBlurb: boolean
-  game: boolean
-  gameBlurb: boolean
-  leaderboard: boolean
-  activePlayers: boolean
-  honors: boolean
-  honorsBlurb: boolean
-  profileUserMsg: boolean
-}
+import { ModalTypes } from '../types/ModalStateProps'
 
 // Define a custom hook to manage modal states (open, close, toggle)
 export function useModal() {
   // Initialize all modals as closed (false)
-  const [modal, setModal] = useState<ModalState>({
+  const [modal, setModal] = useState<ModalTypes>({
     wallet: false,
     profile: false,
     profileBlurb: false,
+    unregister: false,
     game: false,
     gameBlurb: false,
-    leaderboard: false,
-    activePlayers: false,
     honors: false,
     honorsBlurb: false,
-    profileUserMsg: false,
+    activePlayers: false,
+    leaderboard: false,
   })
 
   // Define a method that sets the boolean value to false explicitly for any key inside the ModalState type
-  const close = useCallback((modalName: keyof ModalState) => {
+  const close = useCallback((modalName: keyof ModalTypes) => {
     setModal((prev) => ({
       ...prev,
       [modalName]: false,
@@ -39,7 +26,7 @@ export function useModal() {
   }, [])
 
   // Define a method that sets the boolean value to true explicitly for any key inside the ModalState type
-  const open = useCallback((modalName: keyof ModalState) => {
+  const open = useCallback((modalName: keyof ModalTypes) => {
     setModal((prev) => ({
       ...prev,
       [modalName]: true,
@@ -47,7 +34,7 @@ export function useModal() {
   }, [])
 
   // Define a toggle method that flips between the two boolean values for any key inside the ModalState type
-  const toggle = useCallback((modalName: keyof ModalState) => {
+  const toggle = useCallback((modalName: keyof ModalTypes) => {
     setModal((prev) => ({
       ...prev,
       [modalName]: !prev[modalName],
@@ -56,7 +43,7 @@ export function useModal() {
 
   // Define a callback method that returns an object with openModal (boolean) and closeModal (function) props
   const getProps = useCallback(
-    (modalName: keyof ModalState) => ({
+    (modalName: keyof ModalTypes) => ({
       openModal: modal[modalName],
       closeModal: () => close(modalName),
     }),
