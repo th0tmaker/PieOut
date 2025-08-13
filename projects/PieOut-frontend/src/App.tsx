@@ -1,11 +1,11 @@
 import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
 import { SnackbarProvider } from 'notistack'
 import Home from './Home'
-import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
-import { GameIdCtxProvider } from './providers/GameIdCtxProvider'
-import { GameDataCtxProvider } from './providers/GameDataCtxProvider'
 import { AppCtxProvider } from './providers/AppCtxProvider'
 import { AppSubscriberCtxProvider } from './providers/AppSubscriberCtxProvider'
+import { GameDataCtxProvider } from './providers/GameDataCtxProvider'
+import { GameIdCtxProvider } from './providers/GameIdCtxProvider'
+import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
 let supportedWallets: SupportedWallet[]
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
@@ -53,15 +53,15 @@ export default function App() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <AppSubscriberCtxProvider>
-          <GameIdCtxProvider>
-            <AppCtxProvider>
+        <GameIdCtxProvider>
+          <AppCtxProvider>
+            <AppSubscriberCtxProvider>
               <GameDataCtxProvider>
                 <Home />
               </GameDataCtxProvider>
-            </AppCtxProvider>
-          </GameIdCtxProvider>
-        </AppSubscriberCtxProvider>
+            </AppSubscriberCtxProvider>
+          </AppCtxProvider>
+        </GameIdCtxProvider>
       </WalletProvider>
     </SnackbarProvider>
   )

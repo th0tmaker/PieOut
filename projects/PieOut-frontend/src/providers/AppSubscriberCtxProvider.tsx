@@ -1,7 +1,8 @@
 // src/providers/AppSubscriberCtxProvider.tsx
 import React from 'react'
-import { useAppSubscriber } from '../hooks/useAppSubscriber'
 import { AppSubscriberCtx } from '../contexts/AppSubscriber'
+import { useAppCtx } from '../hooks/useAppCtx'
+import { useAppSubscriber } from '../hooks/useAppSubscriber'
 
 interface UseAppSubscriberOptions {
   filterName?: string
@@ -15,7 +16,15 @@ interface AppSubscriberProviderProps extends UseAppSubscriberOptions {
 }
 
 export const AppSubscriberCtxProvider = ({ children, ...options }: AppSubscriberProviderProps) => {
-  const subscriber = useAppSubscriber(options)
+  // Get appClient from useAppCtx here in the provider
+  const { appClient } = useAppCtx()
 
-  return <AppSubscriberCtx.Provider value={subscriber}>{children}</AppSubscriberCtx.Provider>
+  // Pass appClient to useAppSubscriber
+  const appSubscriber = useAppSubscriber({
+    appClient,
+    autoRemoveAfterSeconds: 10,
+    ...options,
+  })
+
+  return <AppSubscriberCtx.Provider value={appSubscriber}>{children}</AppSubscriberCtx.Provider>
 }

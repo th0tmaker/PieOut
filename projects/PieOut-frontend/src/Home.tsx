@@ -1,5 +1,5 @@
 // src/components/Home.tsx
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback } from 'react'
 import ConnectWallet from './components/ConnectWallet'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
 import GameTable from './components/GameTable'
@@ -15,9 +15,7 @@ import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
 import { Tooltip } from './components/Tooltip'
-import Arc28EventLogger from './components/Arc28EventLogger'
-import { useAppSubscriberCtx } from './hooks/useAppSubscriberCtx'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import Arc28EventDripper from './components/Arc28EventDripper'
 
 // Button configurations
 const NAVIGATION_BUTTONS = [
@@ -150,7 +148,8 @@ const Home: React.FC = () => {
 
       <div>
         {/* Your home UI */}
-        <Arc28EventLogger />
+        <h1 className="text-indigo-200 font-bold my-2">💧 Game Event Dripper: </h1>
+        <Arc28EventDripper />
       </div>
 
       {/* Modals */}
