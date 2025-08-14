@@ -25,69 +25,65 @@ interface UseAppSubscriberOptions {
   fadeOutDurationSeconds?: number // fade-out duration
 }
 
-// --- Persistence keys / helpers (localStorage)
+// --- Persistence keys / helpers
 const COUNTERS_KEY = (appId: string) => `useAppSubscriber:counters:${appId}`
 const PROCESSED_TXNS_KEY = (appId: string) => `useAppSubscriber:processedTxns:${appId}`
 const PROCESSED_TXNS_LIMIT = 3000 // keep recent txn ids to avoid unbounded growth
 
-function loadCounter(appClient: PieoutClient | undefined, currentAppClient?: PieoutClient): number {
-  // Case: No appClient → do nothing
-  if (!appClient) return 0
-
-  // Case: appClient exists but no previous one → treat as first load → return 0
-  if (!currentAppClient) return 0
-
-  // Case: appClient exists but is different from previous → skip loading
-  if (appClient !== currentAppClient) return 0
-
-  // Case: Same appClient as before → try loading from localStorage
+function loadCounter(appId: string): number {
   try {
-    const raw = localStorage.getItem(COUNTERS_KEY(appClient.appId.toString()))
-    return Number(raw)
+    const raw = localStorage.getItem(COUNTERS_KEY(appId))
+    const counter = raw ? Number(raw) : 0
+    consoleLogger.info(`[Subscriber] Loaded counter=${counter} for appId=${appId}`)
+    return counter
   } catch (e) {
     consoleLogger.warn('Failed to load counter from localStorage', e)
     return 0
   }
 }
 
-function saveCounter(appClient: PieoutClient | undefined, val: number) {
-  if (!appClient) return // No appClient → do nothing
-
+function saveCounter(appId: string, val: number) {
   try {
-    localStorage.setItem(COUNTERS_KEY(appClient.appId.toString()), String(val))
+    localStorage.setItem(COUNTERS_KEY(appId), String(val))
+    consoleLogger.info(`[Subscriber] Saved counter=${val} for appId=${appId}`)
   } catch (e) {
     consoleLogger.warn('Failed to save counter to localStorage', e)
   }
 }
 
-function loadProcessedTxns(appClient: PieoutClient | undefined, prevAppClient?: PieoutClient): string[] {
-  // Case: No appClient → do nothing
-  if (!appClient) return []
-
-  // Case: First appClient ever → return empty
-  if (!prevAppClient) return []
-
-  // Case: Different appClient → skip loading
-  if (appClient !== prevAppClient) return []
-
-  // Case: Same appClient → load from localStorage
+function loadProcessedTxns(appId: string): string[] {
   try {
-    const raw = localStorage.getItem(PROCESSED_TXNS_KEY(appClient.appId.toString()))
-    return raw ? JSON.parse(raw) : []
+    const raw = localStorage.getItem(PROCESSED_TXNS_KEY(appId))
+    const txns = raw ? JSON.parse(raw) : []
+    consoleLogger.info(`[Subscriber] Loaded ${txns.length} processed txns for appId=${appId}`)
+    return txns
   } catch (e) {
     consoleLogger.warn('Failed to load processed txns from localStorage', e)
     return []
   }
 }
 
-function saveProcessedTxns(appClient: PieoutClient | undefined, txns: string[]) {
-  if (!appClient) return // No appClient → do nothing
-
+function saveProcessedTxns(appId: string, txns: string[]) {
   try {
     const trimmed = txns.slice(-PROCESSED_TXNS_LIMIT)
-    localStorage.setItem(PROCESSED_TXNS_KEY(appClient.appId.toString()), JSON.stringify(trimmed))
+    localStorage.setItem(PROCESSED_TXNS_KEY(appId), JSON.stringify(trimmed))
+    consoleLogger.info(`[Subscriber] Saved ${trimmed.length} processed txns for appId=${appId}`)
   } catch (e) {
     consoleLogger.warn('Failed to save processed txns to localStorage', e)
+  }
+}
+
+// Check if we should reset subscriber state (set by AppProvider)
+function shouldResetSubscriber(): boolean {
+  try {
+    const shouldReset = localStorage.getItem('subscriberShouldReset') === 'true'
+    if (shouldReset) {
+      localStorage.removeItem('subscriberShouldReset')
+      consoleLogger.info('[Subscriber] Detected reset flag, will reset state')
+    }
+    return shouldReset
+  } catch (e) {
+    return false
   }
 }
 
@@ -174,7 +170,10 @@ export function useAppSubscriber({
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const currentEventRef = useRef<Arc28Event | null>(null)
-  const appClientRef = useRef<PieoutClient | undefined>(undefined)
+
+  // Track current appId to detect changes
+  const currentAppIdRef = useRef<string | null>(null)
+  const isInitializedRef = useRef(false)
 
   // persistent runtime structures
   const eventIdCounterRef = useRef<number>(0)
@@ -182,82 +181,59 @@ export function useAppSubscriber({
   const lastUpdatedRef = useRef<number>(0)
   const visibleTimeSeconds = autoRemoveAfterSeconds - fadeOutDurationSeconds
 
-  // --- persistence load on app change
+  const appClientRef = useRef<PieoutClient | undefined>(undefined)
+  const prevAppIdRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (!appClient) return
-
-    // Same appClient as before → load from localStorage
-    if (appClientRef.current && appClientRef.current.appId === appClient.appId) {
-      const c = loadCounter(appClient, appClientRef.current)
-      eventIdCounterRef.current = c
-      consoleLogger.info(`Loaded counter=${c} for appClient ${appClient.appId}`)
-
-      const processed = loadProcessedTxns(appClient, appClientRef.current)
-      processedTxnSetRef.current = new Set(processed)
-      consoleLogger.info(`Loaded ${processed.length} processed txn ids for appClient ${appClient.appId}`)
-    } else {
-      // Different or first appClient → reset
-      eventIdCounterRef.current = 0
-      processedTxnSetRef.current = new Set()
-      consoleLogger.info(`Reset counter & processed txns for new appClient ${appClient.appId}`)
-    }
-
-    // Update appClientRef.current after handling
     appClientRef.current = appClient
   }, [appClient])
 
-  // --- save counter when changed
-  const persistCounter = useCallback(() => {
-    if (!appClient) return // No client → don't persist
-    try {
-      saveCounter(appClient, eventIdCounterRef.current)
-    } catch (e) {
-      consoleLogger.warn('persistCounter failed', e)
-    }
-  }, [appClient])
+  // --- Load/save state for specific appId
+  const loadStateForApp = useCallback((appId: string) => {
+    const counter = loadCounter(appId)
+    const processedTxns = loadProcessedTxns(appId)
 
-  // --- save processed txns periodically
-  const persistProcessedTxns = useCallback(() => {
-    if (!appClient) return // No client → don't persist
-    try {
-      saveProcessedTxns(appClient, Array.from(processedTxnSetRef.current))
-    } catch (e) {
-      consoleLogger.warn('persistProcessedTxns failed', e)
-    }
-  }, [appClient])
+    eventIdCounterRef.current = counter
+    processedTxnSetRef.current = new Set(processedTxns)
+
+    consoleLogger.info(`[Subscriber] State loaded for appId=${appId}: counter=${counter}, processedTxns=${processedTxns.length}`)
+  }, [])
+
+  const saveStateForApp = useCallback((appId: string) => {
+    saveCounter(appId, eventIdCounterRef.current)
+    saveProcessedTxns(appId, Array.from(processedTxnSetRef.current))
+  }, [])
 
   // --- counter accessor
   const getNextEventCounter = useCallback((): number => {
-    if (!appClient) return 0
-
     eventIdCounterRef.current = (eventIdCounterRef.current || 0) + 1
 
-    persistCounter()
+    // Save immediately
+    if (currentAppIdRef.current) {
+      saveCounter(currentAppIdRef.current, eventIdCounterRef.current)
+    }
 
-    consoleLogger.info(`📊 Event counter incremented to ${eventIdCounterRef.current} for appClient: ${appClient.appId}`)
-
+    consoleLogger.info(`📊 Event counter incremented to ${eventIdCounterRef.current} for appClient: ${currentAppIdRef.current}`)
     return eventIdCounterRef.current
-  }, [appClient, persistCounter])
+  }, [])
 
   // --- processed txn helpers
   const hasProcessedTxn = useCallback((txnId: string) => processedTxnSetRef.current.has(txnId), [])
-  const markTxnProcessed = useCallback(
-    (txnId: string) => {
-      if (!appClient) return
 
-      processedTxnSetRef.current.add(txnId)
+  const markTxnProcessed = useCallback((txnId: string) => {
+    processedTxnSetRef.current.add(txnId)
 
-      // prune if needed
-      if (processedTxnSetRef.current.size > PROCESSED_TXNS_LIMIT) {
-        // naive prune: keep last N
-        const arr = Array.from(processedTxnSetRef.current).slice(-PROCESSED_TXNS_LIMIT)
-        processedTxnSetRef.current = new Set(arr)
-      }
+    // prune if needed
+    if (processedTxnSetRef.current.size > PROCESSED_TXNS_LIMIT) {
+      const arr = Array.from(processedTxnSetRef.current).slice(-PROCESSED_TXNS_LIMIT)
+      processedTxnSetRef.current = new Set(arr)
+    }
 
-      persistProcessedTxns()
-    },
-    [appClient, persistProcessedTxns],
-  )
+    // Save immediately
+    if (currentAppIdRef.current) {
+      saveProcessedTxns(currentAppIdRef.current, Array.from(processedTxnSetRef.current))
+    }
+  }, [])
 
   // --- clear utilities
   const clearAllTimers = useCallback(() => {
@@ -309,7 +285,7 @@ export function useAppSubscriber({
     }
   }, [state.current, autoRemoveAfterSeconds, fadeOutDurationSeconds, visibleTimeSeconds, clearAllTimers])
 
-  // --- process incoming transaction (robust dedupe + per-event indexing)
+  // --- process incoming transaction
   const processTransaction = useCallback(
     (txn: SubscribedTransaction) => {
       if (!appClient) {
@@ -344,7 +320,7 @@ export function useAppSubscriber({
       dispatch({ type: 'ENQUEUE_EVENTS', payload: newEvents })
       markTxnProcessed(txn.id)
 
-      // ✅ update lastUpdated timestamp
+      // update lastUpdated timestamp
       lastUpdatedRef.current = Date.now()
 
       consoleLogger.info(`📊 Queued ${newEvents.length} event(s) from txn ${txn.id}`)
@@ -378,77 +354,27 @@ export function useAppSubscriber({
     dispatch({ type: 'SHOW_NEXT' })
   }, [clearAllTimers])
 
-  // --- counters / reset
+  // --- reset counter (manual)
   const resetEventCounter = useCallback(() => {
-    if (!appClient) {
-      consoleLogger.info('⚠️ No appClient available to reset counter')
+    if (!currentAppIdRef.current) {
+      consoleLogger.info('⚠️ No current appId to reset counter')
       return
     }
 
     eventIdCounterRef.current = 0
-    persistCounter()
+    processedTxnSetRef.current = new Set()
+    saveCounter(currentAppIdRef.current, 0)
+    saveProcessedTxns(currentAppIdRef.current, [])
     clearAllArc28Events()
 
-    consoleLogger.info(`🔄 Reset event counter and cleared UI for appClient ${appClient.appId}`)
-  }, [appClient, persistCounter, clearAllArc28Events])
+    consoleLogger.info(`🔄 Reset event counter and cleared UI for appId ${currentAppIdRef.current}`)
+  }, [clearAllArc28Events])
 
-  // --- subscriber lifecycle
-  const cleanupSubscriber = useCallback(() => {
-    if (subscriberRef.current && isStartedRef.current) {
-      try {
-        subscriberRef.current.stop('Stopped for appClient change')
-        consoleLogger.info('🛑 Subscriber stopped for cleanup')
-      } catch (error) {
-        consoleLogger.error('❌ Failed to stop subscriber during cleanup:', error)
-      }
-    }
-    subscriberRef.current = undefined
-    isStartedRef.current = false
-    consoleLogger.info('🧹 Subscriber completely cleaned up')
-  }, [])
-
-  const handleAppClientChange = useCallback(() => {
-    const prevAppClient = appClientRef.current
-    const newAppClient = appClient // current instance
-
-    // Case 1: No client now
-    if (!newAppClient) {
-      if (prevAppClient) {
-        consoleLogger.info('🔄 AppClient became undefined, stopping subscriber')
-        cleanupSubscriber()
-        clearAllArc28Events()
-        appClientRef.current = undefined
-      }
-      return
-    }
-
-    // Case 2: Same client instance — do nothing
-    if (newAppClient === prevAppClient) {
-      return
-    }
-
-    // Case 3: New client instance (or first client ever)
-    consoleLogger.info(`🔄 AppClient ${prevAppClient ? 'changed' : 'initialized'} → resetting counter & restarting subscriber`)
-
-    resetEventCounter() // start counter at 0
-    cleanupSubscriber()
-    clearAllArc28Events()
-
-    // Load persisted data only if this is the same client as before
-    processedTxnSetRef.current = new Set(loadProcessedTxns(newAppClient, prevAppClient))
-    eventIdCounterRef.current = loadCounter(newAppClient, prevAppClient)
-
-    appClientRef.current = newAppClient
-  }, [appClient, cleanupSubscriber, clearAllArc28Events, resetEventCounter])
-
+  // --- subscriber methods
   const initSubscriber = useCallback(() => {
-    consoleLogger.info('🚀 Initializing NEW subscriber with options:', {
-      appClientId: appClient?.appId,
-      filterName,
-      mode,
-      maxRoundsToSync,
-      pollOneTime,
-    })
+    if (!appClient) return null
+
+    consoleLogger.info('🚀 Initializing subscriber for appId:', appClient.appId)
 
     const subscriber = getAppSubscriber(maxRoundsToSync)
 
@@ -463,25 +389,27 @@ export function useAppSubscriber({
       consoleLogger.info(`📝 Registered batch event listener for filter: ${filterName}`)
     }
 
-    subscriberRef.current = subscriber
     return subscriber
-  }, [appClient?.appId, filterName, maxRoundsToSync, mode, processTransaction, pollOneTime])
+  }, [appClient, filterName, maxRoundsToSync, mode, processTransaction])
 
   const start = useCallback(() => {
-    if (isStartedRef.current) {
-      consoleLogger.info('ℹ️ Subscriber already started, ignoring')
+    if (isStartedRef.current || !appClient) {
+      consoleLogger.info('ℹ️ Subscriber already started or no appClient, ignoring')
       return
     }
 
     const subscriber = initSubscriber()
+    if (!subscriber) return
+
     try {
+      subscriberRef.current = subscriber
       subscriber.start()
       isStartedRef.current = true
-      consoleLogger.info('✅ Subscriber started successfully')
+      consoleLogger.info('✅ Subscriber started successfully for appId:', appClient.appId)
     } catch (error) {
       consoleLogger.error('❌ Failed to start subscriber:', error)
     }
-  }, [initSubscriber])
+  }, [appClient, initSubscriber])
 
   const stop = useCallback(() => {
     if (subscriberRef.current && isStartedRef.current) {
@@ -496,62 +424,152 @@ export function useAppSubscriber({
   }, [])
 
   const pollOnce = useCallback(async () => {
-    if (!appClient?.appId) {
+    if (!appClient) {
       consoleLogger.info('⚠️ No appClient available for polling')
       return
     }
 
     const subscriber = initSubscriber()
+    if (!subscriber) return
+
     consoleLogger.info(`📊 Polling once for appClient: ${appClient.appId}...`)
     await subscriber.pollOnce()
     consoleLogger.info('📊 Poll completed')
-  }, [appClient?.appId, initSubscriber])
+  }, [appClient, initSubscriber])
 
   // --- Effects
 
-  // respond to appClient change
-  useEffect(() => {
-    handleAppClientChange()
-    consoleLogger.info('handleAAAPPchange')
-  }, [handleAppClientChange])
+  // --- Handle app client changes
+  const handleAppClientChange = useCallback(
+    (newAppId: string) => {
+      const prevAppId = prevAppIdRef.current
 
-  // initialize subscriber when appClient available
+      if (!newAppId) {
+        // Clean up if we had an app before
+        if (prevAppId) {
+          consoleLogger.info('[Subscriber] No appClient, cleaning up')
+          saveStateForApp(prevAppId)
+          if (subscriberRef.current && isStartedRef.current) {
+            subscriberRef.current.stop('AppClient removed')
+            isStartedRef.current = false
+          }
+          dispatch({ type: 'CLEAR_ALL' })
+          prevAppIdRef.current = null
+        }
+        return
+      }
+
+      if (prevAppId === newAppId) {
+        consoleLogger.info(`[Subscriber] AppId unchanged (${newAppId}), keeping existing subscriber`)
+        return
+      }
+
+      consoleLogger.info(`[Subscriber] App transition: ${prevAppId || 'none'} → ${newAppId}`)
+
+      // Save state for previous app
+      if (prevAppId) saveStateForApp(prevAppId)
+
+      // Stop old subscriber
+      if (subscriberRef.current && isStartedRef.current) {
+        subscriberRef.current.stop('AppClient changed')
+        isStartedRef.current = false
+      }
+
+      // Reset or load state
+      if (shouldResetSubscriber()) {
+        consoleLogger.info(`[Subscriber] Resetting state for new app: ${newAppId}`)
+        eventIdCounterRef.current = 0
+        processedTxnSetRef.current = new Set()
+        dispatch({ type: 'CLEAR_ALL' })
+        saveCounter(newAppId, 0)
+        saveProcessedTxns(newAppId, [])
+      } else {
+        loadStateForApp(newAppId)
+      }
+
+      // Start subscriber
+      if (pollOneTime) {
+        pollOnce()
+      } else {
+        start()
+      }
+
+      prevAppIdRef.current = newAppId
+    },
+    [loadStateForApp, saveStateForApp, pollOneTime, pollOnce, start],
+  )
+
+  // Handle app client changes
   useEffect(() => {
-    if (!appClient?.appId) {
+    const newAppId = appClient?.appId ? String(appClient.appId) : ''
+    handleAppClientChange(newAppId)
+  }, [appClient?.appId, handleAppClientChange])
+
+  // Initialize and manage subscriber lifecycle
+  useEffect(() => {
+    if (!appClient) {
       consoleLogger.info('⏭️ No appClient available, deferring subscriber initialization')
       return
     }
 
-    consoleLogger.info(`🚀 useAppSubscriber: Initializing for appClient ${appClient.appId}`)
+    const appId = appClient.appId.toString()
+    consoleLogger.info(`🚀 useAppSubscriber: Managing subscriber for appId ${appId}`)
 
-    if (pollOneTime) {
-      consoleLogger.info('🔄 Starting one-time poll')
-      pollOnce()
+    // Only initialize if we haven't done so for this specific appId
+    if (!isInitializedRef.current || currentAppIdRef.current !== appId) {
+      isInitializedRef.current = true
+
+      if (pollOneTime) {
+        consoleLogger.info('🔄 Starting one-time poll')
+        pollOnce()
+      } else {
+        consoleLogger.info('🔄 Starting continuous subscription')
+        start()
+      }
     } else {
-      consoleLogger.info('🔄 Starting continuous subscription')
-      start()
+      // Same appId, just ensure subscriber is running if it should be
+      if (!pollOneTime && !isStartedRef.current) {
+        consoleLogger.info('🔄 Restarting subscriber for existing appId')
+        start()
+      }
     }
-  }, [appClient?.appId, pollOneTime, start, stop, pollOnce])
 
-  // cleanup on unmount
-  useEffect(() => {
+    // Cleanup function
     return () => {
-      consoleLogger.info('🧹 useAppSubscriber: Final cleanup on unmount')
-      clearAllTimers()
-      stop()
+      // Only save state on unmount if we have a current app
+      if (currentAppIdRef.current) {
+        saveStateForApp(currentAppIdRef.current)
+      }
     }
-  }, [stop, clearAllTimers])
+  }, [appClient, pollOneTime, start, pollOnce, saveStateForApp])
 
-  // periodic persistence of processed txns (in case lots of txns come in)
+  // Periodic persistence of processed txns (in case lots of txns come in)
   useEffect(() => {
-    if (!appClient) return
+    if (!currentAppIdRef.current) return
 
     const interval = setInterval(() => {
-      persistProcessedTxns()
+      if (currentAppIdRef.current) {
+        saveProcessedTxns(currentAppIdRef.current, Array.from(processedTxnSetRef.current))
+      }
     }, 15_000)
 
     return () => clearInterval(interval)
-  }, [appClient, persistProcessedTxns])
+  }, [currentAppIdRef.current])
+
+  // Final cleanup on unmount
+  useEffect(() => {
+    return () => {
+      consoleLogger.info('🧹 useAppSubscriber: Final cleanup on unmount')
+
+      // Save current state before cleanup
+      if (currentAppIdRef.current) {
+        saveStateForApp(currentAppIdRef.current)
+      }
+
+      clearAllTimers()
+      stop()
+    }
+  }, [stop, clearAllTimers, saveStateForApp])
 
   // final returned API
   return {
@@ -575,8 +593,6 @@ export function useAppSubscriber({
     clearFadingOutEvent: () => dispatch({ type: 'MARK_FADING', payload: null }),
     visibleTimeSeconds,
     fadeOutDurationSeconds,
-
-    // ✅ add missing fields for AppSubscriberEvents type
     processedTxnIds: Array.from(processedTxnSetRef.current),
     lastUpdated: lastUpdatedRef.current,
   }
