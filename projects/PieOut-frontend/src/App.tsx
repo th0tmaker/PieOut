@@ -53,15 +53,15 @@ export default function App() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
-        <GameIdCtxProvider>
-          <AppCtxProvider>
+        <AppCtxProvider>
+          <GameIdCtxProvider>
             <AppSubscriberCtxProvider>
               <GameDataCtxProvider>
                 <Home />
               </GameDataCtxProvider>
             </AppSubscriberCtxProvider>
-          </AppCtxProvider>
-        </GameIdCtxProvider>
+          </GameIdCtxProvider>
+        </AppCtxProvider>
       </WalletProvider>
     </SnackbarProvider>
   )

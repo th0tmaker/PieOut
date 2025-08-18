@@ -3,6 +3,9 @@
 import { microAlgos } from '@algorandfoundation/algokit-utils'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
+import { TableBtn } from '../buttons/TableBtn'
+import { Tooltip } from '../components/Tooltip'
 import { useAppCtx } from '../hooks/useAppCtx'
 import { useCurrentTimestamp } from '../hooks/useCurrentTimestamp'
 import { useDropdownEventListener } from '../hooks/useDropdownEventListener'
@@ -11,14 +14,11 @@ import { useGameIdCtx } from '../hooks/useGameIdCtx'
 import { useLastRound } from '../hooks/useLastRound'
 import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
+import { useGameIdSanitizer } from '../hooks/useSanitizeInputs'
 import ActivePlayersModal from '../modals/ActivePlayersModal'
 import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
-import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
-import { useGameIdSanitizer } from '../hooks/useSanitizeInputs'
-import { Tooltip } from '../components/Tooltip'
-import { TableBtn } from '../buttons/TableBtn'
 
 // Reusable components
 const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
@@ -537,7 +537,7 @@ const GameTable: React.FC = React.memo(() => {
       )
     }
 
-    if (isGameDataLoading && gameId != null) {
+    if (gameId !== null && isGameDataLoading) {
       return (
         <tr>
           <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
@@ -546,7 +546,6 @@ const GameTable: React.FC = React.memo(() => {
         </tr>
       )
     }
-
     if (!gameStateData && gameId != null && !isGameDataLoading) {
       return (
         <tr>

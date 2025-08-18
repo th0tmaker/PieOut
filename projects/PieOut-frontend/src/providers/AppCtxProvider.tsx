@@ -1,12 +1,12 @@
 // src/providers/AppCtxProvider.tsx
-import React, { useState, useEffect, useRef, useMemo, useCallback, FC } from 'react'
-import { useWallet } from '@txnlab/use-wallet-react'
-import { PieoutClient } from '../contracts/Pieout'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-import { algorand } from '../utils/network/getAlgorandClient'
-import { PieoutMethods } from '../methods'
-import { createMethodHandler } from '../methodHandler'
+import { useWallet } from '@txnlab/use-wallet-react'
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppCtx } from '../contexts/App'
+import { PieoutClient } from '../contracts/Pieout'
+import { createMethodHandler } from '../methodHandler'
+import { PieoutMethods } from '../methods'
+import { algorand } from '../utils/network/getAlgorandClient'
 
 const STORAGE_KEYS = {
   appId: 'appId',

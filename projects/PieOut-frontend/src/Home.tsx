@@ -1,7 +1,8 @@
 // src/components/Home.tsx
-import React, { useCallback } from 'react'
-import ConnectWallet from './components/ConnectWallet'
+import React, { useCallback, useState } from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
+import Arc28EventDripper from './components/Arc28EventDripper'
+import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
 import { useAppCtx } from './hooks/useAppCtx'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
@@ -14,8 +15,6 @@ import HonorsModal from './modals/HonorsModal'
 import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
-import { Tooltip } from './components/Tooltip'
-import Arc28EventDripper from './components/Arc28EventDripper'
 
 // Button configurations
 const NAVIGATION_BUTTONS = [
@@ -37,8 +36,13 @@ const Home: React.FC = () => {
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
-  const { gameTrophyData, gameRegisterData } = useGameDataCtx()
-  const handleMintTrophy = useCallback(() => handleMethod('mintTrophy'), [handleMethod])
+  const { gameTrophyData } = useGameDataCtx()
+  const [mintClicked, setMintClicked] = useState(false)
+
+  const handleMintTrophy = useCallback(() => {
+    setMintClicked(true) // ✅ hide action buttons after click
+    handleMethod('mintTrophy')
+  }, [handleMethod])
 
   const getButtonColor = (color: string) => {
     const colors = {
@@ -65,8 +69,8 @@ const Home: React.FC = () => {
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
-      {/* Action Buttons - Only show if gameTrophyData is undefined */}
-      {gameTrophyData === undefined && (
+      {/* ✅ Only show if gameTrophyData is undefined AND mintTrophy not clicked */}
+      {gameTrophyData === undefined && !mintClicked && (
         <div className="flex gap-2 mb-2">
           {ACTION_BUTTONS.map(({ key, label, color, action }) => (
             <button
@@ -85,34 +89,18 @@ const Home: React.FC = () => {
 
       {/* Navigation Buttons */}
       <div className="flex gap-2 mb-4">
-        {NAVIGATION_BUTTONS.map(({ key, label, modal }) => {
-          const isDisabled = key === 'game' && !gameRegisterData
-
-          const button = (
-            <button
-              key={key}
-              className={`text-base border-2 px-4 py-1 rounded font-semibold transition-colors duration-200
-        ${
-          isDisabled
-            ? 'bg-gray-500 border-gray-400 text-gray-300'
-            : 'bg-slate-800 text-yellow-300 border-yellow-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200'
-        }
+        {NAVIGATION_BUTTONS.map(({ key, label, modal }) => (
+          <button
+            key={key}
+            className={`text-base border-2 px-4 py-1 rounded font-semibold transition-colors duration-200
+        bg-slate-800 text-yellow-300 border-yellow-400
+        hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200
       `}
-              onClick={() => !isDisabled && toggleModal(modal)}
-              disabled={isDisabled}
-            >
-              {label}
-            </button>
-          )
-
-          return isDisabled ? (
-            <Tooltip key={key} message="Profile required.">
-              {button}
-            </Tooltip>
-          ) : (
-            button
-          )
-        })}
+            onClick={() => toggleModal(modal)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* App Info */}
