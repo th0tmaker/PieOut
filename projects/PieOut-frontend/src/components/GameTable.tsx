@@ -695,13 +695,13 @@ const GameTable: React.FC = React.memo(() => {
         <div className="mb-4 flex items-center gap-4">
           <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
           <input
-            className="w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 opacity-50 cursor-help"
+            className="w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 opacity-50"
             type="text"
             disabled
             placeholder="Game ID"
           />
           <span className="font-bold text-indigo-200">:</span>
-          <button className="bg-slate-800 text-gray-400 border-2 border-gray-500 px-3 py-1 rounded cursor-help font-semibold" disabled>
+          <button className="bg-slate-800 text-gray-400 border-2 border-gray-500 px-3 py-1 rounded font-semibold" disabled>
             Input
           </button>
         </div>

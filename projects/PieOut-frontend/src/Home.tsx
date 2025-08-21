@@ -1,8 +1,10 @@
 // src/components/Home.tsx
-import React, { useCallback } from 'react'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
+import { useWallet } from '@txnlab/use-wallet-react'
+import React, { useCallback, useEffect } from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
-import GameEventSub from './components/GameEventSub'
 import ConnectWallet from './components/ConnectWallet'
+import GameEventSub from './components/GameEventSub'
 import GameTable from './components/GameTable'
 import { useAppCtx } from './hooks/useAppCtx'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
@@ -34,6 +36,24 @@ const Home: React.FC = () => {
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  const { activeAddress } = useWallet()
+
+  useEffect(() => {
+    const checkNetwork = async () => {
+      if (appClient) {
+        const client = appClient.algorand.client
+        const isLocalNet = await client.isLocalNet()
+        const isTestNet = await client.isTestNet()
+        const isMainNet = await client.isMainNet()
+
+        consoleLogger.info(`isLocalNet: ${isLocalNet}`)
+        consoleLogger.info(`isTestNet: ${isTestNet}`)
+        consoleLogger.info(`isMainNet: ${isMainNet}`)
+      }
+    }
+
+    checkNetwork()
+  }, [appClient, activeAddress])
 
   const handleMintTrophy = useCallback(() => {
     handleMethod('mintTrophy')

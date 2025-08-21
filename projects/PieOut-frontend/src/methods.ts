@@ -11,6 +11,7 @@ export class PieoutMethods {
   // Initialize class constructor with default params
   constructor(algorand: AlgorandClient, sender: string) {
     this.algorand = algorand // Pass and instance of the `AlgorandClient` from the constructor params
+
     // Use algorand to get an instance of the factory class that handles app deployment and lifecycle
     this.factory = algorand.client.getTypedAppFactory(PieoutFactory, {
       defaultSender: sender,

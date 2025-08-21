@@ -41,10 +41,20 @@ export function getKmdConfigFromViteEnvironment(): AlgoViteKMDConfig {
   }
 }
 
-export function getAlgorandClient(): AlgorandClient {
-  const algodConfig = getAlgodConfigFromViteEnvironment()
-  const indexerConfig = getIndexerConfigFromViteEnvironment()
-  // const kmdConfig = getKmdConfigFromViteEnvironment()
+// Uncomment for LocalNet testing
+// export function getAlgorandClient(): AlgorandClient {
+//   const algodConfig = getAlgodConfigFromViteEnvironment()
+//   const indexerConfig = getIndexerConfigFromViteEnvironment()
+//   const kmdConfig = getKmdConfigFromViteEnvironment()
 
-  return AlgorandClient.fromConfig({ algodConfig, indexerConfig })
+//   return AlgorandClient.fromConfig({ algodConfig, indexerConfig, kmdConfig })
+
+// }
+
+export function getAlgorandClient(): AlgorandClient {
+  const algorand = AlgorandClient.testNet()
+    // signer: TransactionSigner
+    // .setDefaultSigner(signer) // Replace `signer` with your signer instance
+    .setDefaultValidityWindow(1000) // Set validity window to 1000 rounds
+  return algorand
 }
