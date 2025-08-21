@@ -255,7 +255,12 @@ def is_game_over(
     # Check game over criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
-        or game_state.active_players.native == 0  # If no more active players
+    or game_state.active_players.native == 0  # If no more active players
+    or (
+        game_state.active_players == 1  # If only one active player AND
+        and Txn.sender == game_state.admin_address  # If sender is admin address AND
+        and game_state.staking_finalized == False  # If staking is not finalized  # noqa: E712
+        )
     ):
         # Reset game register box contents to their default starting values for any remaining players
         game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
@@ -263,7 +268,7 @@ def is_game_over(
             player_addr_bytes = game_players_bref.extract(i, 32)
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player = Account.from_bytes(player_addr_bytes)
-                # Reset game commit values in game register box for player after theyobtained a score
+                # Reset game commit values in game register box for player after they obtained a score
                 reset_game_commit_values(
                     box_game_register=box_game_register,
                     account=player,

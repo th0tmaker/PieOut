@@ -538,13 +538,13 @@ class Pieout(ARC4Contract):
             Global.round >= self.box_game_register[Txn.sender].commit_rand_round.native
         ), err.COMMIT_RAND_ROUND_NOT_REACHED
 
-        # # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-        # seed = arc4.abi_call[Bytes](
-        #     "must_get(uint64,byte[])byte[]",
-        #     self.box_game_register[Txn.sender].commit_rand_round.native,
-        #     Txn.sender.bytes,
-        #     app_id=600011887,  # TestNet VRF Beacon Application ID
-        # )[0]
+        # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+        seed = arc4.abi_call[Bytes](
+            "must_get(uint64,byte[])byte[]",
+            self.box_game_register[Txn.sender].commit_rand_round.native,
+            Txn.sender.bytes,
+            app_id=600011887,  # TestNet VRF Beacon Application ID
+        )[0]
 
         # Calculate player score and assign placement if their score qualifies
         srt.calc_score_get_place(
@@ -552,7 +552,7 @@ class Pieout(ARC4Contract):
             game_state=game_state,
             game_register=game_register,
             player=Txn.sender,
-            seed=Txn.sender.bytes,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
+            seed=seed,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
         )
 
         # If game state first place score is higher than ath score
@@ -628,8 +628,18 @@ class Pieout(ARC4Contract):
                 game_state.expiry_ts < Global.latest_timestamp
             ), err.TIME_CONSTRAINT_VIOLATION
 
-            # Check if game is live
-            srt.is_game_live(game_id=game_id, game_state=game_state)
+            # If admin is only active player skip live phase to prevent score padding
+            if game_state.admin_address == Txn.sender and game_state.active_players == 1:
+                # Go straight to checking if game is over
+                srt.is_game_over(
+                    game_id=game_id,
+                    game_state=game_state,
+                    box_game_register=self.box_game_register,
+                    box_game_players=self.box_game_players,
+                )
+            else:
+                # Check if game is live
+                srt.is_game_live(game_id=game_id, game_state=game_state)
 
         # Trigger ID 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
@@ -678,9 +688,6 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertion below evaluates True
-        assert (
-            game_state.staking_finalized == True  # noqa: E712
-        ), err.STAKING_FINAL_FLAG
         assert game_state.admin_address == Txn.sender, err.INVALID_ADMIN
         assert game_state.prize_pool.native == 0, err.NON_ZERO_PRIZE_POOL
         assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS
@@ -759,7 +766,7 @@ class Pieout(ARC4Contract):
                     'pieout:j{"method":"delete_game","concern":"itxn.pay;prize_pool_admin_stake"}'
                 ),
             )
-
+        # Otherwise, allow deletion if active players and prize pool equal zero
         else:
             # Fail transaction unless the assertion below evaluates True
             assert game_state.active_players.native == 0, err.NON_ZERO_ACTIVE_PLAYERS

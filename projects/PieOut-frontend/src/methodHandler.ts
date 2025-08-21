@@ -1,8 +1,10 @@
-import { MethodHandlerProps, MethodNames } from './types/MethodHandler'
+//src/methodHandler.ts
+import { MethodHandlerProps, MethodNames, MethodHandler } from './types/MethodHandler'
 import * as mW from './methodsWrapped'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { errorHandler, shouldLogError } from './utils/helpers/errorHandler'
 
+// Define required props for each method to ensure validation before dispatch
 const METHOD_REQUIREMENTS: Record<MethodNames, (keyof MethodHandlerProps)[]> = {
   deploy: ['activeAddress', 'appMethods'],
   generate: ['activeAddress', 'appMethods'],
@@ -27,7 +29,7 @@ const METHOD_REQUIREMENTS: Record<MethodNames, (keyof MethodHandlerProps)[]> = {
   triggerGameEvent: ['activeAddress', 'appMethods', 'appClient', 'gameId', 'triggerId'],
 }
 
-type MethodHandler = (props: MethodHandlerProps) => Promise<unknown>
+// Map each method name to its wrapped handler implementation
 const METHOD_HANDLERS: Record<MethodNames, MethodHandler> = {
   deploy: (props) => mW.handleDeploy(props.appMethods!, props.activeAddress!),
   generate: (props) => mW.handleGenerate(props.appMethods!, props.activeAddress!),
@@ -57,46 +59,43 @@ const METHOD_HANDLERS: Record<MethodNames, MethodHandler> = {
     mW.handleTriggerGameEvent(props.appClient!, props.appMethods!, props.activeAddress!, props.gameId!, props.triggerId!),
 }
 
+// Create a class for handling the execution of the application methods
 export class PieoutMethodHandler {
-  constructor(private props: MethodHandlerProps) {}
+  constructor(private props: MethodHandlerProps) {} // Store default props for all calls
 
+  // Create a method that checks if all requirements are valid before execution
   private validateRequirements(name: MethodNames, props: MethodHandlerProps): string | null {
-    const requirements = METHOD_REQUIREMENTS[name]
+    const requirements = METHOD_REQUIREMENTS[name] // Lookup required props for this method
     for (const requirement of requirements) {
       if (props[requirement] == null) {
-        return `${requirement} is required for ${name}`
+        // Check if any required prop is missing
+        return `${requirement} is required for ${name}` // Return descriptive validation message
       }
     }
-    return null
+    return null // All requirements satisfied
   }
 
+  // Retrieve the correct handler for the given method name and execute it with the provided props
   private async execute(name: MethodNames, props: MethodHandlerProps): Promise<unknown> {
-    const handler = METHOD_HANDLERS[name]
+    const handler = METHOD_HANDLERS[name] // Get the appropriate handler
     if (!handler) {
-      throw new Error(`Unknown method name: ${name}`)
+      throw new Error(`Unknown method name: ${name}`) // Guard against invalid method names
     }
-    return await handler(props)
+    return await handler(props) // Execute the actual wrapped method
   }
 
+  // Handles the full process by merging props, checking requirements, logging validation errors, and dispatching the method call
   async handle(name: MethodNames, dynamicProps?: Partial<MethodHandlerProps>): Promise<unknown> {
-    // Start a new call context to reset error deduplication
-    errorHandler.startNewCall()
-
-    // Merge the constructor params with dynamic params
-    const mergedProps: MethodHandlerProps = { ...this.props, ...dynamicProps }
-
-    // Validate requirements using merged props
-    const validationError = this.validateRequirements(name, mergedProps)
+    errorHandler.startNewCall() // Reset error deduplication for this call
+    const mergedProps: MethodHandlerProps = { ...this.props, ...dynamicProps } // Merge static and dynamic props
+    const validationError = this.validateRequirements(name, mergedProps) // Check required params
     if (validationError) {
-      // Only log validation errors once per call
       if (shouldLogError(validationError)) {
-        consoleLogger.error(`[MethodHandler] ${validationError}`)
+        consoleLogger.error(`[MethodHandler] ${validationError}`) // Log once if needed
       }
-      throw new Error(validationError)
+      throw new Error(validationError) // Throw if validation fails
     }
-
-    // Execute the method call directly; do not catch or log thrown errors
-    return await this.execute(name, mergedProps)
+    return await this.execute(name, mergedProps) // Run the actual method
   }
 }
 
@@ -104,6 +103,3 @@ export class PieoutMethodHandler {
 export function createMethodHandler(props: MethodHandlerProps): PieoutMethodHandler {
   return new PieoutMethodHandler(props)
 }
-
-// Export types
-export type { MethodHandlerProps, MethodNames }

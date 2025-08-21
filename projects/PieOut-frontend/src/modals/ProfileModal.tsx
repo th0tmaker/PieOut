@@ -2,7 +2,7 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import ProfileAboutContent from '../abouts/ProfileAbout'
-import BlurbPortal from '../components/BlurbPortal'
+import AboutPortal from '../components/AboutPortal'
 import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
 import { AppBaseBtn } from '../buttons/AppBaseBtn'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
@@ -42,7 +42,7 @@ const ProfileData = ({
             Hosting Game: <span className="text-cyan-300">{registerData.hostingGame.toString()}</span>
           </p>
           <p>
-            Game ID: <span className="text-cyan-300">{`${registerData.gameId.toString()} #`}</span>
+            Game ID: <span className="text-cyan-300">{`${registerData.gameId.toString()}`}</span>
           </p>
           <p>
             Best Score: <span className="text-cyan-300">{`${registerData.bestScore.toString()} ☆`}</span>
@@ -206,7 +206,7 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
         </form>
       </dialog>
       <UnregisterModal {...getModalProps('unregister')} />
-      {isProfileBlurbOpen && <BlurbPortal title="About Profile" text={ProfileAboutContent()} onClose={() => toggleModal('profileBlurb')} />}
+      {isProfileBlurbOpen && <AboutPortal title="About Profile" text={ProfileAboutContent()} onClose={() => toggleModal('profileBlurb')} />}
     </>
   )
 })

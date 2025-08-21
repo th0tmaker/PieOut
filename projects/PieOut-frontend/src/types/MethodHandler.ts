@@ -2,7 +2,10 @@
 import { PieoutClient } from '../contracts/Pieout'
 import { PieoutMethods } from '../methods'
 
-// Define the Method Handler Props type
+// Type alias for the smart contract app method properties dispatcher
+export type MethodHandler = (props: MethodHandlerProps) => Promise<unknown>
+
+// Define a type that will store the smart contract app method handler properties
 export type MethodHandlerProps = {
   activeAddress: string | null
   appMethods: PieoutMethods | undefined
@@ -15,7 +18,7 @@ export type MethodHandlerProps = {
   valueSize?: bigint | number | null
 }
 
-// Define the Method Names type
+// Define a type that will store the smart contract app method names
 export type MethodNames =
   | 'deploy'
   | 'generate'

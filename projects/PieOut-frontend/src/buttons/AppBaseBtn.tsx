@@ -1,6 +1,7 @@
 // src/buttons/AppBaseBtn.tsx
 import React from 'react'
 import { ButtonSize, TextSize, AppBaseBtnProps } from '../types/AppBaseBtnProps'
+import { useAppCtx } from '../hooks/useAppCtx'
 
 // Base classes applied to all buttons regardless of variant or size
 const BASE_CLASSES = 'transition-colors duration-200 font-semibold rounded'
@@ -24,7 +25,6 @@ const TEXT_SIZE_CLASSES: Record<TextSize, string> = {
 }
 
 // Button style variants: "text" and "regular" (solid background/button)
-// Each has a different style depending on whether the button is enabled or disabled
 const VARIANT_CLASSES = {
   text: {
     enabled: 'font-serif tracking-wide cursor-pointer font-bold text-pink-400 underline hover:text-lime-300',
@@ -47,8 +47,14 @@ export const AppBaseBtn = React.memo(
     size = 'md', // Button size ('sm', 'md', 'lg'), default='md'
     textSize = 'base', // Text size for the label, default='base'
   }: AppBaseBtnProps) => {
+    // Hooks
+    const { appClient } = useAppCtx()
+
+    // Boolean flag that indicates when the button should be disabled
+    const isDisabled = disabled || !appClient
+
     // Choose the correct style variant based on state
-    const variantClass = VARIANT_CLASSES[variant][disabled ? 'disabled' : 'enabled']
+    const variantClass = VARIANT_CLASSES[variant][isDisabled ? 'disabled' : 'enabled']
 
     // Size is only applied to 'regular' variants, not 'text'
     const sizeClass = variant === 'regular' ? SIZE_CLASSES[size] : ''
@@ -56,11 +62,12 @@ export const AppBaseBtn = React.memo(
     // Apply text sizing
     const textSizeClass = TEXT_SIZE_CLASSES[textSize]
 
+    // Return JSX
     return (
       <button
         type="button"
         onClick={onClick}
-        disabled={disabled}
+        disabled={isDisabled}
         className={`${BASE_CLASSES} ${variantClass} ${sizeClass} ${textSizeClass} ${className}`}
       >
         {children}

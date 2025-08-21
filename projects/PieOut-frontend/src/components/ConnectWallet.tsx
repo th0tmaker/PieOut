@@ -4,74 +4,109 @@ import { useEffect, useState } from 'react'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { ModalInterface } from '../interfaces/modal'
 
-interface ConnectWalletInterface extends ModalInterface {}
-
-const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
+const ConnectWallet = ({ openModal, closeModal }: ModalInterface) => {
+  // Hooks
   const { wallets, activeWalletAccounts, activeAddress } = useWallet()
-  const isKmd = (wallet: Wallet) => wallet.id === WalletId.KMD
+  // States
   const [userInputAddr, setUserInputAddr] = useState<string>('')
+  // Check if wallet provider ID is KMD
+  const isKmd = (wallet: Wallet) => wallet.id === WalletId.KMD
 
-  // Ensure the wallet is disconnected on page refresh or close
+  // Disconnect active wallet when modal closes or page refreshes
   useEffect(() => {
-    if (!openModal) {
-      localStorage.removeItem('txnlab-use-wallet') // Disconnect the active wallet account when the modal closes
-    }
+    if (!openModal) localStorage.removeItem('txnlab-use-wallet')
   }, [openModal])
 
+  // Create a method that changes to the next account inside the wallet based on the index position
   const changeAccByIndex = async () => {
+    // Find the currently active wallet
     const activeWallet = wallets.find((wallet) => wallet.isActive)
 
+    // If key requirements are missing, return early
     if (!activeWallet || !activeWalletAccounts || !activeAddress) return
 
+    // Try Block
     try {
+      // Search `activeWalletAccounts` and find the index position of current account, which should be equal to `activeAddress`
       const currentAccIndex = activeWalletAccounts.findIndex((acc) => acc.address === activeAddress)
+
+      // Determine the next account index in the wallet, loop back when reaching the end
       const nextAccIndex = (currentAccIndex + 1) % activeWalletAccounts.length
+
+      // Pass the next account index to the `activeWalletAccounts` to get the next account
       const nextAccount = activeWalletAccounts[nextAccIndex]
+
+      // Update wallet state to next account
       activeWallet.setActiveAccount(nextAccount.address)
+
+      // Log
       consoleLogger.info(`Switched to account: ${nextAccount.address}`)
+      // Catch Error
     } catch (err) {
+      // Log
       consoleLogger.error('Error changing to next account', err)
     }
   }
 
+  // Create a method that changes to a specific account in the wallet based on user-provided input
   const changeAccByAddr = async () => {
+    // Find the currently active wallet
     const activeWallet = wallets.find((wallet) => wallet.isActive)
+
+    // If key requirements are missing, return early
     if (!activeWallet || !activeWalletAccounts) return
 
+    // Try Block
     try {
+      // Search `activeWalletAccounts` for an account that matches the user input by address or name
       const matchedAccount = activeWalletAccounts.find((acc) => acc.address === userInputAddr || acc.name === userInputAddr)
+
+      // If a matching account is found
       if (matchedAccount) {
+        // Update wallet state to the matched account
         activeWallet.setActiveAccount(matchedAccount.address)
+
+        // Log the account switch
         consoleLogger.info(`Switched to account: ${matchedAccount.address}`)
       } else {
+        // Log if no matching account is found
         consoleLogger.info('Account not found with the provided name or address')
       }
+
+      // Catch Error
     } catch (error) {
+      // Log any failure in switching accounts
       consoleLogger.info('Failed changing account by name/address:', error)
     }
   }
+
+  // Return JSX
   return (
     <dialog id="connect_wallet_modal" className={`modal ${openModal ? 'modal-open' : ''}`}>
       <form method="dialog" className="modal-box">
+        {/* Modal Header: displays title based on wallet type */}
         <h3 className="font-bold text-2xl text-center">
           {wallets?.some((wallet) => isKmd(wallet)) ? 'Select KMD Wallet Account' : 'Select Wallet Provider'}
         </h3>
 
+        {/* Wallet Selection Section */}
         <div className="grid m-2 pt-5">
+          {/* Active Account Display */}
           {activeAddress && (
             <>
-              <Account />
-              <div className="divider" />
+              <Account /> {/* Show currently active account details */}
+              <div className="divider" /> {/* Visual separator */}
             </>
           )}
 
+          {/* Wallet Provider Buttons */}
           {!activeAddress &&
             wallets?.map((wallet) => (
               <button
                 data-test-id={`${wallet.id}-connect`}
                 className="btn border-teal-800 border-1 m-2"
                 key={`provider-${wallet.id}`}
-                onClick={() => wallet.connect()}
+                onClick={() => wallet.connect()} // Connect wallet when clicked
               >
                 {!isKmd(wallet) && (
                   <img
@@ -85,10 +120,10 @@ const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
             ))}
         </div>
 
-        {/* Next Account button */}
+        {/* Account Management Section */}
         {activeAddress && wallets && (
           <div className="grid grid-cols-1 gap-4 w-full mt-4">
-            {/* Next Account Index Button */}
+            {/* Switch to Next Account Button */}
             <button
               className="btn justify-center rounded-md bg-blue-300 hover:text-white hover:bg-blue-800 border-black border-2 text-[16px]"
               onClick={(e) => {
@@ -99,7 +134,7 @@ const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
               Next Account Index
             </button>
 
-            {/* Change Account By Name/Address */}
+            {/* Change Account By Name/Address Form */}
             <div className="flex flex-col gap-2 mt-2">
               <input
                 type="text"
@@ -121,7 +156,7 @@ const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
           </div>
         )}
 
-        {/* Modal Action Buttons */}
+        {/* Modal Action Buttons Section */}
         <div className="modal-action">
           <button data-test-id="close-wallet-modal" className="btn" onClick={() => closeModal()}>
             Close
@@ -149,4 +184,5 @@ const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
     </dialog>
   )
 }
+
 export default ConnectWallet

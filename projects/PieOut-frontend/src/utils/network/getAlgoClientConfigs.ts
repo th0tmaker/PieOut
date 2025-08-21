@@ -44,7 +44,7 @@ export function getKmdConfigFromViteEnvironment(): AlgoViteKMDConfig {
 export function getAlgorandClient(): AlgorandClient {
   const algodConfig = getAlgodConfigFromViteEnvironment()
   const indexerConfig = getIndexerConfigFromViteEnvironment()
-  const kmdConfig = getKmdConfigFromViteEnvironment()
+  // const kmdConfig = getKmdConfigFromViteEnvironment()
 
-  return AlgorandClient.fromConfig({ algodConfig, indexerConfig, kmdConfig })
+  return AlgorandClient.fromConfig({ algodConfig, indexerConfig })
 }

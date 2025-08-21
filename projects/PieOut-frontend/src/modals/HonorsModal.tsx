@@ -2,7 +2,7 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import HonorsAboutContent from '../abouts/HonorsAbout'
-import BlurbPortal from '../components/BlurbPortal'
+import AboutPortal from '../components/AboutPortal'
 import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
 import { useAppCtx } from '../hooks/useAppCtx'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
@@ -50,7 +50,7 @@ const UserStatusMsg = ({ isTrophyHolder, isCurrentlyOptedIn }: { isTrophyHolder:
     {isTrophyHolder && <p className="text-green-400 text-sm mb-2">You are the current asset holder.</p>}
     {!isTrophyHolder && (
       <p className={`mb-2 text-sm ${isCurrentlyOptedIn ? 'text-green-400' : 'text-red-400'}`}>
-        {isCurrentlyOptedIn ? 'You are opted in successfully.' : 'You are not opted in yet.'}
+        {isCurrentlyOptedIn ? 'You are opted in successfully.' : 'You are not opted in yet!'}
       </p>
     )}
   </>
@@ -268,7 +268,7 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
         </form>
       </dialog>
 
-      {isHonorsBlurbOpen && <BlurbPortal title="About Honors" text={HonorsAboutContent()} onClose={() => toggleModal('honorsBlurb')} />}
+      {isHonorsBlurbOpen && <AboutPortal title="About Honors" text={HonorsAboutContent()} onClose={() => toggleModal('honorsBlurb')} />}
     </>
   )
 })

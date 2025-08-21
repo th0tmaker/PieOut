@@ -1,5 +1,3 @@
-// FOR SOME REASON, IF DROPDOWNMENU TRIGGER IS OPEN AND THE CURRENT TIMESTAMP IS GREATER THAN EXPIRY TIMESTAMP, IT REJECTS
-// NEW COMPONENT THAT IS A LIST OF DATA FROM ALGORAND APP SUBSCRIBER, SHOULD SORT BY GAME ID
 import { microAlgos } from '@algorandfoundation/algokit-utils'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,27 +25,37 @@ const TableCell = ({ children, className = '' }: { children: React.ReactNode; cl
   return <td className={`${baseClasses} ${textColor} ${className}`}>{children}</td>
 }
 
-const DropdownItem = ({
+const DropdownOption = ({
   enabled,
+  loading,
   onClick,
   children,
   tooltipMessage,
 }: {
   enabled: boolean
+  loading?: boolean
   onClick: () => void
   children: React.ReactNode
   tooltipMessage?: string
 }) => (
   <li
     className={`relative px-4 py-2 group ${
-      enabled
+      enabled && !loading
         ? 'text-lime-400 bg-slate-800 border border-lime-400 hover:bg-slate-700 cursor-pointer'
         : 'bg-slate-800 hover:bg-slate-700 text-gray-400 cursor-help'
     }`}
-    onClick={() => enabled && onClick()}
+    onClick={() => enabled && !loading && onClick()}
   >
-    <span className={enabled ? 'text-lime-400 font-bold' : ''}>{children}</span>
-    {!enabled && tooltipMessage && (
+    <span className={enabled && !loading ? 'text-lime-400 font-bold' : ''}>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-200" />
+        </div>
+      ) : (
+        children
+      )}
+    </span>
+    {(!enabled || loading) && tooltipMessage && (
       <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-normal">
         {tooltipMessage}
       </div>
@@ -109,11 +117,11 @@ const GameTable: React.FC = React.memo(() => {
     const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
     const isAdminSolePlayer = Number(gameStateData?.activePlayers) === 1 && isAuthorized
     const gameIsEmpty = Number(gameStateData?.activePlayers) === 0 && Number(gameStateData?.prizePool) === 0
-    const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress
-    const canDeleteGame = isAuthorized && (isAdminSolePlayer || gameIsEmpty)
+    const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress && !isLoadingMethod
+    const canDeleteGame = isAuthorized && (isAdminSolePlayer || gameIsEmpty) && !isLoadingMethod
 
-    return { isAuthorized, canResetGame, canDeleteGame }
-  }, [activeAddress, gameStateData, appCreator])
+    return { isAuthorized, canResetGame, canDeleteGame, isAdminSolePlayer }
+  }, [activeAddress, gameStateData, appCreator, isLoadingMethod])
 
   const eventTriggerConditions = useMemo(() => {
     if (!gameStateData)
@@ -125,24 +133,35 @@ const GameTable: React.FC = React.memo(() => {
       }
 
     const { expiryTs, stakingFinalized, prizePool } = gameStateData
-    const isExpired = currentTimestamp > Number(expiryTs)
+    // Add a 5-10 second buffer to account for timing differences
+    const TIMING_BUFFER_SECONDS = 10
+    const isExpired = currentTimestamp > Number(expiryTs) + TIMING_BUFFER_SECONDS
     const gameEnded = prizePool === 0n
 
     return {
+      // Event 0 (Game Live) - available when expired, not finalized, not ended
+      // For sole admin, this will internally transition to game over
       triggersEvent0: isExpired && !stakingFinalized && !gameEnded,
+      // Event 2 (Game Over) - only available after game is live (stakingFinalized = true)
       triggersEvent2: isExpired && stakingFinalized && !gameEnded,
       tooltipMessage0: gameEnded
-        ? 'Action unavailable. Game already ended.'
+        ? 'Unavailable. Game already ended.'
         : !isExpired
-          ? 'Action unavailable. Game phase timer must first expire.'
-          : 'Action unavailable. Game already progressed beyond this phase.',
+          ? 'Unavailable. Game phase timer must first expire.'
+          : stakingFinalized
+            ? 'Unavailable. Game already progressed beyond this phase.'
+            : accState.isAdminSolePlayer
+              ? 'Will transition directly to game over as sole player.'
+              : 'Will transition game to live phase.',
       tooltipMessage2: gameEnded
-        ? 'Action unavailable. Game already ended.'
-        : stakingFinalized && !isExpired
-          ? 'Action unavailable. Game phase timer must first expire.'
-          : 'Action unavailable. Game has yet to reach this phase.',
+        ? 'Unavailable. Game already ended.'
+        : !isExpired
+          ? 'Unavailable. Game phase timer must first expire.'
+          : !stakingFinalized
+            ? 'Unavailable. Game must be live first.'
+            : 'Will end the game and distribute prizes.',
     }
-  }, [gameStateData, currentTimestamp])
+  }, [gameStateData, currentTimestamp, accState.isAdminSolePlayer])
 
   // Helper functions
   const resetExpectedStates = useCallback(() => {
@@ -285,7 +304,7 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [expectedStates.waitingForCommitRound, gameRegisterData, lastRound, updateExpectedState])
 
-  // New effects for reset, gameLive, and gameOver expected states
+  // Updated effects for reset, gameLive, and gameOver expected states
   useEffect(() => {
     if (expectedStates.reset && gameStateData) {
       const isResetComplete = Number(gameStateData.activePlayers) === 1 && !gameStateData.stakingFinalized
@@ -296,8 +315,16 @@ const GameTable: React.FC = React.memo(() => {
   }, [expectedStates.reset, gameStateData, updateExpectedState])
 
   useEffect(() => {
-    if (expectedStates.gameLive && gameStateData && gameStateData.stakingFinalized) {
-      updateExpectedState('gameLive', false)
+    if (expectedStates.gameLive && gameStateData) {
+      // Clear loading state when:
+      // 1. Game becomes live (stakingFinalized = true) for normal multi-player cases
+      // 2. Game ends (prizePool = 0) for sole admin cases where triggerId: 0n skips live phase
+      const gameEnded = Number(gameStateData.prizePool) === 0
+      const gameBecameLive = gameStateData.stakingFinalized
+
+      if (gameBecameLive || gameEnded) {
+        updateExpectedState('gameLive', false)
+      }
     }
   }, [expectedStates.gameLive, gameStateData, updateExpectedState])
 
@@ -320,7 +347,8 @@ const GameTable: React.FC = React.memo(() => {
   const renderAdminDropdown = useCallback(() => {
     if (!openDropdowns.adminActions) return null
 
-    const isResetLoading = isLoadingMethod || expectedStates.reset
+    const isResetLoading = expectedStates.reset
+    const isDeleteLoading = isLoadingMethod && !isResetLoading
 
     return (
       <div
@@ -328,30 +356,34 @@ const GameTable: React.FC = React.memo(() => {
         className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
       >
         <ul className="text-sm text-gray-700">
-          <DropdownItem
-            enabled={accState.canResetGame && !isResetLoading}
+          <DropdownOption
+            enabled={accState.canResetGame}
+            loading={isResetLoading}
             onClick={handleResetTxn}
-            tooltipMessage="You must be the admin and the game must be over to reset it."
+            tooltipMessage={isResetLoading ? 'Processing game reset...' : 'You must be the admin and the game must be over to reset it.'}
           >
-            {isResetLoading ? <LoadingSpinner /> : 'Reset Game'}
-          </DropdownItem>
-          <DropdownItem
+            Reset Game
+          </DropdownOption>
+          <DropdownOption
             enabled={accState.canDeleteGame}
+            loading={isDeleteLoading}
             onClick={handleDeleteTxn}
-            tooltipMessage="Game must have no active players or admin must be sole active player."
+            tooltipMessage={
+              isDeleteLoading ? 'Processing game deletion...' : 'Game must have no active players or admin must be sole active player.'
+            }
           >
-            {isLoadingMethod ? <LoadingSpinner /> : 'Delete Game'}
-          </DropdownItem>
+            Delete Game
+          </DropdownOption>
         </ul>
       </div>
     )
-  }, [openDropdowns.adminActions, accState, isLoadingMethod, expectedStates.reset, handleResetTxn, handleDeleteTxn])
+  }, [openDropdowns.adminActions, accState, expectedStates.reset, isLoadingMethod, handleResetTxn, handleDeleteTxn])
 
   const renderTriggerDropdown = useCallback(() => {
     if (!openDropdowns.triggerEvents || !activeAddress) return null
 
-    const isGameLiveLoading = isLoadingMethod || expectedStates.gameLive
-    const isGameOverLoading = isLoadingMethod || expectedStates.gameOver
+    const isGameLiveLoading = expectedStates.gameLive
+    const isGameOverLoading = expectedStates.gameOver
 
     return (
       <div
@@ -359,20 +391,22 @@ const GameTable: React.FC = React.memo(() => {
         className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-gray-200 rounded shadow-lg z-10"
       >
         <ul className="text-sm text-gray-700">
-          <DropdownItem
-            enabled={eventTriggerConditions.triggersEvent0 && !isGameLiveLoading}
+          <DropdownOption
+            enabled={eventTriggerConditions.triggersEvent0}
+            loading={isGameLiveLoading}
             onClick={handleTriggerGameLive}
-            tooltipMessage={eventTriggerConditions.tooltipMessage0}
+            tooltipMessage={isGameLiveLoading ? 'Processing game live trigger...' : eventTriggerConditions.tooltipMessage0}
           >
-            {isGameLiveLoading ? <LoadingSpinner /> : '0 - Game Live'}
-          </DropdownItem>
-          <DropdownItem
-            enabled={eventTriggerConditions.triggersEvent2 && !isGameOverLoading}
+            0 - Game Live
+          </DropdownOption>
+          <DropdownOption
+            enabled={eventTriggerConditions.triggersEvent2}
+            loading={isGameOverLoading}
             onClick={handleTriggerGameOver}
-            tooltipMessage={eventTriggerConditions.tooltipMessage2}
+            tooltipMessage={isGameOverLoading ? 'Processing game over trigger...' : eventTriggerConditions.tooltipMessage2}
           >
-            {isGameOverLoading ? <LoadingSpinner /> : '2 - Game Over'}
-          </DropdownItem>
+            2 - Game Over
+          </DropdownOption>
         </ul>
       </div>
     )
@@ -382,7 +416,6 @@ const GameTable: React.FC = React.memo(() => {
     eventTriggerConditions,
     expectedStates.gameLive,
     expectedStates.gameOver,
-    isLoadingMethod,
     handleTriggerGameLive,
     handleTriggerGameOver,
   ])

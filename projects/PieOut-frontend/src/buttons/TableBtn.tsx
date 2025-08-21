@@ -16,8 +16,8 @@ export const TableBtn = ({
   tooltipMessage?: string
 }) => {
   // If the button is disabled and there's a tooltip message,
-  // wrap the content in a tooltip and render it as a non-clickable span
   if (disabled && tooltipMessage) {
+    // wrap the content in a tooltip and render it as a non-clickable span
     return (
       <Tooltip message={tooltipMessage}>
         <span className="text-gray-400">{children}</span>
@@ -25,6 +25,7 @@ export const TableBtn = ({
     )
   }
 
+  // Return JSX
   return (
     <button
       onClick={onClick}

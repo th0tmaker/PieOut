@@ -1,12 +1,11 @@
 // src/components/Home.tsx
-import React, { useCallback, useState } from 'react'
+import React, { useCallback } from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
-import Arc28EventDripper from './components/Arc28EventDripper'
+import GameEventSub from './components/GameEventSub'
 import ConnectWallet from './components/ConnectWallet'
 import GameTable from './components/GameTable'
 import { useAppCtx } from './hooks/useAppCtx'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
-import { useGameDataCtx } from './hooks/useGameDataCtx'
 import { useLastRound } from './hooks/useLastRound'
 import { useMethodHandler } from './hooks/useMethodHandler'
 import { useModal } from './hooks/useModal'
@@ -25,7 +24,6 @@ const NAVIGATION_BUTTONS = [
 ] as const
 
 const ACTION_BUTTONS = [
-  { key: 'wallet', label: 'Wallet', color: 'purple', action: 'toggleWallet' },
   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
   { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
 ] as const
@@ -36,11 +34,8 @@ const Home: React.FC = () => {
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
-  const { gameTrophyData } = useGameDataCtx()
-  const [mintClicked, setMintClicked] = useState(false)
 
   const handleMintTrophy = useCallback(() => {
-    setMintClicked(true) // ✅ hide action buttons after click
     handleMethod('mintTrophy')
   }, [handleMethod])
 
@@ -69,23 +64,20 @@ const Home: React.FC = () => {
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
-      {/* ✅ Only show if gameTrophyData is undefined AND mintTrophy not clicked */}
-      {gameTrophyData === undefined && !mintClicked && (
-        <div className="flex gap-2 mb-2">
-          {ACTION_BUTTONS.map(({ key, label, color, action }) => (
-            <button
-              key={key}
-              className={`py-2 px-4 rounded text-white font-bold ${getButtonColor(color)} border-2 border-black transition-colors ${
-                key === 'mintTrophy' && isLoadingMethod ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              onClick={() => handleAction(action)}
-              disabled={key === 'mintTrophy' && isLoadingMethod}
-            >
-              {key === 'mintTrophy' && isLoadingMethod ? 'Minting...' : label}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2 mb-2">
+        {ACTION_BUTTONS.map(({ key, label, color, action }) => (
+          <button
+            key={key}
+            className={`py-2 px-4 rounded text-white font-bold ${getButtonColor(color)} border-2 border-black transition-colors ${
+              key === 'mintTrophy' && isLoadingMethod ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={() => handleAction(action)}
+            disabled={key === 'mintTrophy' && isLoadingMethod}
+          >
+            {key === 'mintTrophy' && isLoadingMethod ? 'Minting...' : label}
+          </button>
+        ))}
+      </div>
 
       {/* Navigation Buttons */}
       <div className="flex gap-2 mb-4">
@@ -132,12 +124,10 @@ const Home: React.FC = () => {
       )}
 
       <GameTable />
-      {/* <Arc28EventLogger /> */}
-
       <div>
         {/* Your home UI */}
-        <h1 className="text-indigo-200 font-bold my-2">💧 Game Event Dripper: </h1>
-        <Arc28EventDripper />
+        <h1 className="text-indigo-200 font-bold text-xl mt-2 mb-3">Game Event Subscriber</h1>
+        <GameEventSub />
       </div>
 
       {/* Modals */}

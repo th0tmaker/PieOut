@@ -41,6 +41,8 @@ export type AppSubscriberEvents = {
   // Persistence/debug info (new)
   processedTxnIds: string[] // From localStorage; used to avoid replays
   lastUpdated: number // Timestamp of last event processed (ms)
+
+  isRunning: boolean
 }
 
 // Create the App Subscriber Context

@@ -20,7 +20,6 @@ interface UseAppSubscriberOptions {
   filterName?: string
   mode?: 'single' | 'batch'
   maxRoundsToSync?: number
-  pollOneTime?: boolean
   autoRemoveAfterSeconds?: number // total display duration (visible + fade)
   fadeOutDurationSeconds?: number // fade-out duration
 }
@@ -92,6 +91,7 @@ type State = {
   queue: Arc28Event[]
   current: Arc28Event | null
   fadingOutId: number | null
+  isRunning: boolean
 }
 
 type Action =
@@ -101,6 +101,7 @@ type Action =
   | { type: 'REMOVE_BY_TXN_ID'; payload: string }
   | { type: 'CLEAR_ALL' }
   | { type: 'MARK_FADING'; payload: number | null }
+  | { type: 'SET_RUNNING'; payload: boolean }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -109,23 +110,23 @@ function reducer(state: State, action: Action): State {
       // if nothing currently being shown, promote the first queued
       if (!state.current && newQueue.length > 0) {
         const [first, ...rest] = newQueue
-        return { queue: rest, current: first, fadingOutId: null }
+        return { ...state, queue: rest, current: first, fadingOutId: null }
       }
       return { ...state, queue: newQueue }
     }
     case 'SHOW_NEXT': {
-      if (state.queue.length === 0) return { queue: [], current: null, fadingOutId: null }
+      if (state.queue.length === 0) return { ...state, current: null, fadingOutId: null }
       const [next, ...rest] = state.queue
-      return { queue: rest, current: next, fadingOutId: null }
+      return { ...state, queue: rest, current: next, fadingOutId: null }
     }
     case 'REMOVE_BY_EVENT_ID': {
       const q = state.queue.filter((e) => e.eventId !== action.payload)
       const isCurrent = state.current?.eventId === action.payload
       if (isCurrent) {
         // promote next
-        if (q.length === 0) return { queue: [], current: null, fadingOutId: null }
+        if (q.length === 0) return { ...state, queue: [], current: null, fadingOutId: null }
         const [next, ...rest] = q
-        return { queue: rest, current: next, fadingOutId: null }
+        return { ...state, queue: rest, current: next, fadingOutId: null }
       }
       return { ...state, queue: q }
     }
@@ -133,16 +134,18 @@ function reducer(state: State, action: Action): State {
       const q = state.queue.filter((e) => e.txnId !== action.payload)
       const isCurrent = state.current?.txnId === action.payload
       if (isCurrent) {
-        if (q.length === 0) return { queue: [], current: null, fadingOutId: null }
+        if (q.length === 0) return { ...state, queue: [], current: null, fadingOutId: null }
         const [next, ...rest] = q
-        return { queue: rest, current: next, fadingOutId: null }
+        return { ...state, queue: rest, current: next, fadingOutId: null }
       }
       return { ...state, queue: q }
     }
     case 'CLEAR_ALL':
-      return { queue: [], current: null, fadingOutId: null }
+      return { ...state, queue: [], current: null, fadingOutId: null }
     case 'MARK_FADING':
       return { ...state, fadingOutId: action.payload }
+    case 'SET_RUNNING':
+      return { ...state, isRunning: action.payload }
     default:
       return state
   }
@@ -154,12 +157,16 @@ export function useAppSubscriber({
   filterName = 'pieout-filter',
   mode = 'batch',
   maxRoundsToSync = 100,
-  pollOneTime = false,
   autoRemoveAfterSeconds = 9,
   fadeOutDurationSeconds = 1,
 }: UseAppSubscriberOptions) {
   // reducer for queue + current to avoid setState races
-  const [state, dispatch] = useReducer(reducer, { queue: [], current: null, fadingOutId: null })
+  const [state, dispatch] = useReducer(reducer, {
+    queue: [],
+    current: null,
+    fadingOutId: null,
+    isRunning: false,
+  })
 
   // derived
   const arc28Events = useMemo(() => (state.current ? [state.current, ...state.queue] : [...state.queue]), [state])
@@ -173,7 +180,6 @@ export function useAppSubscriber({
 
   // Track current appId to detect changes
   const currentAppIdRef = useRef<string | null>(null)
-  const isInitializedRef = useRef(false)
 
   // persistent runtime structures
   const eventIdCounterRef = useRef<number>(0)
@@ -405,6 +411,7 @@ export function useAppSubscriber({
       subscriberRef.current = subscriber
       subscriber.start()
       isStartedRef.current = true
+      dispatch({ type: 'SET_RUNNING', payload: true })
       consoleLogger.info('✅ Subscriber started successfully for appId:', appClient.appId)
     } catch (error) {
       consoleLogger.error('❌ Failed to start subscriber:', error)
@@ -414,9 +421,10 @@ export function useAppSubscriber({
   const stop = useCallback(() => {
     if (subscriberRef.current && isStartedRef.current) {
       try {
-        subscriberRef.current.stop('Stopped by useAppSubscriber')
+        subscriberRef.current.stop('Stopped by user')
         isStartedRef.current = false
-        consoleLogger.info('🛑 Subscriber stopped')
+        dispatch({ type: 'SET_RUNNING', payload: false })
+        consoleLogger.info('🛑 Subscriber stopped by user')
       } catch (error) {
         consoleLogger.error('❌ Failed to stop subscriber:', error)
       }
@@ -432,129 +440,74 @@ export function useAppSubscriber({
     const subscriber = initSubscriber()
     if (!subscriber) return
 
-    consoleLogger.info(`📊 Polling once for appClient: ${appClient.appId}...`)
-    await subscriber.pollOnce()
-    consoleLogger.info('📊 Poll completed')
+    try {
+      consoleLogger.info(`📊 Polling once for appClient: ${appClient.appId}...`)
+      await subscriber.pollOnce()
+      consoleLogger.info('📊 Poll completed')
+    } catch (error) {
+      consoleLogger.error('❌ Failed to poll:', error)
+    }
   }, [appClient, initSubscriber])
 
   // --- Effects
 
-  // --- Handle app client changes
-  const handleAppClientChange = useCallback(
-    (newAppId: string) => {
-      const prevAppId = prevAppIdRef.current
-
-      if (!newAppId) {
-        // Clean up if we had an app before
-        if (prevAppId) {
-          consoleLogger.info('[Subscriber] No appClient, cleaning up')
-          saveStateForApp(prevAppId)
-          if (subscriberRef.current && isStartedRef.current) {
-            subscriberRef.current.stop('AppClient removed')
-            isStartedRef.current = false
-          }
-          dispatch({ type: 'CLEAR_ALL' })
-          prevAppIdRef.current = null
-        }
-        return
-      }
-
-      if (prevAppId === newAppId) {
-        consoleLogger.info(`[Subscriber] AppId unchanged (${newAppId}), keeping existing subscriber`)
-        return
-      }
-
-      consoleLogger.info(`[Subscriber] App transition: ${prevAppId || 'none'} → ${newAppId}`)
-
-      // Save state for previous app
-      if (prevAppId) saveStateForApp(prevAppId)
-
-      // Stop old subscriber
-      if (subscriberRef.current && isStartedRef.current) {
-        subscriberRef.current.stop('AppClient changed')
-        isStartedRef.current = false
-      }
-
-      // Reset or load state
-      if (shouldResetSubscriber()) {
-        consoleLogger.info(`[Subscriber] Resetting state for new app: ${newAppId}`)
-        eventIdCounterRef.current = 0
-        processedTxnSetRef.current = new Set()
-        dispatch({ type: 'CLEAR_ALL' })
-        saveCounter(newAppId, 0)
-        saveProcessedTxns(newAppId, [])
-      } else {
-        loadStateForApp(newAppId)
-      }
-
-      // Start subscriber
-      if (pollOneTime) {
-        pollOnce()
-      } else {
-        start()
-      }
-
-      prevAppIdRef.current = newAppId
-    },
-    [loadStateForApp, saveStateForApp, pollOneTime, pollOnce, start],
-  )
-
-  // Handle app client changes
+  // Handle app client changes - load state but don't auto-start
   useEffect(() => {
     const newAppId = appClient?.appId ? String(appClient.appId) : ''
-    handleAppClientChange(newAppId)
-  }, [appClient?.appId, handleAppClientChange])
 
-  // Initialize and manage subscriber lifecycle
-  useEffect(() => {
-    if (!appClient) {
-      consoleLogger.info('⏭️ No appClient available, deferring subscriber initialization')
+    if (!newAppId) {
+      // Clean up if we had an app before
+      if (prevAppIdRef.current) {
+        consoleLogger.info('[Subscriber] No appClient, cleaning up')
+        saveStateForApp(prevAppIdRef.current)
+        if (subscriberRef.current && isStartedRef.current) {
+          subscriberRef.current.stop('AppClient removed')
+          isStartedRef.current = false
+          dispatch({ type: 'SET_RUNNING', payload: false })
+        }
+        dispatch({ type: 'CLEAR_ALL' })
+        prevAppIdRef.current = null
+        currentAppIdRef.current = null
+      }
       return
     }
 
-    const appId = appClient.appId.toString()
-    consoleLogger.info(`🚀 useAppSubscriber: Managing subscriber for appId ${appId}`)
+    if (prevAppIdRef.current === newAppId) {
+      consoleLogger.info(`[Subscriber] AppId unchanged (${newAppId}), keeping existing state`)
+      return
+    }
 
-    // Only initialize if we haven't done so for this specific appId
-    if (!isInitializedRef.current || currentAppIdRef.current !== appId) {
-      isInitializedRef.current = true
+    consoleLogger.info(`[Subscriber] App transition: ${prevAppIdRef.current || 'none'} → ${newAppId}`)
 
-      if (pollOneTime) {
-        consoleLogger.info('🔄 Starting one-time poll')
-        pollOnce()
-      } else {
-        consoleLogger.info('🔄 Starting continuous subscription')
-        start()
-      }
+    // Save state for previous app
+    if (prevAppIdRef.current) saveStateForApp(prevAppIdRef.current)
+
+    // Stop old subscriber
+    if (subscriberRef.current && isStartedRef.current) {
+      subscriberRef.current.stop('AppClient changed')
+      isStartedRef.current = false
+      dispatch({ type: 'SET_RUNNING', payload: false })
+    }
+
+    // Reset or load state
+    if (shouldResetSubscriber()) {
+      consoleLogger.info(`[Subscriber] Resetting state for new app: ${newAppId}`)
+      eventIdCounterRef.current = 0
+      processedTxnSetRef.current = new Set()
+      dispatch({ type: 'CLEAR_ALL' })
+      saveCounter(newAppId, 0)
+      saveProcessedTxns(newAppId, [])
     } else {
-      // Same appId, just ensure subscriber is running if it should be
-      if (!pollOneTime && !isStartedRef.current) {
-        consoleLogger.info('🔄 Restarting subscriber for existing appId')
-        start()
-      }
+      loadStateForApp(newAppId)
     }
 
-    // Cleanup function
-    return () => {
-      // Only save state on unmount if we have a current app
-      if (currentAppIdRef.current) {
-        saveStateForApp(currentAppIdRef.current)
-      }
-    }
-  }, [appClient, pollOneTime, start, pollOnce, saveStateForApp])
+    currentAppIdRef.current = newAppId
+    prevAppIdRef.current = newAppId
 
-  // Periodic persistence of processed txns (in case lots of txns come in)
-  useEffect(() => {
-    if (!currentAppIdRef.current) return
+    consoleLogger.info(`[Subscriber] Ready for manual control for appId: ${newAppId}`)
+  }, [appClient?.appId, loadStateForApp, saveStateForApp])
 
-    const interval = setInterval(() => {
-      if (currentAppIdRef.current) {
-        saveProcessedTxns(currentAppIdRef.current, Array.from(processedTxnSetRef.current))
-      }
-    }, 15_000)
-
-    return () => clearInterval(interval)
-  }, [currentAppIdRef.current])
+  // Removed periodic persistence - we save immediately when processing transactions
 
   // Final cleanup on unmount
   useEffect(() => {
@@ -595,5 +548,6 @@ export function useAppSubscriber({
     fadeOutDurationSeconds,
     processedTxnIds: Array.from(processedTxnSetRef.current),
     lastUpdated: lastUpdatedRef.current,
+    isRunning: state.isRunning,
   }
 }

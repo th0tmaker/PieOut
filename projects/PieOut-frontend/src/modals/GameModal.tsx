@@ -1,7 +1,7 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import React, { useEffect, useMemo, useState } from 'react'
 import GameAboutContent from '../abouts/GameAbout'
-import BlurbPortal from '../components/BlurbPortal'
+import AboutPortal from '../components/AboutPortal'
 import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
@@ -114,6 +114,7 @@ const GameModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
         isMethodLoading ||
         !inputMaxPlayers ||
         !gameInfo.isValidMaxPlayersRange ||
+        !gameRegisterData ||
         Boolean(gameRegisterData?.hostingGame),
       isCloseDisabled: expectedProcessingState || isMethodLoading,
     }),
@@ -192,12 +193,9 @@ const GameModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
             {isProcessing ? (
               <ProcessingSpinner />
             ) : (
-              <div className="flex flex-col gap-2">
-                {gameRegisterData?.hostingGame && (
-                  <div className="flex justify-center">
-                    <p className="text-red-400 text-sm text-center">You are already hosting a game.</p>
-                  </div>
-                )}
+              <div className="flex flex-col justify-center gap-2 text-yellow-400 text-sm text-center">
+                {!gameRegisterData && <p>⚠️ Profile registration required!</p>}
+                {gameRegisterData?.hostingGame && <p>⚠️ You are already hosting a game!</p>}
                 <div className="flex justify-center">
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-semibold text-indigo-200">Max Players:</label>
@@ -265,7 +263,7 @@ const GameModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
         </form>
       </dialog>
 
-      {isGameBlurbOpen && <BlurbPortal title="About Game" text={GameAboutContent()} onClose={() => toggleModal('gameBlurb')} />}
+      {isGameBlurbOpen && <AboutPortal title="About Game" text={GameAboutContent()} onClose={() => toggleModal('gameBlurb')} />}
     </>
   )
 })

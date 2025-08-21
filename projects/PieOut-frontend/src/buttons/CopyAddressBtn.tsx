@@ -24,6 +24,6 @@ export const CopyAddressBtn: React.FC<CopyAddressBtnProps> = ({
     title={title} // Tooltip text
     className={`text-pink-400 hover:text-lime-400 ml-2 text-lg ${className}`} // Default and additional styles
   >
-    🗐 {/* Unicode clipboard icon (can be replaced with an SVG or icon component) */}
+    🗐
   </button>
 )
