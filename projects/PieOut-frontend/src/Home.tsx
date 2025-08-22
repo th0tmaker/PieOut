@@ -29,31 +29,32 @@ const ACTION_BUTTONS = [
   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
   { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
 ] as const
-
+useWallet
 const Home: React.FC = () => {
+  const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { getAppClient, appClient, appCreator } = useAppCtx()
+  const { getAppClient, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
-  const { activeAddress } = useWallet()
+  // const { activeAddress } = useWallet()
 
-  useEffect(() => {
-    const checkNetwork = async () => {
-      if (appClient) {
-        const client = appClient.algorand.client
-        const isLocalNet = await client.isLocalNet()
-        const isTestNet = await client.isTestNet()
-        const isMainNet = await client.isMainNet()
+  // useEffect(() => {
+  //   const checkNetwork = async () => {
+  //     if (appClient) {
+  //       const client = appClient.algorand.client
+  //       const isLocalNet = await client.isLocalNet()
+  //       const isTestNet = await client.isTestNet()
+  //       const isMainNet = await client.isMainNet()
 
-        consoleLogger.info(`isLocalNet: ${isLocalNet}`)
-        consoleLogger.info(`isTestNet: ${isTestNet}`)
-        consoleLogger.info(`isMainNet: ${isMainNet}`)
-      }
-    }
+  //       consoleLogger.info(`isLocalNet: ${isLocalNet}`)
+  //       consoleLogger.info(`isTestNet: ${isTestNet}`)
+  //       consoleLogger.info(`isMainNet: ${isMainNet}`)
+  //     }
+  //   }
 
-    checkNetwork()
-  }, [appClient, activeAddress])
+  //   checkNetwork()
+  // }, [appClient, activeAddress])
 
   const handleMintTrophy = useCallback(() => {
     handleMethod('mintTrophy')
@@ -101,18 +102,26 @@ const Home: React.FC = () => {
 
       {/* Navigation Buttons */}
       <div className="flex gap-2 mb-4">
-        {NAVIGATION_BUTTONS.map(({ key, label, modal }) => (
-          <button
-            key={key}
-            className={`text-base border-2 px-4 py-1 rounded font-semibold transition-colors duration-200
-        bg-slate-800 text-yellow-300 border-yellow-400
-        hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200
-      `}
-            onClick={() => toggleModal(modal)}
-          >
-            {label}
-          </button>
-        ))}
+        {NAVIGATION_BUTTONS.map(({ key, label, modal }) => {
+          const isDisabled = key !== 'wallet' && !activeAddress
+          return (
+            <button
+              key={key}
+              className={`text-base px-4 py-1 rounded font-semibold transition-colors duration-200
+          ${
+            isDisabled
+              ? 'bg-gray-700 text-gray-300 border-gray-500 border-2'
+              : 'bg-slate-800 text-yellow-300 border-yellow-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 border-2'
+          }
+        `}
+              onClick={() => toggleModal(modal)}
+              disabled={isDisabled}
+              title={isDisabled ? 'Wallet connection required!' : undefined}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
 
       {/* App Info */}
@@ -142,13 +151,13 @@ const Home: React.FC = () => {
           </div>
         </div>
       )}
-
-      <GameTable />
-      <div>
-        {/* Your home UI */}
-        <h1 className="text-indigo-200 font-bold text-xl mt-2 mb-3">Game Event Subscriber</h1>
-        <GameEventSub />
-      </div>
+      {activeAddress && appClient && !appIsLoading && (
+        <div>
+          <GameTable />
+          <h1 className="text-indigo-200 font-bold text-xl mt-2 mb-3">Game Event Subscriber</h1>
+          <GameEventSub />
+        </div>
+      )}
 
       {/* Modals */}
       <ConnectWallet {...getModalProps('wallet')} />

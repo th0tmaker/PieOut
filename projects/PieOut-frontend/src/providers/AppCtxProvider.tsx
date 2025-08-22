@@ -67,7 +67,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
   /** Hydrate app client from localStorage (with lock to prevent overlaps) */
   const hydrateFromStorage = useCallback(async () => {
-    if (!activeAddress || hasHydratedRef.current || isInitializingRef.current) return false
+    if (hasHydratedRef.current || isInitializingRef.current) return false
     if (hydrationLock.current) return hydrationLock.current
 
     const promise = (async () => {
@@ -86,7 +86,8 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
         consoleLogger.info('[AppProvider] Hydrating app from storage...')
 
-        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
+        // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
+        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744588352n })
 
         const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
         setAppClient(client)
@@ -114,7 +115,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
     return promise.finally(() => {
       hydrationLock.current = null
     })
-  }, [activeAddress, ensureMethodHandler])
+  }, [ensureMethodHandler])
 
   /** Generate a new app client */
   const getAppClient = useCallback(async (): Promise<PieoutClient> => {
@@ -132,7 +133,10 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       if (!appMethodsRef.current) throw new Error('App methods not initialized')
 
       consoleLogger.info('[AppProvider] Generating new app...')
-      const client = await appMethodsRef.current.generate(activeAddress)
+
+      // const client = await appMethodsRef.current.generate(activeAddress)
+      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744588352n })
+
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
       setAppClient(client)
@@ -165,17 +169,20 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
         lastActiveAddressRef.current = activeAddress
       }
 
-      if (!activeAddress) {
-        setIsLoading(false)
-        return
-      }
-
-      ensureAppMethods()
+      // Hydrate from storage always
       await hydrateFromStorage()
+
+      // Only init methods if wallet is connected
+      if (activeAddress) {
+        ensureAppMethods()
+        if (appClient) {
+          ensureMethodHandler(appClient)
+        }
+      }
     }
 
     runInit()
-  }, [activeAddress, hydrateFromStorage])
+  }, [activeAddress, hydrateFromStorage, appClient])
 
   /** Memoized context value to avoid unnecessary re-renders */
   const value = useMemo(

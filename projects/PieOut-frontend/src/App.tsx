@@ -24,6 +24,7 @@ if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
   supportedWallets = [
     { id: WalletId.DEFLY },
     { id: WalletId.PERA },
+    { id: WalletId.LUTE },
     { id: WalletId.EXODUS },
     // If you are interested in WalletConnect v2 provider
     // refer to https://github.com/TxnLab/use-wallet for detailed integration instructions

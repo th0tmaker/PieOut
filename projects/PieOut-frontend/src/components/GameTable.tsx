@@ -73,12 +73,18 @@ const LoadingSpinner = () => (
 const GameTable: React.FC = React.memo(() => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { appCreator } = useAppCtx()
-  const [inputedGameId, setInputedGameId] = useState('')
+  const { appCreator, isLoading: appIsLoading } = useAppCtx()
+  const [inputedGameId, setInputedGameId] = useState<string>('')
   const { lastRound } = useLastRound(algorand.client.algod)
   const { gameId, setGameId } = useGameIdCtx()
   const { gameRegisterData, gameStateData, gamePlayersData, isGameDataLoading, setIsGameDataLoading } = useGameDataCtx()
-  const sanitizeGameIdInput = useGameIdSanitizer(setInputedGameId)
+
+  // Create a safe setter that ensures the value is always a string
+  const safeSetInputedGameId = useCallback((val: string | null | undefined) => {
+    setInputedGameId(val ?? '') // always fallback to empty string
+  }, [])
+
+  const sanitizeGameIdInput = useGameIdSanitizer(safeSetInputedGameId)
   const currentTimestamp = useCurrentTimestamp()
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
@@ -194,7 +200,7 @@ const GameTable: React.FC = React.memo(() => {
 
   // Action handlers
   const handleGameIdInput = useCallback(() => {
-    const newGameId = BigInt(inputedGameId)
+    const newGameId = BigInt(inputedGameId ?? '0')
     if (newGameId !== 0n) setIsGameDataLoading(true)
     setGameId(newGameId)
   }, [inputedGameId, setIsGameDataLoading, setGameId])
@@ -271,6 +277,13 @@ const GameTable: React.FC = React.memo(() => {
 
   // Effects for state management
   useEffect(() => resetExpectedStates(), [activeAddress, resetExpectedStates])
+
+  // Reset inputedGameId when wallet disconnects to prevent controlled/uncontrolled input warning
+  useEffect(() => {
+    if (!activeAddress) {
+      safeSetInputedGameId('')
+    }
+  }, [activeAddress, safeSetInputedGameId])
 
   useEffect(() => {
     if (expectedStates.join && activeAddress && gamePlayersData?.includes(activeAddress)) {
@@ -689,7 +702,7 @@ const GameTable: React.FC = React.memo(() => {
     toggleModal,
   ])
 
-  if (!activeAddress) {
+  if (!activeAddress || appIsLoading) {
     return (
       <div>
         <div className="mb-4 flex items-center gap-4">
@@ -731,17 +744,19 @@ const GameTable: React.FC = React.memo(() => {
     <div>
       <div className="mb-4 flex items-center gap-4">
         <label className="font-bold text-indigo-200">Look Up Game by ID:</label>
-        <input
-          className={`w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 focus:bg-slate-700 ${
-            inputedGameId ? 'bg-slate-700' : ''
-          } hover:bg-slate-700 focus:outline-none focus:border-lime-400`}
-          type="text"
-          value={inputedGameId}
-          onChange={sanitizeGameIdInput}
-          maxLength={20}
-          inputMode="numeric"
-          placeholder="Game ID"
-        />
+        {typeof activeAddress === 'string' && (
+          <input
+            className={`w-54 font-bold text-center text-white bg-slate-800 border-2 border-pink-400 rounded px-3 py-1 focus:bg-slate-700 ${
+              inputedGameId ? 'bg-slate-700' : ''
+            } hover:bg-slate-700 focus:outline-none focus:border-lime-400`}
+            type="text"
+            value={inputedGameId}
+            onChange={sanitizeGameIdInput}
+            maxLength={20}
+            inputMode="numeric"
+            placeholder="Game ID"
+          />
+        )}
         <span className="font-bold text-indigo-200">:</span>
         <button
           className="bg-slate-800 text-pink-300 border-2 border-pink-400 px-3 py-1 rounded hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 transition-colors duration-200 font-semibold"
