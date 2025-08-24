@@ -282,7 +282,7 @@ class Pieout(ARC4Contract):
             and max_players <= cst.MAX_PLAYERS_TOP_BOUND
         ), err.INVALID_MAX_PLAYERS
 
-        assert stake_pay.amount == cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
+        assert stake_pay.amount == cst.STAKE_AMOUNT, err.INVALID_STAKE_PAY_FEE
         assert box_s_pay.amount == cst.BOX_S_COST, err.INVALID_BOX_PAY_FEE
         assert box_p_pay.amount == self.calc_single_box_cost(
             key_size=arc4.UInt8(10),
@@ -313,7 +313,7 @@ class Pieout(ARC4Contract):
             third_place_score=arc4.UInt8(0),
             top_score=arc4.UInt8(0),
             box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
-            expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.EXPIRY_INTERVAL),
+            expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.PHASE_EXPIRY_INTERVAL),
             prize_pool=arc4.UInt64(stake_pay.amount),
             admin_address=arc4.Address(Txn.sender),
             first_place_address=arc4.Address(Global.zero_address),
@@ -360,7 +360,7 @@ class Pieout(ARC4Contract):
         assert self.box_game_trophy, err.BOX_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
 
-        assert stake_pay.amount == cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
+        assert stake_pay.amount == cst.STAKE_AMOUNT, err.INVALID_STAKE_PAY_FEE
         assert stake_pay.sender == Txn.sender, err.INVALID_STAKE_PAY_SENDER
         assert (
             stake_pay.receiver == Global.current_application_address
@@ -629,7 +629,10 @@ class Pieout(ARC4Contract):
             ), err.TIME_CONSTRAINT_VIOLATION
 
             # If admin is only active player skip live phase to prevent score padding
-            if game_state.admin_address == Txn.sender and game_state.active_players == 1:
+            if (
+                game_state.admin_address == Txn.sender
+                and game_state.active_players == 1
+            ):
                 # Go straight to checking if game is over
                 srt.is_game_over(
                     game_id=game_id,
@@ -680,7 +683,7 @@ class Pieout(ARC4Contract):
         assert (
             stake_pay.receiver == Global.current_application_address
         ), err.INVALID_STAKE_PAY_RECEIVER
-        assert stake_pay.amount >= cst.STAKE_AMOUNT_MANAGER, err.INVALID_STAKE_PAY_FEE
+        assert stake_pay.amount >= cst.STAKE_AMOUNT, err.INVALID_STAKE_PAY_FEE
 
         # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[
@@ -706,10 +709,10 @@ class Pieout(ARC4Contract):
         game_state.third_place_score = arc4.UInt8(0)
         game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
         game_state.expiry_ts = arc4.UInt64(
-            Global.latest_timestamp + cst.EXPIRY_INTERVAL
+            Global.latest_timestamp + cst.PHASE_EXPIRY_INTERVAL
         )
         game_state.prize_pool = arc4.UInt64(
-            game_state.prize_pool.native + cst.STAKE_AMOUNT_MANAGER
+            game_state.prize_pool.native + cst.STAKE_AMOUNT
         )
         game_state.first_place_address = arc4.Address(Global.zero_address)
         game_state.second_place_address = arc4.Address(Global.zero_address)

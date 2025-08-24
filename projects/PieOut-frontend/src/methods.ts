@@ -84,7 +84,7 @@ export class PieoutMethods {
       method: 'terminate', // Pass method name that handles app deletion logic
       args: [],
       note: note,
-      maxFee: microAlgo(10_000),
+      maxFee: microAlgo(10_000), // Fee Required: Deletion logic contains inner transactions
       coverAppCallInnerTransactionFees: true,
     })
   }
@@ -289,7 +289,7 @@ export class PieoutMethods {
         sender: sender,
         signer: this.algorand.account.getSigner(sender),
         receiver: client.appAddress,
-        amount: microAlgo(11_000), // current arbitrary stake pay amount
+        amount: microAlgo(1_000_000), // current arbitrary stake pay amount
         note: noteStakePay,
       }),
     ])
@@ -313,7 +313,7 @@ export class PieoutMethods {
       sender,
       signer: this.algorand.account.getSigner(sender),
       receiver: client.appAddress,
-      amount: microAlgo(11_000), // current arbitrary stake pay amount
+      amount: microAlgo(1_000_000), // current arbitrary stake pay amount
       note: noteStakePay,
     })
 
@@ -462,7 +462,7 @@ export class PieoutMethods {
       sender,
       signer: this.algorand.account.getSigner(sender),
       receiver: client.appAddress,
-      amount: microAlgo(11_100), // current arbitrary stake pay amount
+      amount: microAlgo(1_000_000), // current arbitrary stake pay amount
       note: noteStakePay,
     })
 

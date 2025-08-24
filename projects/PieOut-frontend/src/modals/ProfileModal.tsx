@@ -2,15 +2,15 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import ProfileAboutContent from '../abouts/ProfileAbout'
-import AboutPortal from '../components/AboutPortal'
-import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
 import { AppBaseBtn } from '../buttons/AppBaseBtn'
+import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
+import AboutPortal from '../components/AboutPortal'
+import { GameRegister } from '../contracts/Pieout'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
 import { ModalInterface } from '../interfaces/modal'
 import { ellipseAddress } from '../utils/ellipseAddress'
-import { GameRegister } from '../contracts/Pieout'
 import UnregisterModal from './UnregisterModal'
 
 // Profile data display component
@@ -88,7 +88,7 @@ const UnregisterOtherSection = ({
 
 // Main modal component
 const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
-  // Hooks
+  // Hooks - ALL hooks must be called before any conditional returns
   const { activeAddress } = useWallet()
   const { gameRegisterData, gamePlayersData } = useGameDataCtx()
   const { handle: handleMethod } = useMethodHandler()
@@ -123,15 +123,6 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
     }
   }, [expectedRegState, accountStates])
 
-  // Effects
-  useEffect(() => {
-    if (expectedRegState === null) return
-    const isNowRegistered = !!gameRegisterData
-    if (isNowRegistered === expectedRegState) {
-      setExpectedRegState(null)
-    }
-  }, [gameRegisterData, expectedRegState])
-
   // Handlers
   const handleRegisterAction = useCallback(
     async (action: 'register' | 'unregister') => {
@@ -155,6 +146,15 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
   const handleUnregisterClick = useCallback(() => {
     toggleModal('unregister')
   }, [toggleModal])
+
+  // Effects
+  useEffect(() => {
+    if (expectedRegState === null) return
+    const isNowRegistered = !!gameRegisterData
+    if (isNowRegistered === expectedRegState) {
+      setExpectedRegState(null)
+    }
+  }, [gameRegisterData, expectedRegState])
 
   // Conditions
   const { isRegistered } = accountStates

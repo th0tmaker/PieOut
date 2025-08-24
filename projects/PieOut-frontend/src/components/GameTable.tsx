@@ -18,7 +18,6 @@ import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
-// Reusable components
 const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const baseClasses = 'font-bold text-center bg-slate-800 border border-indigo-300 px-4 py-2'
   const textColor = /\btext-(?:\w+)-\d{3}\b/.test(className) ? '' : 'text-indigo-200'
@@ -440,11 +439,12 @@ const GameTable: React.FC = React.memo(() => {
     const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
     const isAdmin = activeAddress === gameStateData.adminAddress
     const hasGameRegisterData = gameRegisterData !== undefined
+    const vrfRoundWaitBuffer = 10n
 
     if (isGameOver) return <span className="text-red-500">Over</span>
 
     const wasCommitRandRoundReached = (lastRound: number | null, commitRandRound: bigint) =>
-      typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= commitRandRound
+      typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= commitRandRound + vrfRoundWaitBuffer
 
     if (gameStateData.stakingFinalized) {
       // LIVE PHASE

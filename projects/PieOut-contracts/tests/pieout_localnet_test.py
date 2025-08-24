@@ -42,7 +42,11 @@ logger = logging.getLogger(__name__)
 # Return an instance of the AlgorandSubscriber object to listen for network events
 @pytest.fixture(scope="session")
 def subscriber(algorand: AlgorandClient) -> AlgorandSubscriber:
-    return create_subscriber(algod_client=algorand.client.algod, indexer_client=algorand.client.indexer, max_rounds_to_sync=100)
+    return create_subscriber(
+        algod_client=algorand.client.algod,
+        indexer_client=algorand.client.indexer,
+        max_rounds_to_sync=100,
+    )
 
 
 # Return an instance of the AlgorandClient object from the environment config
@@ -355,7 +359,7 @@ def test_new_game(
         stake_pay = create_payment_txn(
             app=app,
             sender=sender,
-            amount=cst.STAKE_AMOUNT_MANAGER,
+            amount=cst.STAKE_AMOUNT,
             note=b'pieout:j{"concern":"txn.pay;admin_stake_deposit_pay"}',
         )  # Admin stake deposit for prize pool payment
 
@@ -413,7 +417,9 @@ def test_join_game(
                 if isinstance(event, dict):
                     event_name = event.get("event_name", "<no-event-name>")
                     args = event.get("args_by_name", {})
-                    logger.info(f"[{filter_name}] Event: {event_name} | Txn ID: {txn_id}")
+                    logger.info(
+                        f"[{filter_name}] Event: {event_name} | Txn ID: {txn_id}"
+                    )
                     for arg_name, arg_value in args.items():
                         logger.info(f"  - {arg_name}: {arg_value}")
                 else:
@@ -429,7 +435,7 @@ def test_join_game(
         stake_pay = create_payment_txn(
             app=app,
             sender=sender,
-            amount=cst.STAKE_AMOUNT_MANAGER,
+            amount=cst.STAKE_AMOUNT,
             note=b'pieout:j{"concern":"txn.pay;player_stake_deposit_pay"}',
         )  # Player stake deposit for prize pool payment
 
@@ -526,6 +532,7 @@ def test_join_game(
     # Poll subscriber
     subscriber.poll_once()
 
+
 # Test case for app call transaction to call `set_game_commit` method of the smart contract
 def test_set_game_commit(
     creator: SigningAccount,
@@ -537,9 +544,7 @@ def test_set_game_commit(
 
     # Define nested function to try `set_game_commit` method call
     def try_set_game_commit_txn(
-        sender: SigningAccount,
-        game_id: int,
-        note: bytes | str | None = None
+        sender: SigningAccount, game_id: int, note: bytes | str | None = None
     ) -> None:
         # Send app call transaction to execute smart contract method `set_game_commit`
         send_app_call_txn(
@@ -569,7 +574,7 @@ def test_set_game_commit(
     try_set_game_commit_txn(
         sender=creator,
         game_id=1,
-        note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_creator"}'
+        note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_creator"}',
     )
 
     # For every randy in `randies_set_list`
@@ -578,7 +583,7 @@ def test_set_game_commit(
         try_set_game_commit_txn(
             sender=randy_factory[randy],
             game_id=1,
-            note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_randy_enum"}'
+            note=b'pieout:j{"method":"set_game_commit","concern":"txn.app_call;set_game_commit_randy_enum"}',
         )
 
     # Log App Global State
@@ -612,11 +617,13 @@ def test_play_game(
                 signer=sender.signer,
                 app_id=app.app_id,
                 max_fee=micro_algo(100_000),
-                method=Method.from_signature(s="up_ref_budget_for_play_game(uint64)void"),
+                method=Method.from_signature(
+                    s="up_ref_budget_for_play_game(uint64)void"
+                ),
                 args=[game_id],
                 note=note_1,
-                )
             )
+        )
 
         # Add `play_game` abimethod as second transaction of group
         composer.add_app_call_method_call(
@@ -628,8 +635,8 @@ def test_play_game(
                 method=Method.from_signature(s="play_game(uint64)void"),
                 args=[game_id],
                 note=note_2,
-                )
             )
+        )
 
         # Use composer to send group transaction for sender
         composer.send(params=SendParams(cover_app_call_inner_transaction_fees=True))
@@ -663,7 +670,7 @@ def test_play_game(
             game_id=1,
             note_1=b'pieout:j{"method":"up_ref_budget_for_play_game","concern":"txn.app_call;up_ref_budget_for_play_game_randy_enum"}',
             note_2=b'pieout:j{"method":"play_game","concern":"txn.app_call;play_game_randy_enum"}',
-    )
+        )
 
     # Send read-only transaction to read the game state of Game 1
     read_game_1_state_txn = app.send.read_box_game_state(

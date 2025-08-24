@@ -1,14 +1,14 @@
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import React, { useEffect, useMemo, useState } from 'react'
 import GameAboutContent from '../abouts/GameAbout'
-import AboutPortal from '../components/AboutPortal'
+import { AppBaseBtn } from '../buttons/AppBaseBtn'
 import { CopyAddressBtn } from '../buttons/CopyAddressBtn'
+import AboutPortal from '../components/AboutPortal'
 import { useGameDataCtx } from '../hooks/useGameDataCtx'
 import { useMethodHandler } from '../hooks/useMethodHandler'
 import { useModal } from '../hooks/useModal'
 import { ModalInterface } from '../interfaces/modal'
 import { ellipseAddress } from '../utils/ellipseAddress'
-import { AppBaseBtn } from '../buttons/AppBaseBtn'
 
 // Game entry component
 const GameEntry = ({ gameId, adminAddress }: { gameId: bigint; adminAddress: string }) => (

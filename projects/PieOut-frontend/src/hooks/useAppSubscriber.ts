@@ -6,13 +6,11 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { PieoutClient } from '../contracts/Pieout'
 import { getAppSubscriber } from './useAlgorandSubscriber'
 
-// --- Types
 export type Arc28Event = {
-  eventId: number // Sequential counter for this appClient (never changes once assigned)
   name: string
   args: Record<string, ABIValue>
   txnId: string
-  timestamp: number // milliseconds when the event was created/received
+  timestamp: number
 }
 
 interface UseAppSubscriberOptions {
@@ -22,54 +20,6 @@ interface UseAppSubscriberOptions {
   maxRoundsToSync?: number
   autoRemoveAfterSeconds?: number // total display duration (visible + fade)
   fadeOutDurationSeconds?: number // fade-out duration
-}
-
-// --- Persistence keys / helpers
-const COUNTERS_KEY = (appId: string) => `useAppSubscriber:counters:${appId}`
-const PROCESSED_TXNS_KEY = (appId: string) => `useAppSubscriber:processedTxns:${appId}`
-const PROCESSED_TXNS_LIMIT = 3000 // keep recent txn ids to avoid unbounded growth
-
-function loadCounter(appId: string): number {
-  try {
-    const raw = localStorage.getItem(COUNTERS_KEY(appId))
-    const counter = raw ? Number(raw) : 0
-    consoleLogger.info(`[Subscriber] Loaded counter=${counter} for appId=${appId}`)
-    return counter
-  } catch (e) {
-    consoleLogger.warn('Failed to load counter from localStorage', e)
-    return 0
-  }
-}
-
-function saveCounter(appId: string, val: number) {
-  try {
-    localStorage.setItem(COUNTERS_KEY(appId), String(val))
-    consoleLogger.info(`[Subscriber] Saved counter=${val} for appId=${appId}`)
-  } catch (e) {
-    consoleLogger.warn('Failed to save counter to localStorage', e)
-  }
-}
-
-function loadProcessedTxns(appId: string): string[] {
-  try {
-    const raw = localStorage.getItem(PROCESSED_TXNS_KEY(appId))
-    const txns = raw ? JSON.parse(raw) : []
-    consoleLogger.info(`[Subscriber] Loaded ${txns.length} processed txns for appId=${appId}`)
-    return txns
-  } catch (e) {
-    consoleLogger.warn('Failed to load processed txns from localStorage', e)
-    return []
-  }
-}
-
-function saveProcessedTxns(appId: string, txns: string[]) {
-  try {
-    const trimmed = txns.slice(-PROCESSED_TXNS_LIMIT)
-    localStorage.setItem(PROCESSED_TXNS_KEY(appId), JSON.stringify(trimmed))
-    consoleLogger.info(`[Subscriber] Saved ${trimmed.length} processed txns for appId=${appId}`)
-  } catch (e) {
-    consoleLogger.warn('Failed to save processed txns to localStorage', e)
-  }
 }
 
 // Check if we should reset subscriber state (set by AppProvider)
@@ -90,17 +40,16 @@ function shouldResetSubscriber(): boolean {
 type State = {
   queue: Arc28Event[]
   current: Arc28Event | null
-  fadingOutId: number | null
+  fadingOutTxnId: string | null
   isRunning: boolean
 }
 
 type Action =
   | { type: 'ENQUEUE_EVENTS'; payload: Arc28Event[] }
   | { type: 'SHOW_NEXT' }
-  | { type: 'REMOVE_BY_EVENT_ID'; payload: number }
   | { type: 'REMOVE_BY_TXN_ID'; payload: string }
   | { type: 'CLEAR_ALL' }
-  | { type: 'MARK_FADING'; payload: number | null }
+  | { type: 'MARK_FADING'; payload: string | null }
   | { type: 'SET_RUNNING'; payload: boolean }
 
 function reducer(state: State, action: Action): State {
@@ -110,40 +59,29 @@ function reducer(state: State, action: Action): State {
       // if nothing currently being shown, promote the first queued
       if (!state.current && newQueue.length > 0) {
         const [first, ...rest] = newQueue
-        return { ...state, queue: rest, current: first, fadingOutId: null }
+        return { ...state, queue: rest, current: first, fadingOutTxnId: null }
       }
       return { ...state, queue: newQueue }
     }
     case 'SHOW_NEXT': {
-      if (state.queue.length === 0) return { ...state, current: null, fadingOutId: null }
+      if (state.queue.length === 0) return { ...state, current: null, fadingOutTxnId: null }
       const [next, ...rest] = state.queue
-      return { ...state, queue: rest, current: next, fadingOutId: null }
-    }
-    case 'REMOVE_BY_EVENT_ID': {
-      const q = state.queue.filter((e) => e.eventId !== action.payload)
-      const isCurrent = state.current?.eventId === action.payload
-      if (isCurrent) {
-        // promote next
-        if (q.length === 0) return { ...state, queue: [], current: null, fadingOutId: null }
-        const [next, ...rest] = q
-        return { ...state, queue: rest, current: next, fadingOutId: null }
-      }
-      return { ...state, queue: q }
+      return { ...state, queue: rest, current: next, fadingOutTxnId: null }
     }
     case 'REMOVE_BY_TXN_ID': {
       const q = state.queue.filter((e) => e.txnId !== action.payload)
       const isCurrent = state.current?.txnId === action.payload
       if (isCurrent) {
-        if (q.length === 0) return { ...state, queue: [], current: null, fadingOutId: null }
+        if (q.length === 0) return { ...state, queue: [], current: null, fadingOutTxnId: null }
         const [next, ...rest] = q
-        return { ...state, queue: rest, current: next, fadingOutId: null }
+        return { ...state, queue: rest, current: next, fadingOutTxnId: null }
       }
       return { ...state, queue: q }
     }
     case 'CLEAR_ALL':
-      return { ...state, queue: [], current: null, fadingOutId: null }
+      return { ...state, queue: [], current: null, fadingOutTxnId: null }
     case 'MARK_FADING':
-      return { ...state, fadingOutId: action.payload }
+      return { ...state, fadingOutTxnId: action.payload }
     case 'SET_RUNNING':
       return { ...state, isRunning: action.payload }
     default:
@@ -164,11 +102,11 @@ export function useAppSubscriber({
   const [state, dispatch] = useReducer(reducer, {
     queue: [],
     current: null,
-    fadingOutId: null,
+    fadingOutTxnId: null,
     isRunning: false,
   })
 
-  // derived
+  // derived - display all events in array order (current first, then queue)
   const arc28Events = useMemo(() => (state.current ? [state.current, ...state.queue] : [...state.queue]), [state])
 
   // refs
@@ -180,10 +118,6 @@ export function useAppSubscriber({
 
   // Track current appId to detect changes
   const currentAppIdRef = useRef<string | null>(null)
-
-  // persistent runtime structures
-  const eventIdCounterRef = useRef<number>(0)
-  const processedTxnSetRef = useRef<Set<string>>(new Set())
   const lastUpdatedRef = useRef<number>(0)
   const visibleTimeSeconds = autoRemoveAfterSeconds - fadeOutDurationSeconds
 
@@ -193,53 +127,6 @@ export function useAppSubscriber({
   useEffect(() => {
     appClientRef.current = appClient
   }, [appClient])
-
-  // --- Load/save state for specific appId
-  const loadStateForApp = useCallback((appId: string) => {
-    const counter = loadCounter(appId)
-    const processedTxns = loadProcessedTxns(appId)
-
-    eventIdCounterRef.current = counter
-    processedTxnSetRef.current = new Set(processedTxns)
-
-    consoleLogger.info(`[Subscriber] State loaded for appId=${appId}: counter=${counter}, processedTxns=${processedTxns.length}`)
-  }, [])
-
-  const saveStateForApp = useCallback((appId: string) => {
-    saveCounter(appId, eventIdCounterRef.current)
-    saveProcessedTxns(appId, Array.from(processedTxnSetRef.current))
-  }, [])
-
-  // --- counter accessor
-  const getNextEventCounter = useCallback((): number => {
-    eventIdCounterRef.current = (eventIdCounterRef.current || 0) + 1
-
-    // Save immediately
-    if (currentAppIdRef.current) {
-      saveCounter(currentAppIdRef.current, eventIdCounterRef.current)
-    }
-
-    consoleLogger.info(`📊 Event counter incremented to ${eventIdCounterRef.current} for appClient: ${currentAppIdRef.current}`)
-    return eventIdCounterRef.current
-  }, [])
-
-  // --- processed txn helpers
-  const hasProcessedTxn = useCallback((txnId: string) => processedTxnSetRef.current.has(txnId), [])
-
-  const markTxnProcessed = useCallback((txnId: string) => {
-    processedTxnSetRef.current.add(txnId)
-
-    // prune if needed
-    if (processedTxnSetRef.current.size > PROCESSED_TXNS_LIMIT) {
-      const arr = Array.from(processedTxnSetRef.current).slice(-PROCESSED_TXNS_LIMIT)
-      processedTxnSetRef.current = new Set(arr)
-    }
-
-    // Save immediately
-    if (currentAppIdRef.current) {
-      saveProcessedTxns(currentAppIdRef.current, Array.from(processedTxnSetRef.current))
-    }
-  }, [])
 
   // --- clear utilities
   const clearAllTimers = useCallback(() => {
@@ -270,12 +157,12 @@ export function useAppSubscriber({
     timerRef.current = setTimeout(() => {
       const ce = currentEventRef.current
       if (ce) {
-        consoleLogger.info(`⏰ Starting fade-out for event #${ce.eventId}`)
-        dispatch({ type: 'MARK_FADING', payload: ce.eventId })
+        consoleLogger.info(`⏰ Starting fade-out for event with txnId: ${ce.txnId}`)
+        dispatch({ type: 'MARK_FADING', payload: ce.txnId })
 
         // schedule complete removal after fade
         fadeTimerRef.current = setTimeout(() => {
-          consoleLogger.info(`⏰ Removing event #${ce.eventId} after fade`)
+          consoleLogger.info(`⏰ Removing event with txnId: ${ce.txnId} after fade`)
           dispatch({ type: 'MARK_FADING', payload: null })
           dispatch({ type: 'SHOW_NEXT' })
         }, fadeOutDurationSeconds * 1000)
@@ -310,13 +197,7 @@ export function useAppSubscriber({
         return
       }
 
-      if (hasProcessedTxn(txn.id)) {
-        consoleLogger.info(`Skipping already-processed txn ${txn.id}`)
-        return
-      }
-
       const newEvents: Arc28Event[] = txn.arc28Events.map((e) => ({
-        eventId: getNextEventCounter(),
         name: e.eventName,
         args: e.argsByName,
         txnId: txn.id,
@@ -324,21 +205,14 @@ export function useAppSubscriber({
       }))
 
       dispatch({ type: 'ENQUEUE_EVENTS', payload: newEvents })
-      markTxnProcessed(txn.id)
 
       // update lastUpdated timestamp
       lastUpdatedRef.current = Date.now()
 
       consoleLogger.info(`📊 Queued ${newEvents.length} event(s) from txn ${txn.id}`)
     },
-    [appClient, getNextEventCounter, hasProcessedTxn, markTxnProcessed],
+    [appClient],
   )
-
-  // --- remove by eventId
-  const removeArc28Event = useCallback((eventId: number) => {
-    consoleLogger.info(`🗑️ Removing event #${eventId}`)
-    dispatch({ type: 'REMOVE_BY_EVENT_ID', payload: eventId })
-  }, [])
 
   // --- remove by txnId
   const clearArc28Event = useCallback((txnId: string) => {
@@ -360,25 +234,9 @@ export function useAppSubscriber({
     dispatch({ type: 'SHOW_NEXT' })
   }, [clearAllTimers])
 
-  // --- reset counter (manual)
-  const resetEventCounter = useCallback(() => {
-    if (!currentAppIdRef.current) {
-      consoleLogger.info('⚠️ No current appId to reset counter')
-      return
-    }
-
-    eventIdCounterRef.current = 0
-    processedTxnSetRef.current = new Set()
-    saveCounter(currentAppIdRef.current, 0)
-    saveProcessedTxns(currentAppIdRef.current, [])
-    clearAllArc28Events()
-
-    consoleLogger.info(`🔄 Reset event counter and cleared UI for appId ${currentAppIdRef.current}`)
-  }, [clearAllArc28Events])
-
   // --- subscriber methods
-  const initSubscriber = useCallback(() => {
-    if (!appClient) return null
+  const initSubscriber = useCallback((): AlgorandSubscriber | undefined => {
+    if (!appClient) return undefined
 
     consoleLogger.info('🚀 Initializing subscriber for appId:', appClient.appId)
 
@@ -437,15 +295,51 @@ export function useAppSubscriber({
       return
     }
 
-    const subscriber = initSubscriber()
-    if (!subscriber) return
+    // Use existing subscriber if we have one, otherwise create a new one
+    let subscriber: AlgorandSubscriber | undefined = subscriberRef.current
+    let isTemporary = false
+
+    if (!subscriber) {
+      subscriber = initSubscriber()
+      if (!subscriber) return
+
+      // Store the temporary subscriber so it can be reused
+      subscriberRef.current = subscriber
+      isTemporary = true
+      consoleLogger.info('📊 Created temporary subscriber for polling')
+    }
 
     try {
       consoleLogger.info(`📊 Polling once for appClient: ${appClient.appId}...`)
-      await subscriber.pollOnce()
+
+      // If this is a temporary subscriber, we need to start it first to register filters
+      if (isTemporary) {
+        consoleLogger.info('📊 Starting temporary subscriber to register filters...')
+        subscriber.start()
+
+        // Poll after starting
+        await subscriber.pollOnce()
+
+        // Stop the temporary subscriber but keep the reference
+        subscriber.stop('Temporary polling complete')
+        consoleLogger.info('📊 Stopped temporary subscriber after polling')
+      } else {
+        // Use existing subscriber (whether running or stopped)
+        await subscriber.pollOnce()
+      }
+
       consoleLogger.info('📊 Poll completed')
     } catch (error) {
       consoleLogger.error('❌ Failed to poll:', error)
+
+      // Clean up temporary subscriber on error
+      if (isTemporary && subscriberRef.current) {
+        try {
+          subscriberRef.current.stop('Polling failed')
+        } catch (stopError) {
+          consoleLogger.error('❌ Failed to stop temporary subscriber:', stopError)
+        }
+      }
     }
   }, [appClient, initSubscriber])
 
@@ -459,7 +353,6 @@ export function useAppSubscriber({
       // Clean up if we had an app before
       if (prevAppIdRef.current) {
         consoleLogger.info('[Subscriber] No appClient, cleaning up')
-        saveStateForApp(prevAppIdRef.current)
         if (subscriberRef.current && isStartedRef.current) {
           subscriberRef.current.stop('AppClient removed')
           isStartedRef.current = false
@@ -479,9 +372,6 @@ export function useAppSubscriber({
 
     consoleLogger.info(`[Subscriber] App transition: ${prevAppIdRef.current || 'none'} → ${newAppId}`)
 
-    // Save state for previous app
-    if (prevAppIdRef.current) saveStateForApp(prevAppIdRef.current)
-
     // Stop old subscriber
     if (subscriberRef.current && isStartedRef.current) {
       subscriberRef.current.stop('AppClient changed')
@@ -489,40 +379,26 @@ export function useAppSubscriber({
       dispatch({ type: 'SET_RUNNING', payload: false })
     }
 
-    // Reset or load state
+    // Reset state if needed
     if (shouldResetSubscriber()) {
       consoleLogger.info(`[Subscriber] Resetting state for new app: ${newAppId}`)
-      eventIdCounterRef.current = 0
-      processedTxnSetRef.current = new Set()
       dispatch({ type: 'CLEAR_ALL' })
-      saveCounter(newAppId, 0)
-      saveProcessedTxns(newAppId, [])
-    } else {
-      loadStateForApp(newAppId)
     }
 
     currentAppIdRef.current = newAppId
     prevAppIdRef.current = newAppId
 
     consoleLogger.info(`[Subscriber] Ready for manual control for appId: ${newAppId}`)
-  }, [appClient?.appId, loadStateForApp, saveStateForApp])
-
-  // Removed periodic persistence - we save immediately when processing transactions
+  }, [appClient?.appId])
 
   // Final cleanup on unmount
   useEffect(() => {
     return () => {
       consoleLogger.info('🧹 useAppSubscriber: Final cleanup on unmount')
-
-      // Save current state before cleanup
-      if (currentAppIdRef.current) {
-        saveStateForApp(currentAppIdRef.current)
-      }
-
       clearAllTimers()
       stop()
     }
-  }, [stop, clearAllTimers, saveStateForApp])
+  }, [stop, clearAllTimers])
 
   // final returned API
   return {
@@ -531,22 +407,18 @@ export function useAppSubscriber({
     pollOnce,
     clearArc28Events: clearAllArc28Events,
     clearArc28Event,
-    removeArc28Event,
-    resetEventCounter,
     arc28Events,
     arc28EventsCount: arc28Events.length,
-    totalEventsLogged: eventIdCounterRef.current,
     currentAppClientId: appClient?.appId.toString() ?? null,
     currentEvent: state.current,
     queueLength: state.queue.length,
     processTransaction,
     clearCurrentAndShowNext,
-    fadingOutEventId: state.fadingOutId,
-    setFadingOutEventId: (id: number | null) => dispatch({ type: 'MARK_FADING', payload: id }),
+    fadingOutTxnId: state.fadingOutTxnId,
+    setFadingOutTxnId: (txnId: string | null) => dispatch({ type: 'MARK_FADING', payload: txnId }),
     clearFadingOutEvent: () => dispatch({ type: 'MARK_FADING', payload: null }),
     visibleTimeSeconds,
     fadeOutDurationSeconds,
-    processedTxnIds: Array.from(processedTxnSetRef.current),
     lastUpdated: lastUpdatedRef.current,
     isRunning: state.isRunning,
   }

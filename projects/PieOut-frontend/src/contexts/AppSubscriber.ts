@@ -5,15 +5,14 @@ import { Arc28Event } from '../hooks/useAppSubscriber' // Import the exported ty
 
 export type AppSubscriberEvents = {
   // Event data
-  arc28Events: Arc28Event[] // Full history in memory (can be bounded)
-  arc28EventsCount: number // Number of processed events in this session
-  totalEventsLogged: number // All-time counter for the current appId
-  currentAppClientId: string | null // The appId we’re subscribed to
+  arc28Events: Arc28Event[] // Full history in memory (displayed in array order)
+  arc28EventsCount: number // Number of events currently in display queue
+  currentAppClientId: string | null // The appId we're subscribed to
 
   // Drip-specific state
   currentEvent: Arc28Event | null // Event currently displayed
   queueLength: number // How many events are waiting to be shown
-  fadingOutEventId: number | null // Which event is in fade-out stage
+  fadingOutTxnId: string | null // Which event txnId is in fade-out stage
 
   // Timing configuration
   visibleTimeSeconds: number
@@ -25,23 +24,19 @@ export type AppSubscriberEvents = {
   pollOnce: () => Promise<void>
 
   // Event management
-  clearArc28Events: () => void // Clear all events in queue + history
-  clearArc28Event: (txnId: string) => void // Remove all events from a given txn
-  removeArc28Event: (eventId: number) => void // Remove a specific event by ID
-  resetEventCounter: () => void // Reset persisted event counter for this appId
+  clearArc28Events: () => void // Clear all events in queue + current
+  clearArc28Event: (txnId: string) => void // Remove all events from a given txnId
 
   // Drip controls
   clearCurrentAndShowNext: () => void // Skip current event and show next in queue
-  setFadingOutEventId: (eventId: number | null) => void // Mark event for fade-out
+  setFadingOutTxnId: (txnId: string | null) => void // Mark event for fade-out by txnId
   clearFadingOutEvent: () => void // Remove fade-out flag
 
   // Manual transaction processing
   processTransaction: (txn: SubscribedTransaction) => void // Manually inject a txn
 
-  // Persistence/debug info (new)
-  processedTxnIds: string[] // From localStorage; used to avoid replays
+  // Debug info
   lastUpdated: number // Timestamp of last event processed (ms)
-
   isRunning: boolean
 }
 

@@ -1,7 +1,6 @@
 // src/components/Home.tsx
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback } from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
 import ConnectWallet from './components/ConnectWallet'
 import GameEventSub from './components/GameEventSub'
@@ -17,7 +16,7 @@ import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
 
-// Button configurations
+// Configuration constants
 const NAVIGATION_BUTTONS = [
   { key: 'wallet', label: 'Wallet', modal: 'wallet' },
   { key: 'profile', label: 'Profile', modal: 'profile' },
@@ -28,8 +27,15 @@ const NAVIGATION_BUTTONS = [
 const ACTION_BUTTONS = [
   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
   { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
+  { key: 'deleteApp', label: 'Delete App', color: 'magenta', action: 'terminate' },
 ] as const
-useWallet
+
+const BUTTON_COLORS = {
+  blue: 'bg-blue-500 hover:bg-blue-600',
+  green: 'bg-green-500 hover:bg-green-600',
+  magenta: 'bg-fuchsia-700 hover:bg-fuchsia-800',
+} as const
+
 const Home: React.FC = () => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
@@ -37,65 +43,41 @@ const Home: React.FC = () => {
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
   const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
-  // const { activeAddress } = useWallet()
 
-  // useEffect(() => {
-  //   const checkNetwork = async () => {
-  //     if (appClient) {
-  //       const client = appClient.algorand.client
-  //       const isLocalNet = await client.isLocalNet()
-  //       const isTestNet = await client.isTestNet()
-  //       const isMainNet = await client.isMainNet()
+  const handleAction = useCallback(
+    (action: string) => {
+      const actions = {
+        createApp: () => getAppClient(),
+        mintTrophy: () => handleMethod('mintTrophy'),
+        terminate: () => handleMethod('terminate'),
+      }
+      actions[action as keyof typeof actions]?.()
+    },
+    [getAppClient, handleMethod],
+  )
 
-  //       consoleLogger.info(`isLocalNet: ${isLocalNet}`)
-  //       consoleLogger.info(`isTestNet: ${isTestNet}`)
-  //       consoleLogger.info(`isMainNet: ${isMainNet}`)
-  //     }
-  //   }
+  const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
 
-  //   checkNetwork()
-  // }, [appClient, activeAddress])
-
-  const handleMintTrophy = useCallback(() => {
-    handleMethod('mintTrophy')
-  }, [handleMethod])
-
-  const getButtonColor = (color: string) => {
-    const colors = {
-      purple: 'bg-purple-500 hover:bg-purple-600',
-      blue: 'bg-blue-500 hover:bg-blue-600',
-      green: 'bg-green-500 hover:bg-green-600',
-    }
-    return colors[color as keyof typeof colors] || 'bg-gray-500 hover:bg-gray-600'
-  }
-
-  const handleAction = (action: string) => {
-    switch (action) {
-      case 'toggleWallet':
-        toggleModal('wallet')
-        break
-      case 'createApp':
-        getAppClient()
-        break
-      case 'mintTrophy':
-        handleMintTrophy()
-        break
-    }
+  const getLoadingLabel = (key: string, label: string) => {
+    if (!isLoadingMethod) return label
+    return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
   }
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
+      {/* Action Buttons */}
       <div className="flex gap-2 mb-2">
         {ACTION_BUTTONS.map(({ key, label, color, action }) => (
           <button
             key={key}
-            className={`py-2 px-4 rounded text-white font-bold ${getButtonColor(color)} border-2 border-black transition-colors ${
-              key === 'mintTrophy' && isLoadingMethod ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`py-2 px-4 rounded text-white font-bold border-2 border-black transition-colors
+              ${BUTTON_COLORS[color as keyof typeof BUTTON_COLORS]}
+              ${isActionLoading(key) ? 'opacity-50' : ''}
+            `}
             onClick={() => handleAction(action)}
-            disabled={key === 'mintTrophy' && isLoadingMethod}
+            disabled={isActionLoading(key)}
           >
-            {key === 'mintTrophy' && isLoadingMethod ? 'Minting...' : label}
+            {getLoadingLabel(key, label)}
           </button>
         ))}
       </div>
@@ -107,13 +89,11 @@ const Home: React.FC = () => {
           return (
             <button
               key={key}
-              className={`text-base px-4 py-1 rounded font-semibold transition-colors duration-200
-          ${
-            isDisabled
-              ? 'bg-gray-700 text-gray-300 border-gray-500 border-2'
-              : 'bg-slate-800 text-yellow-300 border-yellow-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200 border-2'
-          }
-        `}
+              className={`text-base px-4 py-1 rounded font-semibold border-2 transition-colors duration-200 ${
+                isDisabled
+                  ? 'bg-gray-700 text-gray-300 border-gray-500'
+                  : 'bg-slate-800 text-yellow-300 border-yellow-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200'
+              }`}
               onClick={() => toggleModal(modal)}
               disabled={isDisabled}
               title={isDisabled ? 'Wallet connection required!' : undefined}
@@ -124,25 +104,28 @@ const Home: React.FC = () => {
         })}
       </div>
 
-      {/* App Info */}
+      {/* App Information */}
       {appClient && (
-        <div className="text-indigo-200 font-bold my-2">
+        <div className="text-indigo-200 font-bold my-2 space-y-1">
           <div>
             App Name: <span className="text-cyan-300">{appClient.appName.toString()}</span>
           </div>
           <div>
             App ID: <span className="text-cyan-300">{appClient.appId.toString()}</span>
           </div>
+
           {appClient.appAddress && (
             <div className="flex items-center gap-2">
               App Address: <span className="text-cyan-300">{ellipseAddress(appClient.appAddress.toString())}</span>
               <CopyAddressBtn value={appClient.appAddress.toString()} title="Copy full address" />
             </div>
           )}
+
           <div className="flex items-center gap-2">
             App Creator: <span className="text-cyan-300">{ellipseAddress(appCreator!)}</span>
             <CopyAddressBtn value={appCreator!} title="Copy full address" />
           </div>
+
           <div>
             Last Block Round: <span className="text-cyan-300">{lastRound} ❒</span>
           </div>
@@ -151,6 +134,8 @@ const Home: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Game Components */}
       {activeAddress && appClient && !appIsLoading && (
         <div>
           <GameTable />

@@ -232,7 +232,7 @@ def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
 
         # Establish game play window by setting expiry timestamp
         game_state.expiry_ts = arc4.UInt64(
-            Global.latest_timestamp + UInt64(cst.EXPIRY_INTERVAL)
+            Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
         )
 
         # Emit ARC-28 event for off-chain tracking
@@ -255,12 +255,12 @@ def is_game_over(
     # Check game over criteria
     if (
         game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
-    or game_state.active_players.native == 0  # If no more active players
-    or (
-        game_state.active_players == 1  # If only one active player AND
-        and Txn.sender == game_state.admin_address  # If sender is admin address AND
-        and game_state.staking_finalized == False  # If staking is not finalized  # noqa: E712
-        )
+        or game_state.active_players.native == 0  # If no more active players
+        or (
+            game_state.active_players == 1  # If only one active player AND
+            and Txn.sender == game_state.admin_address  # If sender is admin address AND
+            and game_state.staking_finalized == False  # noqa: E712
+        )  # If staking is not finalized
     ):
         # Reset game register box contents to their default starting values for any remaining players
         game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
@@ -296,12 +296,12 @@ def is_game_over(
         )
 
         # If only 1 player in lobby after game goes live, they get entire prize pool
-        if game_state.prize_pool.native == cst.STAKE_AMOUNT_OTHER:
+        if game_state.prize_pool.native == cst.STAKE_AMOUNT:
             first_prize_share = game_state.prize_pool.native
             second_prize_share = UInt64(0)
             third_prize_share = UInt64(0)
         # Elif, only 2 players in lobby after game goes live, split prize pool: 60% / remainder / 0
-        elif game_state.prize_pool.native == 2 * cst.STAKE_AMOUNT_OTHER:
+        elif game_state.prize_pool.native == 2 * cst.STAKE_AMOUNT:
             first_prize_share = game_state.prize_pool.native * UInt64(60) // UInt64(100)
             second_prize_share = game_state.prize_pool.native - first_prize_share
             third_prize_share = UInt64(0)  # No third player

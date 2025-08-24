@@ -45,7 +45,8 @@ export function getAppSubscriber(maxRoundsToSync: number) {
         {
           name: 'pieout-filter',
           filter: {
-            appId: 1001n,
+            // appId: 1001n,
+            appId: 744687269n,
             arc28Events: pieoutEvents.events.map((event) => ({
               groupName: pieoutEvents.groupName,
               eventName: event.name,
@@ -62,7 +63,7 @@ export function getAppSubscriber(maxRoundsToSync: number) {
       ],
       // waitForBlockWhenAtTip: true,
       syncBehaviour: 'sync-oldest-start-now',
-      frequencyInSeconds: 40,
+      frequencyInSeconds: 20,
       maxRoundsToSync: maxRoundsToSync,
       watermarkPersistence: {
         get: async () => watermark,

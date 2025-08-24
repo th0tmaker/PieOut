@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { useAppSubscriberCtx } from '../hooks/useAppSubscriberCtx'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
-import { ellipseAddress } from '../utils/ellipseAddress'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useGameIdCtx } from '../hooks/useGameIdCtx'
+import { AnimatePresence, motion } from 'framer-motion'
+import React, { useCallback, useEffect, useState } from 'react'
 import { AppBaseBtn } from '../buttons/AppBaseBtn'
+import { useAppSubscriberCtx } from '../hooks/useAppSubscriberCtx'
+import { useGameIdCtx } from '../hooks/useGameIdCtx'
+import { ellipseAddress } from '../utils/ellipseAddress'
 
 // Item animation with smoother, longer transitions
 const itemVariants = {
@@ -48,7 +48,7 @@ const GameEventSub: React.FC = React.memo(() => {
   const {
     currentEvent: subCurrentEvent,
     clearCurrentAndShowNext: subClearCurrentAndShowNext,
-    fadingOutEventId: subFadingOutEventId,
+    fadingOutTxnId: subFadingOutTxnId,
     queueLength: subQueueLength,
     start: subStart,
     stop: subStop,
@@ -61,8 +61,8 @@ const GameEventSub: React.FC = React.memo(() => {
   const [pollStatus, setPollStatus] = useState<string | null>(null)
   const [gameIdFilterEnabled, setGameIdFilterEnabled] = useState(false)
 
-  // Boolean conditions
-  const isFadingOut = subCurrentEvent && subFadingOutEventId === subCurrentEvent.eventId
+  // Boolean conditions - now using txnId instead of eventId
+  const isFadingOut = subCurrentEvent && subFadingOutTxnId === subCurrentEvent.txnId
 
   // Effects
   // Automatically clear poll status message from screen after a delay
@@ -132,7 +132,7 @@ const GameEventSub: React.FC = React.memo(() => {
   // Callback to manually skip the current event and show the next one
   const handleSkipClick = useCallback(() => {
     if (!subCurrentEvent) return
-    consoleLogger.info(`🎬 User manually skipped event #${subCurrentEvent.eventId}`)
+    consoleLogger.info(`🎬 User manually skipped event with txnId: ${subCurrentEvent.txnId}`)
     subClearCurrentAndShowNext()
   }, [subCurrentEvent, subClearCurrentAndShowNext])
 
@@ -194,10 +194,10 @@ const GameEventSub: React.FC = React.memo(() => {
       {/* Event display */}
       <div>
         {subCurrentEvent && shouldShowEvent() && (
-          <div className="max-h-60 overflow-y-auto w-fit space-y-2">
+          <div className="max-h-60 w-fit space-y-2">
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${subCurrentEvent.txnId}-${subCurrentEvent.timestamp}-${subCurrentEvent.eventId}`}
+                key={`${subCurrentEvent.txnId}-${subCurrentEvent.timestamp}`}
                 variants={itemVariants}
                 initial="initial"
                 animate={isFadingOut ? 'fadingOut' : 'animate'}
@@ -244,9 +244,9 @@ const GameEventSub: React.FC = React.memo(() => {
                   </div>
                 </div>
 
-                {/* Row 2: eventId • timestamp • txnId */}
+                {/* Row 2: timestamp • txnId (removed eventId) */}
                 <div className="text-slate-300">
-                  # {subCurrentEvent.eventId} • {new Date(subCurrentEvent.timestamp).toLocaleTimeString()} • Txn ID:{' '}
+                  {new Date(subCurrentEvent.timestamp).toLocaleTimeString()} • Txn ID:{' '}
                   <span>{ellipseAddress(subCurrentEvent.txnId, 6)}</span>
                 </div>
 

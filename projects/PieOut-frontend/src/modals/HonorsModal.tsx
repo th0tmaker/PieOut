@@ -146,7 +146,7 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
   }, [trophyHolderAddress, activeAddress, expectedClaimState])
 
   // Early return if no necessary data
-  if (!gameTrophyData?.assetId) return null
+  if (!appClient || !gameTrophyData?.assetId) return null
 
   // Conditions
   const { isCurrentlyOptedIn, isTrophyHolder } = accountStates
