@@ -1,3 +1,4 @@
+//src/components/GameEventSub.tsx
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useCallback, useEffect, useState } from 'react'
@@ -6,7 +7,7 @@ import { useAppSubscriberCtx } from '../hooks/useAppSubscriberCtx'
 import { useGameIdCtx } from '../hooks/useGameIdCtx'
 import { ellipseAddress } from '../utils/ellipseAddress'
 
-// Item animation with smoother, longer transitions
+// Define the animation variants for the game event subscriber
 const itemVariants = {
   initial: {
     opacity: 0,
@@ -61,13 +62,13 @@ const GameEventSub: React.FC = React.memo(() => {
   const [pollStatus, setPollStatus] = useState<string | null>(null)
   const [gameIdFilterEnabled, setGameIdFilterEnabled] = useState(false)
 
-  // Boolean conditions - now using txnId instead of eventId
+  // Boolean conditions
   const isFadingOut = subCurrentEvent && subFadingOutTxnId === subCurrentEvent.txnId
 
   // Effects
   // Automatically clear poll status message from screen after a delay
   useEffect(() => {
-    // If key requirements are missing, return early
+    // If poll status is missing, return early
     if (!pollStatus) return
 
     // Define timer reference for delayed clearing
@@ -78,12 +79,13 @@ const GameEventSub: React.FC = React.memo(() => {
       timer = setTimeout(() => setPollStatus(null), 5000) // Clear after 5 seconds
     }
 
-    // Cleanup: clear the timer if effect re-runs or component unmounts
+    // Clear the timer if effect re-runs or component unmounts
     return () => {
       if (timer) clearTimeout(timer)
     }
   }, [subCurrentEvent, pollStatus])
 
+  // Callbacks
   // Callback to determine whether the current event should be shown based on filters
   const shouldShowEvent = useCallback(() => {
     if (!subCurrentEvent) return false
@@ -95,27 +97,29 @@ const GameEventSub: React.FC = React.memo(() => {
     return eventGameId === currentGameId
   }, [subCurrentEvent, gameIdFilterEnabled, gameId])
 
+  // Handlers
   // Callback to toggle the game ID filter on/off
   const handleGameIdFilterToggle = useCallback(() => {
     const newState = !gameIdFilterEnabled
     setGameIdFilterEnabled(newState)
-    consoleLogger.info(`🎯 Game ID filter ${newState ? 'enabled' : 'disabled'} for gameId: ${gameId}`)
+    // consoleLogger.info(`Game ID filter ${newState ? 'enabled' : 'disabled'} for gameId: ${gameId}`)
   }, [gameIdFilterEnabled, gameId])
 
   // Callback to start the subscriber
   const handleStart = useCallback(() => {
-    consoleLogger.info('🚀 User clicked Start - starting subscriber')
+    // consoleLogger.info('User clicked Start - starting subscriber')
     subStart()
   }, [subStart])
 
   // Callback to stop the subscriber
   const handleStop = useCallback(() => {
-    consoleLogger.info('🛑 User clicked Stop - stopping subscriber')
+    // consoleLogger.info('User clicked Stop - stopping subscriber')
     subStop()
   }, [subStop])
 
   // Callback to perform a single poll request, ensuring no concurrent polling
   const handlePollOnce = useCallback(async () => {
+    // If subscriber is already polling, return early
     if (isPolling) return
     setIsPolling(true)
 
@@ -132,7 +136,7 @@ const GameEventSub: React.FC = React.memo(() => {
   // Callback to manually skip the current event and show the next one
   const handleSkipClick = useCallback(() => {
     if (!subCurrentEvent) return
-    consoleLogger.info(`🎬 User manually skipped event with txnId: ${subCurrentEvent.txnId}`)
+    // consoleLogger.info(`User manually skipped event with txnId: ${subCurrentEvent.txnId}`)
     subClearCurrentAndShowNext()
   }, [subCurrentEvent, subClearCurrentAndShowNext])
 
@@ -151,10 +155,10 @@ const GameEventSub: React.FC = React.memo(() => {
     navigator.clipboard
       .writeText(payload)
       .then(() => {
-        consoleLogger.info('✅ Event copied to clipboard (timestamp in seconds)')
+        // consoleLogger.info('Event copied to clipboard (timestamp in seconds)')
       })
       .catch((err) => {
-        consoleLogger.error('❌ Failed to copy event JSON:', err)
+        consoleLogger.error('Failed to copy event JSON:', err)
       })
   }, [subCurrentEvent])
 

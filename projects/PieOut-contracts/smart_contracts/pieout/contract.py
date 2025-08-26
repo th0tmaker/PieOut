@@ -628,12 +628,22 @@ class Pieout(ARC4Contract):
                 game_state.expiry_ts < Global.latest_timestamp
             ), err.TIME_CONSTRAINT_VIOLATION
 
-            # If admin is only active player skip live phase to prevent score padding
-            if (
-                game_state.admin_address == Txn.sender
-                and game_state.active_players == 1
-            ):
-                # Go straight to checking if game is over
+            # Check if the admin is the only active player when game still in queue
+            admin_only_player = (
+                game_state.active_players.native == 1
+                and srt.check_acc_in_game(
+                    game_id=game_id,
+                    account=game_state.admin_address.native,
+                    box_game_players=self.box_game_players,
+                    player_count=UInt64(1),
+                    clear_player=False,
+                )
+                and not game_state.staking_finalized
+            )
+
+            # If admin is only player, skip live phase to prevent score padding
+            if admin_only_player:
+                # Check if game is over
                 srt.is_game_over(
                     game_id=game_id,
                     game_state=game_state,

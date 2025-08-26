@@ -1,3 +1,4 @@
+//src/components/GameTable.tsx
 import { microAlgos } from '@algorandfoundation/algokit-utils'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -17,24 +18,35 @@ import ActivePlayersModal from '../modals/ActivePlayersModal'
 import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 
+// Create a reusable styled <td> component that will represent the table cell
 const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const baseClasses = 'font-bold text-center bg-slate-800 border border-indigo-300 px-4 py-2'
   const textColor = /\btext-(?:\w+)-\d{3}\b/.test(className) ? '' : 'text-indigo-200'
   return <td className={`${baseClasses} ${textColor} ${className}`}>{children}</td>
 }
 
+// Create a simple load animation with text and animate-spin indicator
+const LoadSpinner = () => (
+  <div className="flex items-center justify-center gap-2">
+    <span>Processing...</span>
+    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-200" />
+  </div>
+)
+
+// Create a dropdown option item with optional load state and tooltip
 const DropdownOption = ({
   enabled,
-  loading,
   onClick,
   children,
+  loading,
   tooltipMessage,
 }: {
   enabled: boolean
-  loading?: boolean
   onClick: () => void
   children: React.ReactNode
+  loading?: boolean
   tooltipMessage?: string
 }) => (
   <li
@@ -62,19 +74,14 @@ const DropdownOption = ({
   </li>
 )
 
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center gap-2">
-    <span>Processing...</span>
-    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-200" />
-  </div>
-)
-
 const GameTable: React.FC = React.memo(() => {
+  // Hooks
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { appCreator, isLoading: appIsLoading } = useAppCtx()
-  const [inputedGameId, setInputedGameId] = useState<string>('')
+  const { appMethods, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
+  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
   const { lastRound } = useLastRound(algorand.client.algod)
+  const currentTimestamp = useCurrentTimestamp()
   const { gameId, setGameId } = useGameIdCtx()
   const { gameRegisterData, gameStateData, gamePlayersData, isGameDataLoading, setIsGameDataLoading } = useGameDataCtx()
 
@@ -82,11 +89,10 @@ const GameTable: React.FC = React.memo(() => {
   const safeSetInputedGameId = useCallback((val: string | null | undefined) => {
     setInputedGameId(val ?? '') // always fallback to empty string
   }, [])
-
   const sanitizeGameIdInput = useGameIdSanitizer(safeSetInputedGameId)
-  const currentTimestamp = useCurrentTimestamp()
-  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
+  // States
+  const [inputedGameId, setInputedGameId] = useState<string>('')
   // Expected states for optimistic UI updates
   const [expectedStates, setExpectedStates] = useState({
     join: false,
@@ -117,7 +123,7 @@ const GameTable: React.FC = React.memo(() => {
     gamePlayersBtn: useRef<HTMLButtonElement>(null),
   }
 
-  // Computed states
+  // Memos
   const accState = useMemo(() => {
     const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
     const isAdminSolePlayer = Number(gameStateData?.activePlayers) === 1 && isAuthorized
@@ -129,6 +135,7 @@ const GameTable: React.FC = React.memo(() => {
   }, [activeAddress, gameStateData, appCreator, isLoadingMethod])
 
   const eventTriggerConditions = useMemo(() => {
+    // If no game state data found, return early
     if (!gameStateData)
       return {
         triggersEvent0: false,
@@ -137,17 +144,16 @@ const GameTable: React.FC = React.memo(() => {
         tooltipMessage2: 'Game state data not found.',
       }
 
+    // Get relevant data from game state box
     const { expiryTs, stakingFinalized, prizePool } = gameStateData
-    // Add a 5-10 second buffer to account for timing differences
-    const TIMING_BUFFER_SECONDS = 10
+    const TIMING_BUFFER_SECONDS = 10 // Add a 10 second buffer to compensate for blockchain delay
+
+    // Define boolean conditions for when phase has expired and game is over
     const isExpired = currentTimestamp > Number(expiryTs) + TIMING_BUFFER_SECONDS
-    const gameEnded = prizePool === 0n
+    const gameEnded = prizePool === 0n // Game is over when prize pool amount is 0
 
     return {
-      // Event 0 (Game Live) - available when expired, not finalized, not ended
-      // For sole admin, this will internally transition to game over
       triggersEvent0: isExpired && !stakingFinalized && !gameEnded,
-      // Event 2 (Game Over) - only available after game is live (stakingFinalized = true)
       triggersEvent2: isExpired && stakingFinalized && !gameEnded,
       tooltipMessage0: gameEnded
         ? 'Unavailable. Game already ended.'
@@ -168,7 +174,8 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [gameStateData, currentTimestamp, accState.isAdminSolePlayer])
 
-  // Helper functions
+  // Callbacks
+  // Reset all expected state flags to false
   const resetExpectedStates = useCallback(() => {
     setExpectedStates({
       join: false,
@@ -181,14 +188,17 @@ const GameTable: React.FC = React.memo(() => {
     })
   }, [])
 
+  // Update a specific expected state flag by key
   const updateExpectedState = useCallback((key: keyof typeof expectedStates, value: boolean) => {
     setExpectedStates((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  // Close all dropdown menus
   const closeAllDropdowns = useCallback(() => {
     setOpenDropdowns({ adminActions: false, triggerEvents: false, gamePlayers: false })
   }, [])
 
+  // Toggle a specific dropdown menu while closing others
   const toggleDropdown = useCallback((name: keyof typeof openDropdowns) => {
     setOpenDropdowns((prev) => ({
       adminActions: name === 'adminActions' ? !prev[name] : false,
@@ -197,14 +207,16 @@ const GameTable: React.FC = React.memo(() => {
     }))
   }, [])
 
-  // Action handlers
+  // Handlers
+  // Handle game ID input and update state
   const handleGameIdInput = useCallback(() => {
     const newGameId = BigInt(inputedGameId ?? '0')
     if (newGameId !== 0n) setIsGameDataLoading(true)
     setGameId(newGameId)
   }, [inputedGameId, setIsGameDataLoading, setGameId])
 
-  const handleJoinTxn = useCallback(async () => {
+  // Handle join game transaction method call
+  const handleJoinGameTxn = useCallback(async () => {
     if (!activeAddress) return
     try {
       updateExpectedState('join', true)
@@ -215,7 +227,8 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [handleMethod, gameId, activeAddress, updateExpectedState])
 
-  const handlePlayTxn = useCallback(async () => {
+  // Handle play game transaction method call
+  const handlePlayGameTxn = useCallback(async () => {
     try {
       updateExpectedState('play', true)
       await handleMethod('playGame', { gameId })
@@ -225,7 +238,8 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [handleMethod, gameId, updateExpectedState])
 
-  const handleSetTxn = useCallback(async () => {
+  // Handle set commit game transaction method call
+  const handleSetCommitGameTxn = useCallback(async () => {
     try {
       updateExpectedState('set', true)
       await handleMethod('setGameCommit', { gameId })
@@ -235,14 +249,8 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [handleMethod, gameId, updateExpectedState])
 
-  const handleDeleteTxn = useCallback(async () => {
-    if (accState.canDeleteGame && !isLoadingMethod) {
-      await handleMethod('deleteGame', { gameId })
-      setGameId(null)
-    }
-  }, [accState.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
-
-  const handleResetTxn = useCallback(async () => {
+  // Handle reset game transaction method call
+  const handleResetGameTxn = useCallback(async () => {
     if (accState.canResetGame && !isLoadingMethod) {
       try {
         updateExpectedState('reset', true)
@@ -254,7 +262,17 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [accState.canResetGame, isLoadingMethod, handleMethod, gameId, updateExpectedState])
 
+  // Handle delete game transaction method call
+  const handleDeleteGameTxn = useCallback(async () => {
+    if (accState.canDeleteGame && !isLoadingMethod) {
+      await handleMethod('deleteGame', { gameId })
+      setGameId(null)
+    }
+  }, [accState.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
+
+  // Handle trigger game event transaction method call for event 0
   const handleTriggerGameLive = useCallback(async () => {
+    if (!appMethods || !appClient || !activeAddress || !gameId) return
     try {
       updateExpectedState('gameLive', true)
       await handleMethod('triggerGameEvent', { gameId, triggerId: 0n })
@@ -264,6 +282,7 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [handleMethod, gameId, updateExpectedState])
 
+  // Handle trigger game event transaction method call for event 2
   const handleTriggerGameOver = useCallback(async () => {
     try {
       updateExpectedState('gameOver', true)
@@ -274,7 +293,8 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [handleMethod, gameId, updateExpectedState])
 
-  // Effects for state management
+  // Effects
+  // Reset expected states when active address changes
   useEffect(() => resetExpectedStates(), [activeAddress, resetExpectedStates])
 
   // Reset inputedGameId when wallet disconnects to prevent controlled/uncontrolled input warning
@@ -284,18 +304,21 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [activeAddress, safeSetInputedGameId])
 
+  // Reset join state once player successfully joins
   useEffect(() => {
     if (expectedStates.join && activeAddress && gamePlayersData?.includes(activeAddress)) {
       updateExpectedState('join', false)
     }
   }, [expectedStates.join, activeAddress, gamePlayersData, updateExpectedState])
 
+  // Reset play state once prize pool reaches 0
   useEffect(() => {
     if (expectedStates.play && gameStateData && Number(gameStateData.prizePool) === 0) {
       updateExpectedState('play', false)
     }
   }, [expectedStates.play, gameStateData, updateExpectedState])
 
+  // Reset set state once game commit is registered and check commit round status
   useEffect(() => {
     if (expectedStates.set && gameRegisterData && gameRegisterData.gameId !== 0n) {
       updateExpectedState('set', false)
@@ -307,6 +330,7 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [expectedStates.set, gameRegisterData, lastRound, updateExpectedState])
 
+  // Clear `waitingForCommitRound` once commit round is reached
   useEffect(() => {
     if (expectedStates.waitingForCommitRound && gameRegisterData && lastRound) {
       const wasCommitRandRoundReached = typeof lastRound === 'number' && BigInt(lastRound) >= gameRegisterData.commitRandRound
@@ -316,7 +340,7 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [expectedStates.waitingForCommitRound, gameRegisterData, lastRound, updateExpectedState])
 
-  // Updated effects for reset, gameLive, and gameOver expected states
+  // Reset "reset" state once reset conditions are met
   useEffect(() => {
     if (expectedStates.reset && gameStateData) {
       const isResetComplete = Number(gameStateData.activePlayers) === 1 && !gameStateData.stakingFinalized
@@ -326,6 +350,7 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [expectedStates.reset, gameStateData, updateExpectedState])
 
+  // Reset "gameLive" state once game goes live or prize pool reaches 0
   useEffect(() => {
     if (expectedStates.gameLive && gameStateData) {
       // Clear loading state when:
@@ -340,13 +365,14 @@ const GameTable: React.FC = React.memo(() => {
     }
   }, [expectedStates.gameLive, gameStateData, updateExpectedState])
 
+  // Reset "gameOver" state once prize pool reaches 0
   useEffect(() => {
     if (expectedStates.gameOver && gameStateData && Number(gameStateData.prizePool) === 0) {
       updateExpectedState('gameOver', false)
     }
   }, [expectedStates.gameOver, gameStateData, updateExpectedState])
 
-  // Dropdown event listener
+  // Use the dropdown event listener hook to listen to dropdown item related events
   useDropdownEventListener({
     dropdownListRefs: Object.values(dropdownListRefs),
     dropdownBtnRefs: Object.values(dropdownBtnRefs),
@@ -355,10 +381,12 @@ const GameTable: React.FC = React.memo(() => {
     listenEscape: true,
   })
 
-  // Render functions
+  // Render the admin table cell dropdown item
   const renderAdminDropdown = useCallback(() => {
-    if (!openDropdowns.adminActions) return null
+    // Only show dropdown if adminActions is open and activeAddress exists, else return null
+    if (!openDropdowns.adminActions || !activeAddress) return null
 
+    // Determine boolean conditions for loading states of buttons
     const isResetLoading = expectedStates.reset
     const isDeleteLoading = isLoadingMethod && !isResetLoading
 
@@ -371,7 +399,7 @@ const GameTable: React.FC = React.memo(() => {
           <DropdownOption
             enabled={accState.canResetGame}
             loading={isResetLoading}
-            onClick={handleResetTxn}
+            onClick={handleResetGameTxn}
             tooltipMessage={isResetLoading ? 'Processing game reset...' : 'You must be the admin and the game must be over to reset it.'}
           >
             Reset Game
@@ -379,7 +407,7 @@ const GameTable: React.FC = React.memo(() => {
           <DropdownOption
             enabled={accState.canDeleteGame}
             loading={isDeleteLoading}
-            onClick={handleDeleteTxn}
+            onClick={handleDeleteGameTxn}
             tooltipMessage={
               isDeleteLoading ? 'Processing game deletion...' : 'Game must have no active players or admin must be sole active player.'
             }
@@ -389,11 +417,14 @@ const GameTable: React.FC = React.memo(() => {
         </ul>
       </div>
     )
-  }, [openDropdowns.adminActions, accState, expectedStates.reset, isLoadingMethod, handleResetTxn, handleDeleteTxn])
+  }, [openDropdowns.adminActions, accState, expectedStates.reset, isLoadingMethod, handleResetGameTxn, handleDeleteGameTxn])
 
+  // Render the trigger table cell dropdown item
   const renderTriggerDropdown = useCallback(() => {
+    // Only show dropdown if adminActions is open and activeAddres exists, else return null
     if (!openDropdowns.triggerEvents || !activeAddress) return null
 
+    // Determine boolean conditions for loading states of buttons
     const isGameLiveLoading = expectedStates.gameLive
     const isGameOverLoading = expectedStates.gameOver
 
@@ -432,22 +463,31 @@ const GameTable: React.FC = React.memo(() => {
     handleTriggerGameOver,
   ])
 
+  // Render the phase table cell content
   const renderPhaseContent = useCallback(() => {
+    // Only render content if game state data and activeAddres exists, else return null
     if (!gameStateData || !activeAddress) return null
 
-    const isGameOver = Number(gameStateData.prizePool) === 0
+    // Boolean conditions
     const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
     const isAdmin = activeAddress === gameStateData.adminAddress
     const hasGameRegisterData = gameRegisterData !== undefined
-    const vrfRoundWaitBuffer = 10n
+    const isGameOver = Number(gameStateData.prizePool) === 0
 
+    // If game is over, display red text 'Over'
     if (isGameOver) return <span className="text-red-500">Over</span>
 
+    // Buffer 10 rounds to ensure VRF output is available
+    const vrfRoundWaitBuffer = 10n
+
+    // A helper method to check if VRF commit rand round has been reached
     const wasCommitRandRoundReached = (lastRound: number | null, commitRandRound: bigint) =>
       typeof lastRound === 'number' && lastRound !== null && BigInt(lastRound) >= commitRandRound + vrfRoundWaitBuffer
 
     if (gameStateData.stakingFinalized) {
-      // LIVE PHASE
+      // LIVE/PLAY PHASE
+
+      // Boolean conditions determining if the user can click play
       const canPlay =
         gameRegisterData?.gameId === gameId &&
         gameStateData.stakingFinalized &&
@@ -456,8 +496,10 @@ const GameTable: React.FC = React.memo(() => {
         currentTimestamp <= Number(gameStateData.expiryTs) &&
         wasCommitRandRoundReached(lastRound, gameRegisterData.commitRandRound)
 
+      // Boolean conditions determining if the play button click should display the loading animation
       const isPlayLoading = isLoadingMethod || expectedStates.play || expectedStates.set || expectedStates.waitingForCommitRound
 
+      // Define the tooltip message based on what condition is met
       const playTooltipMessage = !hasGameRegisterData
         ? 'Unavailable: Registration required for use.'
         : !isPlayerInGame
@@ -477,7 +519,7 @@ const GameTable: React.FC = React.memo(() => {
             <>
               {' / '}
               <TableBtn
-                onClick={handlePlayTxn}
+                onClick={handlePlayGameTxn}
                 disabled={!canPlay || isPlayLoading}
                 tooltipMessage={!canPlay && !isPlayLoading ? playTooltipMessage : undefined}
               >
@@ -489,12 +531,17 @@ const GameTable: React.FC = React.memo(() => {
       )
     } else {
       // QUEUE/JOIN PHASE
+
+      // Boolean conditions determining if the user can click join
       const canJoin =
         !gameStateData.stakingFinalized && !isPlayerInGame && hasGameRegisterData && currentTimestamp <= Number(gameStateData.expiryTs)
+
+      // Boolean conditions determining if the join button click should display the loading animation
       const isJoinLoading = isLoadingMethod || expectedStates.join
 
+      // Define the tooltip message based on what condition is met
       const joinTooltipMessage = !hasGameRegisterData
-        ? 'Unavailable: Game register profile required.'
+        ? 'Unavailable: Profile registration required.'
         : gameStateData.stakingFinalized
           ? 'Unavailable: This game has already started.'
           : isPlayerInGame
@@ -510,7 +557,7 @@ const GameTable: React.FC = React.memo(() => {
             <>
               {' / '}
               <TableBtn
-                onClick={handleJoinTxn}
+                onClick={handleJoinGameTxn}
                 disabled={!canJoin || isJoinLoading}
                 tooltipMessage={!canJoin && !isJoinLoading ? joinTooltipMessage : undefined}
               >
@@ -528,17 +575,22 @@ const GameTable: React.FC = React.memo(() => {
     gamePlayersData,
     gameRegisterData,
     lastRound,
-    handleJoinTxn,
-    handlePlayTxn,
+    handleJoinGameTxn,
+    handlePlayGameTxn,
     expectedStates,
     isLoadingMethod,
     gameId,
   ])
 
+  // Render the set table cell content
   const renderSetContent = useCallback(() => {
+    // Only render content if game state data and activeAddres exists, else return null
     if (!gameStateData || !activeAddress) return null
 
+    // Boolean conditiond determining if player is in game or not
     const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
+
+    // Boolean conditions determining if the user can click join
     const canSet =
       gameStateData.stakingFinalized &&
       isPlayerInGame &&
@@ -546,19 +598,22 @@ const GameTable: React.FC = React.memo(() => {
       gameRegisterData.gameId === 0n &&
       currentTimestamp <= Number(gameStateData.expiryTs)
 
+    // Boolean conditions determining if the set button click should display the loading animation
     const isSetLoading = isLoadingMethod || expectedStates.set
+
+    // Define the tooltip message based on what condition is met
     const tooltipMessage = !gameStateData.stakingFinalized
       ? 'Unavailable: Game has not started yet.'
       : !isPlayerInGame
         ? 'Unavailable: You are not an active player in this game.'
         : gameRegisterData === undefined
-          ? 'Unavailable: Game register data not available.'
+          ? 'Unavailable: Profile registration data not available.'
           : gameRegisterData.gameId !== 0n
             ? 'Unavailable: Prior commitment unresolved.'
             : 'Unavailable: Commitment set deadline expired.'
 
     if (canSet && !isSetLoading) {
-      return <TableBtn onClick={handleSetTxn}>Set</TableBtn>
+      return <TableBtn onClick={handleSetCommitGameTxn}>Set</TableBtn>
     }
 
     if (isSetLoading) {
@@ -570,9 +625,20 @@ const GameTable: React.FC = React.memo(() => {
     }
 
     return <Tooltip message={tooltipMessage}>Set</Tooltip>
-  }, [gameStateData, gameRegisterData, gamePlayersData, activeAddress, handleSetTxn, expectedStates.set, isLoadingMethod, currentTimestamp])
+  }, [
+    gameStateData,
+    gameRegisterData,
+    gamePlayersData,
+    activeAddress,
+    handleSetCommitGameTxn,
+    expectedStates.set,
+    isLoadingMethod,
+    currentTimestamp,
+  ])
 
+  // Render the table body
   const renderTableBody = useCallback(() => {
+    // If Game ID equals zero
     if (gameId === 0n) {
       return (
         <tr>
@@ -582,17 +648,18 @@ const GameTable: React.FC = React.memo(() => {
         </tr>
       )
     }
-
+    // If Game ID does not equal zero and game data is loading
     if (gameId !== null && isGameDataLoading) {
       return (
         <tr>
           <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
-            <LoadingSpinner />
+            <LoadSpinner />
           </td>
         </tr>
       )
     }
-    if (!gameStateData && gameId != null && !isGameDataLoading) {
+    // If Game ID does not equal zero and game data is not loading and game state data doesn't exist
+    if (gameId != null && !isGameDataLoading && !gameStateData) {
       return (
         <tr>
           <td colSpan={9} className="relative text-center py-4 px-2 text-white">
@@ -602,7 +669,8 @@ const GameTable: React.FC = React.memo(() => {
       )
     }
 
-    if (gameStateData && gameId != null) {
+    // If Game ID does not equal zero and game state data exists
+    if (gameId != null && gameStateData) {
       return (
         <tr>
           <TableCell>{gameId?.toString()}</TableCell>
@@ -681,6 +749,7 @@ const GameTable: React.FC = React.memo(() => {
       )
     }
 
+    // If none of the above
     return (
       <tr>
         <td colSpan={9} className="relative text-center py-4 px-2 text-white">

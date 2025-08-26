@@ -252,23 +252,30 @@ def is_game_over(
     box_game_register: BoxMap[Account, stc.GameRegister],
     box_game_players: BoxMap[UInt64, Bytes],
 ) -> None:
+    # Define game over criteria
+    deadline_expired = game_state.expiry_ts < Global.latest_timestamp
+    no_active_players = game_state.active_players.native == 0
+    admin_only_player = (
+        game_state.active_players.native == 1
+        and check_acc_in_game(
+            game_id=game_id,
+            account=game_state.admin_address.native,
+            box_game_players=box_game_players,
+            player_count=UInt64(1),
+            clear_player=False,
+        )
+        and not game_state.staking_finalized
+    )
+
     # Check game over criteria
-    if (
-        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
-        or game_state.active_players.native == 0  # If no more active players
-        or (
-            game_state.active_players == 1  # If only one active player AND
-            and Txn.sender == game_state.admin_address  # If sender is admin address AND
-            and game_state.staking_finalized == False  # noqa: E712
-        )  # If staking is not finalized
-    ):
-        # Reset game register box contents to their default starting values for any remaining players
+    if deadline_expired or no_active_players or admin_only_player:
+        # Reset game register box contents for any remaining players
         game_players_bref = BoxRef(key=box_game_players.key_prefix + op.itob(game_id))
         for i in urange(0, game_players_bref.length, 32):
             player_addr_bytes = game_players_bref.extract(i, 32)
             if player_addr_bytes != Bytes(cst.ZERO_ADDR_BYTES):
                 player = Account.from_bytes(player_addr_bytes)
-                # Reset game commit values in game register box for player after they obtained a score
+                # Reset game commit values after scoring
                 reset_game_commit_values(
                     box_game_register=box_game_register,
                     account=player,

@@ -41,7 +41,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
     try {
       algorand.setDefaultSigner(transactionSigner)
       appMethodsRef.current = new PieoutMethods(algorand, activeAddress)
-      consoleLogger.info('[AppProvider] App methods initialized for:', activeAddress)
+      // consoleLogger.info('[AppProvider] App methods initialized for:', activeAddress)
     } catch (error) {
       consoleLogger.error('[AppProvider] Failed to initialize app methods:', error)
     }
@@ -57,7 +57,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
           appMethods: appMethodsRef.current,
           appClient: client,
         })
-        consoleLogger.info('[AppProvider] Method handler initialized')
+        // consoleLogger.info('[AppProvider] Method handler initialized')
       } catch (error) {
         consoleLogger.error('[AppProvider] Failed to initialize method handler:', error)
       }
@@ -80,14 +80,14 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
         const storedAppSpec = localStorage.getItem(STORAGE_KEYS.appSpec)
 
         if (!storedAppId || !storedAppSpec) {
-          consoleLogger.warn('[AppProvider] No stored app data found')
+          // consoleLogger.warn('[AppProvider] No stored app data found')
           return false
         }
 
-        consoleLogger.info('[AppProvider] Hydrating app from storage...')
+        // consoleLogger.info('[AppProvider] Hydrating app from storage...')
 
         // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
-        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744687269n })
+        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
 
         const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
         setAppClient(client)
@@ -98,7 +98,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
         }
 
         ensureMethodHandler(client)
-        consoleLogger.info('[AppProvider] Hydration successful:', client.appId)
+        // consoleLogger.info('[AppProvider] Hydration successful:', client.appId)
         return true
       } catch (error) {
         // consoleLogger.warn('[AppProvider] Hydration failed, clearing storage:', error)
@@ -120,7 +120,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
   /** Generate a new app client */
   const getAppClient = useCallback(async (): Promise<PieoutClient> => {
     if (appClient) {
-      consoleLogger.info('[AppProvider] App Client already exists')
+      // consoleLogger.info('[AppProvider] App Client already exists')
       return appClient
     }
     if (!activeAddress) throw new Error('No active wallet address')
@@ -132,10 +132,10 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       ensureAppMethods()
       if (!appMethodsRef.current) throw new Error('App methods not initialized')
 
-      consoleLogger.info('[AppProvider] Generating new app...')
+      // consoleLogger.info('[AppProvider] Generating new app...')
 
       // const client = await appMethodsRef.current.generate(activeAddress)
-      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744687269n })
+      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
 
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
@@ -147,7 +147,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       localStorage.setItem(STORAGE_KEYS.appCreator, creator)
       localStorage.setItem(STORAGE_KEYS.appSpec, JSON.stringify(client.appClient.appSpec))
 
-      consoleLogger.info('[AppProvider] New app generated:', client.appId)
+      // consoleLogger.info('[AppProvider] New app generated:', client.appId)
       return client
     } catch (error) {
       consoleLogger.error('[AppProvider] Failed to generate app client:', error)
@@ -163,7 +163,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
     const runInit = async () => {
       if (lastActiveAddressRef.current !== activeAddress) {
         if (lastActiveAddressRef.current !== undefined) {
-          consoleLogger.info('[AppProvider] Active address changed, clearing state')
+          // consoleLogger.info('[AppProvider] Active address changed, clearing state')
           clearInstances()
         }
         lastActiveAddressRef.current = activeAddress

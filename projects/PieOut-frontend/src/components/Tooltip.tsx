@@ -1,3 +1,4 @@
+// Create a custom tooltip that displays an user message when you hover the mouse over an element
 export const Tooltip = ({ children, message }: { children: React.ReactNode; message: React.ReactNode }) => (
   <div className="group inline-block relative">
     <span className="text-gray-400 cursor-help">{children}</span>

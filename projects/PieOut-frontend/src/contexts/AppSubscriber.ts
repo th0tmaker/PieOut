@@ -1,16 +1,16 @@
-// src/contexts/AppSubscriber.tsx
+//src/contexts/AppSubscriber.tsx
 import { SubscribedTransaction } from '@algorandfoundation/algokit-subscriber/types/subscription'
 import { createContext } from 'react'
-import { Arc28Event } from '../hooks/useAppSubscriber' // Import the exported type
+import { GameEvent } from '../types/GameEventProps'
 
-export type AppSubscriberEvents = {
+export type AppSubscriberHandler = {
   // Event data
-  arc28Events: Arc28Event[] // Full history in memory (displayed in array order)
-  arc28EventsCount: number // Number of events currently in display queue
+  gameEvents: GameEvent[] // Full history in memory (displayed in array order)
+  gameEventsCount: number // Number of events currently in display queue
   currentAppClientId: string | null // The appId we're subscribed to
 
-  // Drip-specific state
-  currentEvent: Arc28Event | null // Event currently displayed
+  // Event states
+  currentEvent: GameEvent | null // Event currently displayed
   queueLength: number // How many events are waiting to be shown
   fadingOutTxnId: string | null // Which event txnId is in fade-out stage
 
@@ -24,10 +24,10 @@ export type AppSubscriberEvents = {
   pollOnce: () => Promise<void>
 
   // Event management
-  clearArc28Events: () => void // Clear all events in queue + current
-  clearArc28Event: (txnId: string) => void // Remove all events from a given txnId
+  clearGameEvent: (txnId: string) => void // Remove all events from a given txnId
+  clearAllGameEvents: () => void // Clear all events in queue + current
 
-  // Drip controls
+  // Event controls
   clearCurrentAndShowNext: () => void // Skip current event and show next in queue
   setFadingOutTxnId: (txnId: string | null) => void // Mark event for fade-out by txnId
   clearFadingOutEvent: () => void // Remove fade-out flag
@@ -41,4 +41,4 @@ export type AppSubscriberEvents = {
 }
 
 // Create the App Subscriber Context
-export const AppSubscriberCtx = createContext<AppSubscriberEvents | undefined>(undefined)
+export const AppSubscriberCtx = createContext<AppSubscriberHandler | undefined>(undefined)

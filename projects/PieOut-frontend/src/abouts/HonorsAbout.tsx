@@ -12,14 +12,17 @@ const HonorsAboutContent = () => {
 
       <ul className="list-disc list-inside space-y-2 ml-4">
         <li>
+          <strong>Trophy (Asset ID):</strong> The unique NFT asset awarded to the highscorer. Only the current top scorer can claim it.
+        </li>
+        <li>
+          <strong>Trophy (Holder):</strong> The account currently holding the trophy in their balance.
+        </li>
+        <li>
           <strong>ATH Score:</strong> The all-time highest score recorded across all games played.
         </li>
         <li>
           <strong>ATH Address:</strong> The wallet address (Base32) of the player who achieved the all-time highest score. Use the copy
           button next to the address to copy it to your clipboard.
-        </li>
-        <li>
-          <strong>Trophy (Asset ID):</strong> The unique NFT asset awarded to the highscorer. Only the current top scorer can claim it.
         </li>
       </ul>
 

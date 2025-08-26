@@ -25,7 +25,7 @@ const ProfileAboutContent = () => {
           <strong>Game ID:</strong> If zero, the user can join an existing game. A non-zero value means they’re already in one.
         </li>
         <li>
-          <strong>PB Score:</strong> The user's personal best score across all games ever played. This data does NOT persist if account gets
+          <strong>Best Score:</strong> The user's personal best score across all games ever played. This data does NOT persist if account gets
           unregistered from the application.
         </li>
         <li>

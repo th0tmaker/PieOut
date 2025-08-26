@@ -2,6 +2,7 @@
 import { AlgorandSubscriber } from '@algorandfoundation/algokit-subscriber'
 import { algorand } from '../utils/network/getAlgorandClient'
 
+// Define the arc28 events expected to be emitted by the smart contract application
 const pieoutEvents = {
   groupName: 'pieout',
   events: [
@@ -37,7 +38,8 @@ const pieoutEvents = {
   continueOnError: false,
 }
 
-let watermark = 0n
+// Create a function that will return a new instance of the `AlgorandSubscriber` class with custom configuration
+let watermark = 0n // Define a watermark value for subscriber synchronization
 export function getAppSubscriber(maxRoundsToSync: number) {
   return new AlgorandSubscriber(
     {
@@ -46,7 +48,7 @@ export function getAppSubscriber(maxRoundsToSync: number) {
           name: 'pieout-filter',
           filter: {
             // appId: 1001n,
-            appId: 744687269n,
+            appId: 744828773n,
             arc28Events: pieoutEvents.events.map((event) => ({
               groupName: pieoutEvents.groupName,
               eventName: event.name,
