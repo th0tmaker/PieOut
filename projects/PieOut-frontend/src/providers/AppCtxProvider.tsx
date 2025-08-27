@@ -217,20 +217,21 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
   // New function to initialize app client immediately on load
   const initializeAppClient = useCallback(async () => {
-    // If we're already loading, don't start another initialization
-    if (isLoading) return
+    // If we're already loading or don't have an active address, return
+    if (isLoading || !activeAddress) return
+
+    // If we already have an app client, no need to initialize
+    if (appClient) return
 
     try {
       setIsLoading(true)
 
-      // First try to hydrate from storage if we haven't already and don't have a client
-      if (!appClient && !hasHydratedRef.current) {
-        const hydrated = await hydrateFromStorage()
-        if (hydrated) return // Successfully hydrated, exit early
-      }
+      // First try to hydrate from storage
+      const hydrated = await hydrateFromStorage()
 
-      // If we still don't have a client and have an active address, try to get/create one
-      if (!appClient && activeAddress) {
+      // If hydration failed, create/get the app client
+      if (!hydrated) {
+        consoleLogger.info('[AppProvider] Hydration failed, getting app client...')
         await getAppClient()
       }
     } catch (error) {
@@ -238,42 +239,49 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, appClient, hydrateFromStorage, activeAddress, getAppClient])
+  }, [isLoading, activeAddress, appClient, hydrateFromStorage, getAppClient])
 
   // Effects
-  // Initialize immediately on mount or when activeAddress changes
+  // Initialize when activeAddress becomes available
   useEffect(() => {
-    initializeAppClient()
-  }, [activeAddress]) // Run when activeAddress changes
+    if (activeAddress && !appClient) {
+      consoleLogger.info('[AppProvider] Active address detected, initializing app client...')
+      initializeAppClient()
+    }
+  }, [activeAddress, appClient, initializeAppClient])
 
   // Define a method that runs application state logic in response to the app client or active address changing
   useEffect(() => {
-    const runOnReload = async () => {
-      // Check if the active address has changed since last render
-      if (lastActiveAddressRef.current !== activeAddress) {
-        // Clear previous state when switching between different addresses
-        if (lastActiveAddressRef.current !== undefined) {
-          // Call method that clears any existing instances
-          clearInstances()
-          // Clear app client and creator when address changes
-          setAppClient(undefined)
-          setAppCreator(undefined)
-        }
-        // Update the ref to track the new active address
-        lastActiveAddressRef.current = activeAddress
-      }
+    // Check if the active address has changed since last render
+    if (lastActiveAddressRef.current !== activeAddress) {
+      consoleLogger.info('[AppProvider] Address changed from', lastActiveAddressRef.current, 'to', activeAddress)
 
-      // Initialize wallet-dependent functionality only when connected
-      if (activeAddress) {
-        // Set up core application methods for the connected wallet
-        ensureAppMethods()
-        // Configure method handlers if app client is available
-        if (appClient) {
-          ensureMethodHandler(appClient)
-        }
+      // Clear previous state when switching between different addresses
+      if (lastActiveAddressRef.current !== null && lastActiveAddressRef.current !== activeAddress) {
+        consoleLogger.info('[AppProvider] Clearing previous state for address change')
+        clearInstances()
+        setAppClient(undefined)
+        setAppCreator(undefined)
       }
+      // Update the ref to track the new active address
+      lastActiveAddressRef.current = activeAddress
     }
-    runOnReload()
+
+    // Initialize wallet-dependent functionality only when connected
+    if (activeAddress) {
+      // Set up core application methods for the connected wallet
+      ensureAppMethods()
+      // Configure method handlers if app client is available
+      if (appClient) {
+        ensureMethodHandler(appClient)
+      }
+    } else {
+      // Clear everything when wallet disconnects
+      consoleLogger.info('[AppProvider] No active address, clearing state')
+      clearInstances()
+      setAppClient(undefined)
+      setAppCreator(undefined)
+    }
   }, [activeAddress, appClient, ensureMethodHandler])
 
   // Memoized context value to avoid unnecessary re-renders
