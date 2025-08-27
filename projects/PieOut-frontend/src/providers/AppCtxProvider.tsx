@@ -8,77 +8,107 @@ import { createMethodHandler } from '../methodHandler'
 import { PieoutMethods } from '../methods'
 import { algorand } from '../utils/network/getAlgorandClient'
 
+// Keys used for persisting app state in local storage
 const STORAGE_KEYS = {
   appId: 'appId',
   appCreator: 'appCreator',
   appSpec: 'appSpec',
 }
 
+// Create an App Context Provider that supplies the application state data to its children
 export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
+  // Hooks
   const { activeAddress, transactionSigner } = useWallet()
 
+  // States
   const [appCreator, setAppCreator] = useState<string>()
   const [appClient, setAppClient] = useState<PieoutClient>()
   const [isLoading, setIsLoading] = useState(true)
 
+  // Refs
   const appMethodsRef = useRef<PieoutMethods>()
   const appMethodHandlerRef = useRef<ReturnType<typeof createMethodHandler>>()
-  const isInitializingRef = useRef(false)
+  const appIsInitializingRef = useRef(false)
   const hasHydratedRef = useRef(false)
   const lastActiveAddressRef = useRef<string | null>(null)
   const hydrationLock = useRef<Promise<boolean> | null>(null)
 
-  /** Clears app-related refs and state */
+  // Define a function that clears the application methods, method handler and hydration reference
   function clearInstances() {
     appMethodsRef.current = undefined
     appMethodHandlerRef.current = undefined
     hasHydratedRef.current = false
   }
 
-  /** Initialize PieoutMethods if not present */
+  // Define a function that ensures the application methods are initialized with a default signer derived from the wallet
   function ensureAppMethods() {
+    // If active address or application methods reference is missing, return early
     if (!activeAddress || appMethodsRef.current) return
+
+    // Try block
     try {
-      algorand.setDefaultSigner(transactionSigner)
+      algorand.setDefaultSigner(transactionSigner) // Set the default signer for the instance of the `AlgorandClient`
+
+      // Create a new instance of the application methods class
       appMethodsRef.current = new PieoutMethods(algorand, activeAddress)
+
+      // Log
       // consoleLogger.info('[AppProvider] App methods initialized for:', activeAddress)
+      // Catch error
     } catch (error) {
+      // Log
       consoleLogger.error('[AppProvider] Failed to initialize app methods:', error)
     }
   }
 
-  /** Initialize method handler for given client */
+  // Define a method that ensures the application method handler is initialized for the given client
   const ensureMethodHandler = useCallback(
     (client: PieoutClient) => {
+      // If active address or application methods or application method handler reference is missing, return early
       if (!activeAddress || !appMethodsRef.current || appMethodHandlerRef.current) return
+
+      // Try block
       try {
+        // Call the `createMethodHandler` helper function and store as current application method handler reference
         appMethodHandlerRef.current = createMethodHandler({
           activeAddress,
           appMethods: appMethodsRef.current,
-          appClient: client,
+          appClient: client, // Pass the app client instance
         })
+
+        // Log
         // consoleLogger.info('[AppProvider] Method handler initialized')
+        // Catch error
       } catch (error) {
+        // Log
         consoleLogger.error('[AppProvider] Failed to initialize method handler:', error)
       }
     },
     [activeAddress],
   )
 
-  /** Hydrate app client from localStorage (with lock to prevent overlaps) */
+  // Define a function that hydrates the app state from local storage
   const hydrateFromStorage = useCallback(async () => {
-    if (hasHydratedRef.current || isInitializingRef.current) return false
+    // If hydration has already happened or app is currently initializing, return false
+    if (hasHydratedRef.current || appIsInitializingRef.current) return false
+
+    // Lock hydration
     if (hydrationLock.current) return hydrationLock.current
 
+    // Define an async method that returns a promise
     const promise = (async () => {
+      // Set hydration and loading flags to true
       hasHydratedRef.current = true
       setIsLoading(true)
 
+      // Try block
       try {
+        // Retrieve app state items from local storage by key
         const storedAppId = localStorage.getItem(STORAGE_KEYS.appId)
         const storedAppCreator = localStorage.getItem(STORAGE_KEYS.appCreator)
         const storedAppSpec = localStorage.getItem(STORAGE_KEYS.appSpec)
 
+        // Return false if there is no app state found in storage
         if (!storedAppId || !storedAppSpec) {
           // consoleLogger.warn('[AppProvider] No stored app data found')
           return false
@@ -86,22 +116,32 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
         // consoleLogger.info('[AppProvider] Hydrating app from storage...')
 
+        // Get app client and creator via ID
         // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
         const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
-
         const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
+
+        // Update app client and app creator states
         setAppClient(client)
         setAppCreator(creator)
 
+        // If there is no value for app creator in local storage, set one
         if (!storedAppCreator) {
           localStorage.setItem(STORAGE_KEYS.appCreator, creator)
         }
 
+        // Call method that ensure method handler for client is initialized
         ensureMethodHandler(client)
+
+        // Log
         // consoleLogger.info('[AppProvider] Hydration successful:', client.appId)
         return true
+        // Catch error
       } catch (error) {
+        // Log
         // consoleLogger.warn('[AppProvider] Hydration failed, clearing storage:', error)
+
+        // If error exists, remove items from local storage by key
         localStorage.removeItem(STORAGE_KEYS.appId)
         localStorage.removeItem(STORAGE_KEYS.appCreator)
         localStorage.removeItem(STORAGE_KEYS.appSpec)
@@ -111,80 +151,105 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       }
     })()
 
+    // Set hydration lock to promise
     hydrationLock.current = promise
+
+    // Return the promise
     return promise.finally(() => {
       hydrationLock.current = null
     })
   }, [ensureMethodHandler])
 
-  /** Generate a new app client */
+  // Create a method that generates an instance of the smart contract client
   const getAppClient = useCallback(async (): Promise<PieoutClient> => {
+    // If the smart contract application client already exists, return early
     if (appClient) {
       // consoleLogger.info('[AppProvider] App Client already exists')
       return appClient
     }
+
+    // Throw error if no active address if found
     if (!activeAddress) throw new Error('No active wallet address')
 
-    isInitializingRef.current = true
+    // Set the app is initializing and loading flags to true
+    appIsInitializingRef.current = true
     setIsLoading(true)
 
+    // Try Block
     try {
+      // call function that ensures an instance of the application methods exist
       ensureAppMethods()
+
+      // If no application methods reference exists, throw error
       if (!appMethodsRef.current) throw new Error('App methods not initialized')
 
       // consoleLogger.info('[AppProvider] Generating new app...')
 
+      // Get app client and creator via ID
       // const client = await appMethodsRef.current.generate(activeAddress)
       const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
-
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
+      // Update app client and app creator states
       setAppClient(client)
       setAppCreator(creator)
+
+      // Call method that ensure method handler for client is initialized
       ensureMethodHandler(client)
 
+      // Set app state items to local storage by key
       localStorage.setItem(STORAGE_KEYS.appId, client.appId.toString())
       localStorage.setItem(STORAGE_KEYS.appCreator, creator)
       localStorage.setItem(STORAGE_KEYS.appSpec, JSON.stringify(client.appClient.appSpec))
 
+      // Log
       // consoleLogger.info('[AppProvider] New app generated:', client.appId)
+
+      // Return the generated application client
       return client
+      // Catch error
     } catch (error) {
+      // Log
       consoleLogger.error('[AppProvider] Failed to generate app client:', error)
+      // Throw error if one exists
       throw error
     } finally {
+      // Set the app is initializing and loading flags to false
+      appIsInitializingRef.current = false
       setIsLoading(false)
-      isInitializingRef.current = false
     }
   }, [activeAddress, appClient, ensureMethodHandler])
 
-  /** React to wallet address change */
+  // Effects
+  // Define a method that runs application state logic in response to the app client or active address changing
   useEffect(() => {
-    const runInit = async () => {
+    const runOnReload = async () => {
+      // Check if the active address has changed since last render
       if (lastActiveAddressRef.current !== activeAddress) {
+        // Clear previous state when switching between different addresses
         if (lastActiveAddressRef.current !== undefined) {
-          // consoleLogger.info('[AppProvider] Active address changed, clearing state')
+          // Call method that clears any exisiting instances
           clearInstances()
         }
+        // Update the ref to track the new active address
         lastActiveAddressRef.current = activeAddress
       }
-
-      // Hydrate from storage always
+      // Restore application state from persistent storage on every render
       await hydrateFromStorage()
-
-      // Only init methods if wallet is connected
+      // Initialize wallet-dependent functionality only when connected
       if (activeAddress) {
+        // Set up core application methods for the connected wallet
         ensureAppMethods()
+        // Configure method handlers if app client is available
         if (appClient) {
           ensureMethodHandler(appClient)
         }
       }
     }
-
-    runInit()
+    runOnReload()
   }, [activeAddress, hydrateFromStorage, appClient])
 
-  /** Memoized context value to avoid unnecessary re-renders */
+  // Memoized context value to avoid unnecessary re-renders
   const value = useMemo(
     () => ({
       appClient,

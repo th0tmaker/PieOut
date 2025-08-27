@@ -1,5 +1,5 @@
 {
-  "name": "PieOut-frontend",
+  "name": "pieout-frontend",
   "version": "0.1.0",
   "author": {
     "name": "jizen",
@@ -51,16 +51,16 @@
     "react-dom": "^18.2.0",
     "tslib": "^2.6.2"
   },
-  "scripts": {
-    "generate:app-clients": "algokit project link --all",
-    "dev": "npm run generate:app-clients && vite",
-    "build": "npm run generate:app-clients && tsc && vite build",
-    "test": "jest --coverage --passWithNoTests",
-    "playwright:test": "playwright test",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
-    "preview": "vite preview"
-  },
+"scripts": {
+  "generate:app-clients": "algokit project link --all",
+  "dev": "npm run generate:app-clients && vite",
+  "build": "if [ \"$VERCEL\" = \"1\" ]; then tsc && vite build; else npm run generate:app-clients && tsc && vite build; fi",
+  "test": "jest --coverage --passWithNoTests",
+  "playwright:test": "playwright test",
+  "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+  "lint:fix": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+  "preview": "vite preview"
+},
   "eslintConfig": {
     "extends": [
       "react-app/jest",

@@ -18,7 +18,6 @@ import ActivePlayersModal from '../modals/ActivePlayersModal'
 import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 
 // Create a reusable styled <td> component that will represent the table cell
 const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
