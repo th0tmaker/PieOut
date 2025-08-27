@@ -47,8 +47,8 @@ export function getAppSubscriber(maxRoundsToSync: number) {
         {
           name: 'pieout-filter',
           filter: {
-            // appId: 1001n,
-            appId: 744828773n,
+            // appId: 1001n, // LocalNet testing
+            // appId: 744886519n,
             arc28Events: pieoutEvents.events.map((event) => ({
               groupName: pieoutEvents.groupName,
               eventName: event.name,

@@ -1,6 +1,6 @@
 // src/components/Home.tsx
 import { useWallet } from '@txnlab/use-wallet-react'
-import React, { useCallback } from 'react'
+import React from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
 import ConnectWallet from './components/ConnectWallet'
 import GameEventSub from './components/GameEventSub'
@@ -8,7 +8,6 @@ import GameTable from './components/GameTable'
 import { useAppCtx } from './hooks/useAppCtx'
 import { useCurrentTimestamp } from './hooks/useCurrentTimestamp'
 import { useLastRound } from './hooks/useLastRound'
-import { useMethodHandler } from './hooks/useMethodHandler'
 import { useModal } from './hooks/useModal'
 import GameModal from './modals/GameModal'
 import HonorsModal from './modals/HonorsModal'
@@ -16,58 +15,57 @@ import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
 
-// Configuration constants
-const NAVIGATION_BUTTONS = [
+// const ADMIN_BUTTONS = [
+//   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
+//   { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
+//   { key: 'deleteApp', label: 'Delete App', color: 'magenta', action: 'terminate' },
+// ] as const
+
+// const BUTTON_COLORS = {
+//   blue: 'bg-blue-500 hover:bg-blue-600',
+//   green: 'bg-green-500 hover:bg-green-600',
+//   magenta: 'bg-fuchsia-700 hover:bg-fuchsia-800',
+// } as const
+
+const USER_BUTTONS = [
   { key: 'wallet', label: 'Wallet', modal: 'wallet' },
   { key: 'profile', label: 'Profile', modal: 'profile' },
   { key: 'game', label: 'Game', modal: 'game' },
   { key: 'honors', label: 'Honors', modal: 'honors' },
 ] as const
 
-const ACTION_BUTTONS = [
-  { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
-  { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
-  { key: 'deleteApp', label: 'Delete App', color: 'magenta', action: 'terminate' },
-] as const
-
-const BUTTON_COLORS = {
-  blue: 'bg-blue-500 hover:bg-blue-600',
-  green: 'bg-green-500 hover:bg-green-600',
-  magenta: 'bg-fuchsia-700 hover:bg-fuchsia-800',
-} as const
-
 const Home: React.FC = () => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { getAppClient, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
+  const { appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
-  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  // const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
-  const handleAction = useCallback(
-    (action: string) => {
-      const actions = {
-        createApp: () => getAppClient(),
-        mintTrophy: () => handleMethod('mintTrophy'),
-        terminate: () => handleMethod('terminate'),
-      }
-      actions[action as keyof typeof actions]?.()
-    },
-    [getAppClient, handleMethod],
-  )
+  // const handleAction = useCallback(
+  //   (action: string) => {
+  //     const actions = {
+  //       createApp: () => getAppClient(),
+  //       mintTrophy: () => handleMethod('mintTrophy'),
+  //       terminate: () => handleMethod('terminate'),
+  //     }
+  //     actions[action as keyof typeof actions]?.()
+  //   },
+  //   [getAppClient, handleMethod],
+  // )
 
-  const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
+  // const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
 
-  const getLoadingLabel = (key: string, label: string) => {
-    if (!isLoadingMethod) return label
-    return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
-  }
+  // const getLoadingLabel = (key: string, label: string) => {
+  //   if (!isLoadingMethod) return label
+  //   return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
+  // }
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
-      {/* Action Buttons */}
-      <div className="flex gap-2 mb-2">
-        {ACTION_BUTTONS.map(({ key, label, color, action }) => (
+      {/* Admin Buttons */}
+      {/* <div className="flex gap-2 mb-2">
+        {ADMIN_BUTTONS.map(({ key, label, color, action }) => (
           <button
             key={key}
             className={`py-2 px-4 rounded text-white font-bold border-2 border-black transition-colors
@@ -80,11 +78,11 @@ const Home: React.FC = () => {
             {getLoadingLabel(key, label)}
           </button>
         ))}
-      </div>
+      </div> */}
 
-      {/* Navigation Buttons */}
+      {/* User Buttons */}
       <div className="flex gap-2 mb-4">
-        {NAVIGATION_BUTTONS.map(({ key, label, modal }) => {
+        {USER_BUTTONS.map(({ key, label, modal }) => {
           const isDisabled = key !== 'wallet' && !activeAddress
           return (
             <button

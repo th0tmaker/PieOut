@@ -23,7 +23,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
   // States
   const [appCreator, setAppCreator] = useState<string>()
   const [appClient, setAppClient] = useState<PieoutClient>()
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Refs
   const appMethodsRef = useRef<PieoutMethods>()
@@ -89,18 +89,14 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
   // Define a function that hydrates the app state from local storage
   const hydrateFromStorage = useCallback(async () => {
-    // If hydration has already happened or app is currently initializing, return false
-    if (hasHydratedRef.current || appIsInitializingRef.current) return false
+    // If app is currently initializing, return false
+    if (appIsInitializingRef.current) return false
 
     // Lock hydration
     if (hydrationLock.current) return hydrationLock.current
 
     // Define an async method that returns a promise
     const promise = (async () => {
-      // Set hydration and loading flags to true
-      hasHydratedRef.current = true
-      setIsLoading(true)
-
       // Try block
       try {
         // Retrieve app state items from local storage by key
@@ -110,15 +106,15 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
         // Return false if there is no app state found in storage
         if (!storedAppId || !storedAppSpec) {
-          // consoleLogger.warn('[AppProvider] No stored app data found')
+          consoleLogger.warn('[AppProvider] No stored app data found')
           return false
         }
 
-        // consoleLogger.info('[AppProvider] Hydrating app from storage...')
+        consoleLogger.info('[AppProvider] Hydrating app from storage...')
 
         // Get app client and creator via ID
         // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
-        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
+        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
         const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
         // Update app client and app creator states
@@ -133,21 +129,20 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
         // Call method that ensure method handler for client is initialized
         ensureMethodHandler(client)
 
-        // Log
-        // consoleLogger.info('[AppProvider] Hydration successful:', client.appId)
+        // Set hydration flag after successful hydration
+        hasHydratedRef.current = true
+
+        consoleLogger.info('[AppProvider] Hydration successful:', client.appId)
         return true
         // Catch error
       } catch (error) {
-        // Log
-        // consoleLogger.warn('[AppProvider] Hydration failed, clearing storage:', error)
+        consoleLogger.warn('[AppProvider] Hydration failed, clearing storage:', error)
 
         // If error exists, remove items from local storage by key
         localStorage.removeItem(STORAGE_KEYS.appId)
         localStorage.removeItem(STORAGE_KEYS.appCreator)
         localStorage.removeItem(STORAGE_KEYS.appSpec)
         return false
-      } finally {
-        setIsLoading(false)
       }
     })()
 
@@ -187,7 +182,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
 
       // Get app client and creator via ID
       // const client = await appMethodsRef.current.generate(activeAddress)
-      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744828773n })
+      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
       // Update app client and app creator states
@@ -220,7 +215,37 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
     }
   }, [activeAddress, appClient, ensureMethodHandler])
 
+  // New function to initialize app client immediately on load
+  const initializeAppClient = useCallback(async () => {
+    // If we're already loading, don't start another initialization
+    if (isLoading) return
+
+    try {
+      setIsLoading(true)
+
+      // First try to hydrate from storage if we haven't already and don't have a client
+      if (!appClient && !hasHydratedRef.current) {
+        const hydrated = await hydrateFromStorage()
+        if (hydrated) return // Successfully hydrated, exit early
+      }
+
+      // If we still don't have a client and have an active address, try to get/create one
+      if (!appClient && activeAddress) {
+        await getAppClient()
+      }
+    } catch (error) {
+      consoleLogger.error('[AppProvider] Failed to initialize app client:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [isLoading, appClient, hydrateFromStorage, activeAddress, getAppClient])
+
   // Effects
+  // Initialize immediately on mount or when activeAddress changes
+  useEffect(() => {
+    initializeAppClient()
+  }, [activeAddress]) // Run when activeAddress changes
+
   // Define a method that runs application state logic in response to the app client or active address changing
   useEffect(() => {
     const runOnReload = async () => {
@@ -228,14 +253,16 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       if (lastActiveAddressRef.current !== activeAddress) {
         // Clear previous state when switching between different addresses
         if (lastActiveAddressRef.current !== undefined) {
-          // Call method that clears any exisiting instances
+          // Call method that clears any existing instances
           clearInstances()
+          // Clear app client and creator when address changes
+          setAppClient(undefined)
+          setAppCreator(undefined)
         }
         // Update the ref to track the new active address
         lastActiveAddressRef.current = activeAddress
       }
-      // Restore application state from persistent storage on every render
-      await hydrateFromStorage()
+
       // Initialize wallet-dependent functionality only when connected
       if (activeAddress) {
         // Set up core application methods for the connected wallet
@@ -247,7 +274,7 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       }
     }
     runOnReload()
-  }, [activeAddress, hydrateFromStorage, appClient])
+  }, [activeAddress, appClient, ensureMethodHandler])
 
   // Memoized context value to avoid unnecessary re-renders
   const value = useMemo(

@@ -3,7 +3,7 @@
 
 // smart_contracts.pieout.contract.Pieout.__algopy_entrypoint_with_init() -> uint64:
 main:
-    intcblock 1 0 2 32 1000000 300 32000 29700 6364136223846793005 1442695040888963407 4294967295 80500 65535 TMPL_GEN_UNIX TMPL_DELETABLE
+    intcblock 1 0 2 32 1000000 3600 150000 29700 6364136223846793005 1442695040888963407 4294967295 80500 65535 TMPL_GEN_UNIX TMPL_DELETABLE
     bytecblock "r_" 0x00 "t_" "p_" "s_" 0x151f7c75 0x0000000000000000 0x0000000000000000000000000000000000000000000000000000000000000000 "game_id" 0x0020 0xdbdf4f77 0x1a789ed0 0x068101
     // smart_contracts/pieout/contract.py:31-32
     // # Smart contract class
@@ -796,7 +796,7 @@ is_game_live_if_body@2:
     // smart_contracts/pieout/subroutines.py:235
     // Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
     global LatestTimestamp
-    intc 5 // 300
+    intc 5 // 3600
     +
     // smart_contracts/pieout/subroutines.py:233-236
     // # Establish game play window by setting expiry timestamp
@@ -1035,7 +1035,7 @@ is_game_over_for_header@9:
     global Round
     // smart_contracts/pieout/subroutines.py:282
     // round_delta=UInt64(cst.BOX_R_EXP_ROUND_DELTA),
-    intc 6 // 32000
+    intc 6 // 150000
     // smart_contracts/pieout/subroutines.py:93
     // box_game_register[account].expiry_round = arc4.UInt64(Global.round + round_delta)
     +
@@ -1925,7 +1925,7 @@ get_box_game_register:
     // smart_contracts/pieout/contract.py:201
     // expiry_round=arc4.UInt64(Global.round + cst.BOX_R_EXP_ROUND_DELTA),
     global Round
-    intc 6 // 32000
+    intc 6 // 150000
     +
     itob
     // smart_contracts/pieout/contract.py:195-202
@@ -2320,7 +2320,7 @@ new_game_bool_merge@4:
     // smart_contracts/pieout/contract.py:316
     // expiry_ts=arc4.UInt64(Global.latest_timestamp + cst.PHASE_EXPIRY_INTERVAL),
     global LatestTimestamp
-    intc 5 // 300
+    intc 5 // 3600
     +
     itob
     // smart_contracts/pieout/contract.py:317
@@ -4083,7 +4083,7 @@ play_game_after_if_else@8:
     // smart_contracts/pieout/contract.py:592
     // Global.round + UInt64(cst.BOX_R_EXP_ROUND_DELTA)
     global Round
-    intc 6 // 32000
+    intc 6 // 150000
     +
     // smart_contracts/pieout/contract.py:591-593
     // game_register.expiry_round = arc4.UInt64(
@@ -4381,7 +4381,7 @@ trigger_game_event:
 
 trigger_game_event_bool_merge@6:
     // smart_contracts/pieout/contract.py:644-645
-    // # If admin is sole player, skip live phase to prevent score padding
+    // # If admin is only player, skip live phase to prevent score padding
     // if admin_only_player:
     bz trigger_game_event_else_body@8
     // smart_contracts/pieout/contract.py:646-652
@@ -4633,7 +4633,7 @@ reset_game:
     // smart_contracts/pieout/contract.py:722
     // Global.latest_timestamp + cst.PHASE_EXPIRY_INTERVAL
     global LatestTimestamp
-    intc 5 // 300
+    intc 5 // 3600
     +
     // smart_contracts/pieout/contract.py:721-723
     // game_state.expiry_ts = arc4.UInt64(
