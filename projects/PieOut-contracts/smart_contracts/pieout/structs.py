@@ -4,7 +4,11 @@ from algopy import arc4
 
 # Struct containing game state values
 class GameState(arc4.Struct):
-    staking_finalized: arc4.Bool  # if True, game is live, else players can join
+    staking_finalized: arc4.Bool  # If True, game is live, else players can join
+
+    # NEW FEATURE BELOW:
+    quick_play_enabled: arc4.Bool  # If True, admin can start live phase
+
     max_players: arc4.UInt8  # Max num of players per game instance
     active_players: arc4.UInt8  # Active num of players currently
     first_place_score: arc4.UInt8  # First place score per round

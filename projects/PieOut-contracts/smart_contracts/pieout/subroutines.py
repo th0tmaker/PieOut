@@ -222,27 +222,27 @@ def calc_score_get_place(
 # Check if game is live and execute its conditional logic
 @subroutine
 def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
-    # Check game live criteria
-    if (
-        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
-        or game_state.active_players == game_state.max_players  # If lobby full
-    ):
-        # Mark join phase as complete when staking finalized evaluates True
-        game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
+    # # Check game live criteria
+    # if (
+    #     game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
+    #     or game_state.active_players == game_state.max_players  # If lobby full
+    # ):
 
-        # Establish game play window by setting expiry timestamp
-        game_state.expiry_ts = arc4.UInt64(
-            Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
-        )
+    # Mark join phase as complete when staking finalized evaluates True
+    game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
 
-        # Emit ARC-28 event for off-chain tracking
-        arc4.emit(
-            "game_live(uint64,bool,uint64)",
-            game_id,
-            game_state.staking_finalized,
-            game_state.expiry_ts,
-        )
+    # Establish game play window by setting expiry timestamp
+    game_state.expiry_ts = arc4.UInt64(
+        Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
+    )
 
+    # Emit ARC-28 event for off-chain tracking
+    arc4.emit(
+        "game_live(uint64,bool,uint64)",
+        game_id,
+        game_state.staking_finalized,
+        game_state.expiry_ts,
+    )
 
 # Check if game is over and execute its conditional logic
 @subroutine

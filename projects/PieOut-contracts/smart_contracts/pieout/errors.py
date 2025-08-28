@@ -20,6 +20,7 @@ INVALID_GROUP_SIZE: Final[str] = "Invalid group size. Ensure number of transacti
 INVALID_GROUP_IDX: Final[str] = "Invalid group index. Ensure transaction group index matches the expected value. "
 INVALID_GAME_ID: Final[str] = "Invalid Game ID. Box Game Register Game ID must be a certain value or match Game ID arg."
 INVALID_METHOD_SELECTOR: Final[str] = "Transaction at this group index must have exact required method selector."
+INVALID_TRIGGER_CONDITIONS: Final[str] = "Conditions required to trigger this game event check were invalid."
 GAME_ID_NOT_FOUND: Final[str] = "Box game state not found. Check if game ID exists."
 PLAYER_NOT_FOUND: Final[str] = "Account is not recognized as an active player for this game."
 TRIGGER_ID_NOT_FOUND: Final[str] = "Game event not found. Check if game event Trigger ID exists"

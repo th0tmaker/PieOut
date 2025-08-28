@@ -263,6 +263,7 @@ class Pieout(ARC4Contract):
     @arc4.abimethod
     def new_game(
         self,
+        quick_play_enabled: bool,  # noqa: FBT001
         max_players: UInt64,
         box_s_pay: gtxn.PaymentTransaction,
         box_p_pay: gtxn.PaymentTransaction,
@@ -274,7 +275,7 @@ class Pieout(ARC4Contract):
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
 
         assert (
-            self.box_game_register[Txn.sender].hosting_game == False  # noqa: E712
+            not self.box_game_register[Txn.sender].hosting_game.native
         ), err.HOSTING_GAME_FLAG
 
         assert (
@@ -306,6 +307,7 @@ class Pieout(ARC4Contract):
         # Create a game state box with unique game ID as key and assign its default starting values
         self.box_game_state[self.game_id] = stc.GameState(
             staking_finalized=arc4.Bool(False),  # noqa: FBT003
+            quick_play_enabled=arc4.Bool(quick_play_enabled),
             max_players=arc4.UInt8(max_players),
             active_players=arc4.UInt8(1),
             first_place_score=arc4.UInt8(0),
@@ -366,18 +368,17 @@ class Pieout(ARC4Contract):
             stake_pay.receiver == Global.current_application_address
         ), err.INVALID_STAKE_PAY_RECEIVER
         assert (
-            srt.check_acc_in_game(  # noqa: E712
+            not srt.check_acc_in_game(
                 game_id=game_id,
                 account=Txn.sender,
                 box_game_players=self.box_game_players,
                 player_count=self.box_game_state[game_id].active_players.native,
                 clear_player=False,
             )
-            == False
         ), err.PLAYER_ACTIVE
 
         assert (
-            game_state.staking_finalized == False  # noqa: E712
+            not game_state.staking_finalized.native
         ), err.STAKING_FINAL_FLAG
         assert (
             game_state.expiry_ts >= Global.latest_timestamp
@@ -423,9 +424,7 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
-        assert (
-            self.box_game_state[game_id].staking_finalized == True  # noqa: E712
-        ), err.STAKING_FINAL_FLAG
+        assert self.box_game_state[game_id].staking_finalized.native, err.STAKING_FINAL_FLAG
         assert (
             srt.check_acc_in_game(  # noqa: E712
                 game_id=game_id,
@@ -526,7 +525,7 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertions below evaluate True
         assert (
-            game_state.staking_finalized == True  # noqa: E712
+            game_state.staking_finalized.native
         ), err.STAKING_FINAL_FLAG
         assert (
             game_state.expiry_ts >= Global.latest_timestamp
@@ -622,43 +621,43 @@ class Pieout(ARC4Contract):
         if trigger_id.native == 0:
             # Fail transaction unless the assertion below evaluates True
             assert (
-                game_state.staking_finalized == False  # noqa: E712
+                not game_state.staking_finalized.native
             ), err.STAKING_FINAL_FLAG
-            assert (
-                game_state.expiry_ts < Global.latest_timestamp
-            ), err.TIME_CONSTRAINT_VIOLATION
 
-            # Check if the admin is the only active player when game still in queue
-            admin_only_player = (
-                game_state.active_players.native == 1
-                and srt.check_acc_in_game(
-                    game_id=game_id,
-                    account=game_state.admin_address.native,
-                    box_game_players=self.box_game_players,
-                    player_count=UInt64(1),
-                    clear_player=False,
-                )
-                and not game_state.staking_finalized
+            # Define quick play criteria
+            quick_play_criteria = (
+                game_state.quick_play_enabled.native
+                and game_state.admin_address.native == Txn.sender
+                and game_state.active_players.native > 1
             )
 
-            # If admin is only player, skip live phase to prevent score padding
-            if admin_only_player:
-                # Check if game is over
+            # Can only trigger game live if timer has expired or the quick play criteria is met
+            assert game_state.expiry_ts < Global.latest_timestamp or quick_play_criteria, err.INVALID_TRIGGER_CONDITIONS
+
+            # Special case: Check if the admin is the only active player, if true, just end the game
+            if game_state.active_players.native == 1 and srt.check_acc_in_game(
+                game_id=game_id,
+                account=game_state.admin_address.native,
+                box_game_players=self.box_game_players,
+                player_count=UInt64(1),
+                clear_player=False,
+            ):
                 srt.is_game_over(
                     game_id=game_id,
                     game_state=game_state,
                     box_game_register=self.box_game_register,
                     box_game_players=self.box_game_players,
                 )
-            else:
-                # Check if game is live
-                srt.is_game_live(game_id=game_id, game_state=game_state)
+                return
+
+            # Check if game is live
+            srt.is_game_live(game_id=game_id, game_state=game_state)
 
         # Trigger ID 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
             # Fail transaction unless the assertion below evaluates True
             assert (
-                game_state.staking_finalized == True  # noqa: E712
+                game_state.staking_finalized.native
             ), err.STAKING_FINAL_FLAG
             assert (
                 game_state.expiry_ts < Global.latest_timestamp
@@ -751,25 +750,25 @@ class Pieout(ARC4Contract):
 
         # Fail transaction unless the assertions below evaluate True
         assert (
-            self.box_game_register[admin].hosting_game == True  # noqa: E712
+            self.box_game_register[admin].hosting_game.native
         ), err.HOSTING_GAME_FLAG
         assert (
             Txn.sender == admin or Txn.sender == Global.creator_address
         ), err.INVALID_CALLER
 
         # Ensure game has zero active players OR only player left is the admin
-        acc_in_game = False
+        # acc_in_game = False
         if game_state.active_players.native == 1:
-            acc_in_game = srt.check_acc_in_game(
+            assert srt.check_acc_in_game(
                 game_id=game_id,
                 account=admin,
                 box_game_players=self.box_game_players,
                 player_count=UInt64(1),
                 clear_player=False,
-            )
+            ), err.ADMIN_SOLE_PLAYER
 
             # Fail transaction unless the assertion below evaluates True
-            assert acc_in_game == True, err.ADMIN_SOLE_PLAYER  # noqa: E712
+            # assert acc_in_game, err.ADMIN_SOLE_PLAYER
 
             # Issue prize pool payouts equal to admin stake
             srt.payout_itxn(

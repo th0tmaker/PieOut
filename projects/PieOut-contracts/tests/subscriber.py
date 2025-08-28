@@ -1,14 +1,15 @@
 from algokit_subscriber import AlgorandSubscriber
 from algosdk.v2client import algod, indexer
 
-# Global watermark for Alogrand App Subsbcriber config
+# Define a global watermark to track the last processed round to ensure continuous synchronized event monitoring
 watermark = 0
 
-pieout_events = {
-    "group_name": "pieout",
-    "events": [
+# Event schema defining the structure of game events emitted by the smart contract for the subscriber to monitor
+PIEOUT_EVENTS = {
+    "group_name": "game_events",  # Logical grouping for related events
+    "arc28_events": [
         {
-            "name": "game_live",
+            "name": "game_live",  # Emitted when a new game starts and is ready for players
             "args": [
                 {"name": "game_id", "type": "uint64"},
                 {"name": "staking_finalized", "type": "bool"},
@@ -16,7 +17,7 @@ pieout_events = {
             ],
         },
         {
-            "name": "player_score",
+            "name": "player_score",  # Emitted when a player achieves a score in the game
             "args": [
                 {"name": "game_id", "type": "uint64"},
                 {"name": "player", "type": "address"},
@@ -24,7 +25,7 @@ pieout_events = {
             ],
         },
         {
-            "name": "game_over",
+            "name": "game_over",  # Emitted when a game ends with final rankings
             "args": [
                 {"name": "game_id", "type": "uint64"},
                 {"name": "high_score", "type": "uint8"},
@@ -34,53 +35,52 @@ pieout_events = {
             ],
         },
     ],
-    "continue_on_error": False,
+    "continue_on_error": False,  # Stop processing if event parsing fails
 }
 
+def update_watermark(new_watermark: int) -> None:
+    global watermark
+    watermark = new_watermark
 
-# --- Create the AlgorandSubscriber ---
+def get_watermark() -> int:
+    return watermark
+
 def create_subscriber(
-<<<<<<< HEAD
     algod_client: algod.AlgodClient,
     indexer_client: indexer.IndexerClient,
+    app_id: int,
     max_rounds_to_sync: int,
+    frequency_seconds: int = 40
 ) -> AlgorandSubscriber:
-    global watermark
-    pieout_group = pieout_events.get("group_name", "default_group")
-=======
-        algod_client: algod.AlgodClient,
-        indexer_client: indexer.IndexerClient,
-        max_rounds_to_sync: int
-    ) -> AlgorandSubscriber:
-    global watermark
-    group_name = pieout_events.get("group_name", "default_group")
->>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
     config = {
+        # Define which events to filter and capture from the blockchain
         "filters": [
             {
-                "name": "pieout_filter",
+                "name": "game_events",  # Identifier for this specific filter
                 "filter": {
+                    "app_id": app_id,  # Only monitor events from this specific smart contract
                     "arc28_events": [
-<<<<<<< HEAD
-                        {"group_name": pieout_group, "event_name": event["name"]}
-=======
                         {
-                            "group_name": group_name,
+                            "group_name": PIEOUT_EVENTS["group_name"],
                             "event_name": event["name"]
                         }
->>>>>>> ea7a904b9472adbbef599e66fcf6aabce371db34
-                        for event in pieout_events["events"]
+                        for event in PIEOUT_EVENTS["arc28_events"]  # Generate filter for each event type
                     ]
                 },
             }
         ],
-        "arc28_events": [pieout_events],
+        # Provide event schemas so the subscriber can parse event data
+        "arc28_events": [PIEOUT_EVENTS],
+        # Configure watermark persistence to maintain processing state across restarts
         "watermark_persistence": {
-            "get": lambda: watermark,
-            "set": lambda new_watermark: globals().update(watermark=new_watermark),
+            "get": get_watermark,  # Function to retrieve last processed round
+            "set": update_watermark,  # Function to save current processing position
         },
+        # Start from oldest unprocessed events, then monitor new ones in real-time
         "sync_behaviour": "sync-oldest-start-now",
-        "frequency_in_seconds": 40,
+        # Poll frequency - how often to check for new events (in seconds)
+        "frequency_in_seconds": frequency_seconds,
+        # Set maximum number of rounds processed per sync to prevent overwhelming the system
         "max_rounds_to_sync": max_rounds_to_sync,
     }
 
@@ -89,36 +89,3 @@ def create_subscriber(
         indexer_client=indexer_client,
         config=config
     )
-
-# --- Self-built ARC-28 Event Logging Handler ---
-# def log_subbed_arc28_events(
-#     logger: Logger,
-#     events_to_log: Optional[list[str]] = None
-# ) -> Callable[[dict, str], None]:
-#     # Define expected args per event name
-#     event_arg_keys: dict[str, list[str]] = {
-#         "game_live": ["game_id", "staking_finalized", "expiry_ts"],
-#         "player_score": ["game_id", "player", "score"],
-#         "game_over": ["game_id", "high_score", "first_place_address", "second_place_address", "third_place_address"]
-#     }
-
-#     tracked_events = set(events_to_log or event_arg_keys.keys())
-
-#     def handler(transaction: dict[str, Any], _: str) -> None:
-#         for event in transaction.get("arc28_events", []):
-#             event = event  # type: ARC28Event
-
-#             name = event.get("event_name")
-#             if name not in tracked_events:
-#                 continue
-
-#             args = event.get("args", [])
-#             keys = event_arg_keys.get(name, [f"arg{i}" for i in range(len(args))])
-#             args_dict = dict(zip(keys, args))
-
-#             logger.info(
-#                 f"Received ARC-28 Event: {name} in transaction {transaction.get(
-#                     'id', 'unknown_txn')}, args: {args_dict}"
-#             )
-
-#     return handler
