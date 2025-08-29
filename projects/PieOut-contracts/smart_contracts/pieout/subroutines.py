@@ -219,30 +219,40 @@ def calc_score_get_place(
         game_state.third_place_address = arc4.Address(player)
 
 
+# Check if quick play is permitted, return true if all conditions are met, else false
+@subroutine
+def can_quick_play(game_state: stc.GameState) -> bool:
+    return (
+        game_state.quick_play_enabled.native  # Quick play mode must be enabled
+        and game_state.admin_address.native == Txn.sender  # Txn sender must be game instance admin
+        and game_state.active_players.native > 1  # More than 1 active player in game required
+    )
+
+
 # Check if game is live and execute its conditional logic
 @subroutine
 def is_game_live(game_id: UInt64, game_state: stc.GameState) -> None:
-    # # Check game live criteria
-    # if (
-    #     game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
-    #     or game_state.active_players == game_state.max_players  # If lobby full
-    # ):
+    # Check game live criteria
+    if (
+        game_state.expiry_ts < Global.latest_timestamp  # If deadline expired
+        or game_state.active_players == game_state.max_players  # If lobby full
+        or can_quick_play(game_state=game_state)  # If quick play conditions are met
+    ):
+        # Mark join phase as complete when staking finalized evaluates True
+        game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
 
-    # Mark join phase as complete when staking finalized evaluates True
-    game_state.staking_finalized = arc4.Bool(True)  # noqa: FBT003
+        # Establish game play window by setting expiry timestamp
+        game_state.expiry_ts = arc4.UInt64(
+            Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
+        )
 
-    # Establish game play window by setting expiry timestamp
-    game_state.expiry_ts = arc4.UInt64(
-        Global.latest_timestamp + UInt64(cst.PHASE_EXPIRY_INTERVAL)
-    )
-
-    # Emit ARC-28 event for off-chain tracking
-    arc4.emit(
-        "game_live(uint64,bool,uint64)",
-        game_id,
-        game_state.staking_finalized,
-        game_state.expiry_ts,
-    )
+        # Emit ARC-28 event for off-chain tracking
+        arc4.emit(
+            "game_live(uint64,bool,uint64)",
+            game_id,
+            game_state.staking_finalized,
+            game_state.expiry_ts,
+        )
 
 # Check if game is over and execute its conditional logic
 @subroutine
@@ -264,7 +274,6 @@ def is_game_over(
             player_count=UInt64(1),
             clear_player=False,
         )
-        and not game_state.staking_finalized
     )
 
     # Check game over criteria

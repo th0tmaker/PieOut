@@ -538,12 +538,12 @@ class Pieout(ARC4Contract):
         ), err.COMMIT_RAND_ROUND_NOT_REACHED
 
         # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-        seed = arc4.abi_call[Bytes](
-            "must_get(uint64,byte[])byte[]",
-            self.box_game_register[Txn.sender].commit_rand_round.native,
-            Txn.sender.bytes,
-            app_id=600011887,  # TestNet VRF Beacon Application ID
-        )[0]
+        # seed = arc4.abi_call[Bytes](
+        #     "must_get(uint64,byte[])byte[]",
+        #     self.box_game_register[Txn.sender].commit_rand_round.native,
+        #     Txn.sender.bytes,
+        #     app_id=600011887,  # TestNet VRF Beacon Application ID
+        # )[0]
 
         # Calculate player score and assign placement if their score qualifies
         srt.calc_score_get_place(
@@ -551,7 +551,7 @@ class Pieout(ARC4Contract):
             game_state=game_state,
             game_register=game_register,
             player=Txn.sender,
-            seed=seed,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
+            seed=Txn.tx_id,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
         )
 
         # If game state first place score is higher than ath score
@@ -624,16 +624,6 @@ class Pieout(ARC4Contract):
                 not game_state.staking_finalized.native
             ), err.STAKING_FINAL_FLAG
 
-            # Define quick play criteria
-            quick_play_criteria = (
-                game_state.quick_play_enabled.native
-                and game_state.admin_address.native == Txn.sender
-                and game_state.active_players.native > 1
-            )
-
-            # Can only trigger game live if timer has expired or the quick play criteria is met
-            assert game_state.expiry_ts < Global.latest_timestamp or quick_play_criteria, err.INVALID_TRIGGER_CONDITIONS
-
             # Special case: Check if the admin is the only active player, if true, just end the game
             if game_state.active_players.native == 1 and srt.check_acc_in_game(
                 game_id=game_id,
@@ -648,7 +638,18 @@ class Pieout(ARC4Contract):
                     box_game_register=self.box_game_register,
                     box_game_players=self.box_game_players,
                 )
+
+                # Update the game state box data with a copy containing its modified values
+                self.box_game_state[game_id] = game_state.copy()
+
+                # Make an early return
                 return
+
+            # Fail transaction unless the assertion below evaluates True
+            assert (
+                game_state.expiry_ts < Global.latest_timestamp  # Game live timer must expired, OR
+                or srt.can_quick_play(game_state=game_state)  # Quick play conditions are met
+            ), err.INVALID_TRIGGER_CONDITIONS
 
             # Check if game is live
             srt.is_game_live(game_id=game_id, game_state=game_state)
@@ -670,12 +671,16 @@ class Pieout(ARC4Contract):
                 box_game_register=self.box_game_register,
                 box_game_players=self.box_game_players,
             )
+
+            # Update the game state box data with a copy containing its modified values
+            self.box_game_state[game_id] = game_state.copy()
+
+            # Make an early return
+            return
+
         # Else, trigger id is not found, fail transaction
         else:
             assert False, err.TRIGGER_ID_NOT_FOUND  # noqa: B011
-
-        # Update the game state box data with a copy containing its modified values
-        self.box_game_state[game_id] = game_state.copy()
 
     # Allow admin to reset an existing game instance
     @arc4.abimethod
