@@ -1,12 +1,10 @@
 # tests/pieout_localnet_test.py
 import logging
 from datetime import datetime
-import time
 
 import pytest
 from algokit_subscriber import SubscribedTransaction
 from algokit_utils import (
-    AppCallMethodCallParams,
     AppClientCompilationParams,
     CommonAppCallParams,
     FundAppAccountParams,
@@ -19,7 +17,6 @@ from algokit_utils import (
 )
 from algokit_utils.algorand import AlgorandClient
 from algokit_utils.models import SigningAccount
-from algosdk.abi.method import Method
 from algosdk.transaction import wait_for_confirmation
 
 from smart_contracts.artifacts.pieout.pieout_client import (
@@ -342,7 +339,7 @@ def test_new_game(
         sender: SigningAccount,
         quick_play_enabled: bool,  # noqa: FBT001
         max_players: int,
-        note: bytes | str | None = None
+        note: bytes | str | None = None,
     ) -> None:
         # Define payment amounts
         box_p_cost = (
@@ -406,12 +403,12 @@ def test_new_game(
 
     # Log
     game_1_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(1, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(1, length=8, byteorder="big")
+    )
 
     game_2_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(2, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(2, length=8, byteorder="big")
+    )
 
     logger.info(game_1_state)
     logger.info(game_2_state)
@@ -534,16 +531,16 @@ def test_join_game(
 
     # Log
     game_1_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(1, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(1, length=8, byteorder="big")
+    )
 
     game_1_players = app.app_client.state.box.get_map_value(
-        map_name="box_game_players",
-        key=int.to_bytes(1, length=8, byteorder="big"))
+        map_name="box_game_players", key=int.to_bytes(1, length=8, byteorder="big")
+    )
 
     game_2_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(2, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(2, length=8, byteorder="big")
+    )
 
     logger.info(game_1_state)
     logger.info(game_1_players)
@@ -551,6 +548,7 @@ def test_join_game(
 
     # Poll subscriber
     # subscriber.poll_once()
+
 
 # Test case for app call transaction to call `trigger_game_event` method of the smart contract
 def test_trigger_game_event(
@@ -569,7 +567,7 @@ def test_trigger_game_event(
         sender: SigningAccount,
         game_id: int,
         trigger_id: int,
-        note: bytes | str | None = None
+        note: bytes | str | None = None,
     ) -> None:
 
         # Send app call transaction to execute smart contract method `trigger_game_event`
@@ -595,22 +593,23 @@ def test_trigger_game_event(
 
     # Log
     game_1_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(1, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(1, length=8, byteorder="big")
+    )
 
     game_1_players = app.app_client.state.box.get_map_value(
-        map_name="box_game_players",
-        key=int.to_bytes(1, length=8, byteorder="big"))
+        map_name="box_game_players", key=int.to_bytes(1, length=8, byteorder="big")
+    )
 
     game_2_state = app.app_client.state.box.get_map_value(
-        map_name="box_game_state",
-        key=int.to_bytes(2, length=8, byteorder="big"))
+        map_name="box_game_state", key=int.to_bytes(2, length=8, byteorder="big")
+    )
 
     logger.info(game_1_state)
     logger.info(game_1_players)
     logger.info(game_2_state)
 
     logger.info(f"Global State: {app.state.global_state.get_all()}")
+
 
 # # Test case for app call transaction to call `set_game_commit` method of the smart contract
 # def test_set_game_commit(

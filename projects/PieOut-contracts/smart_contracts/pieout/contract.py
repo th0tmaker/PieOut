@@ -274,9 +274,9 @@ class Pieout(ARC4Contract):
         assert self.box_game_trophy, err.BOX_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
 
-        assert (
-            not self.box_game_register[Txn.sender].hosting_game.native
-        ), err.HOSTING_GAME_FLAG
+        assert not self.box_game_register[
+            Txn.sender
+        ].hosting_game.native, err.HOSTING_GAME_FLAG
 
         assert (
             max_players >= cst.MAX_PLAYERS_BOT_BOUND
@@ -367,19 +367,15 @@ class Pieout(ARC4Contract):
         assert (
             stake_pay.receiver == Global.current_application_address
         ), err.INVALID_STAKE_PAY_RECEIVER
-        assert (
-            not srt.check_acc_in_game(
-                game_id=game_id,
-                account=Txn.sender,
-                box_game_players=self.box_game_players,
-                player_count=self.box_game_state[game_id].active_players.native,
-                clear_player=False,
-            )
+        assert not srt.check_acc_in_game(
+            game_id=game_id,
+            account=Txn.sender,
+            box_game_players=self.box_game_players,
+            player_count=self.box_game_state[game_id].active_players.native,
+            clear_player=False,
         ), err.PLAYER_ACTIVE
 
-        assert (
-            not game_state.staking_finalized.native
-        ), err.STAKING_FINAL_FLAG
+        assert not game_state.staking_finalized.native, err.STAKING_FINAL_FLAG
         assert (
             game_state.expiry_ts >= Global.latest_timestamp
         ), err.TIME_CONSTRAINT_VIOLATION
@@ -424,7 +420,9 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
-        assert self.box_game_state[game_id].staking_finalized.native, err.STAKING_FINAL_FLAG
+        assert self.box_game_state[
+            game_id
+        ].staking_finalized.native, err.STAKING_FINAL_FLAG
         assert (
             srt.check_acc_in_game(  # noqa: E712
                 game_id=game_id,
@@ -524,9 +522,7 @@ class Pieout(ARC4Contract):
         ].copy()  # Make a copy of the game state else immutable
 
         # Fail transaction unless the assertions below evaluate True
-        assert (
-            game_state.staking_finalized.native
-        ), err.STAKING_FINAL_FLAG
+        assert game_state.staking_finalized.native, err.STAKING_FINAL_FLAG
         assert (
             game_state.expiry_ts >= Global.latest_timestamp
         ), err.TIME_CONSTRAINT_VIOLATION
@@ -620,9 +616,7 @@ class Pieout(ARC4Contract):
         # Trigger ID 0 corresponds w/ event: Game Live
         if trigger_id.native == 0:
             # Fail transaction unless the assertion below evaluates True
-            assert (
-                not game_state.staking_finalized.native
-            ), err.STAKING_FINAL_FLAG
+            assert not game_state.staking_finalized.native, err.STAKING_FINAL_FLAG
 
             # Special case: Check if the admin is the only active player, if true, just end the game
             if game_state.active_players.native == 1 and srt.check_acc_in_game(
@@ -647,8 +641,11 @@ class Pieout(ARC4Contract):
 
             # Fail transaction unless the assertion below evaluates True
             assert (
-                game_state.expiry_ts < Global.latest_timestamp  # Game live timer must expired, OR
-                or srt.can_quick_play(game_state=game_state)  # Quick play conditions are met
+                game_state.expiry_ts
+                < Global.latest_timestamp  # Game live timer must expired, OR
+                or srt.can_quick_play(
+                    game_state=game_state
+                )  # Quick play conditions are met
             ), err.INVALID_TRIGGER_CONDITIONS
 
             # Check if game is live
@@ -657,9 +654,7 @@ class Pieout(ARC4Contract):
         # Trigger ID 2 corresponds w/ event: Game Over
         elif trigger_id.native == 2:
             # Fail transaction unless the assertion below evaluates True
-            assert (
-                game_state.staking_finalized.native
-            ), err.STAKING_FINAL_FLAG
+            assert game_state.staking_finalized.native, err.STAKING_FINAL_FLAG
             assert (
                 game_state.expiry_ts < Global.latest_timestamp
             ), err.TIME_CONSTRAINT_VIOLATION
@@ -681,6 +676,9 @@ class Pieout(ARC4Contract):
         # Else, trigger id is not found, fail transaction
         else:
             assert False, err.TRIGGER_ID_NOT_FOUND  # noqa: B011
+
+        # Update the game state box data with a copy containing its modified values
+        self.box_game_state[game_id] = game_state.copy()
 
     # Allow admin to reset an existing game instance
     @arc4.abimethod
@@ -754,9 +752,7 @@ class Pieout(ARC4Contract):
         admin = self.box_game_state[game_id].admin_address.native
 
         # Fail transaction unless the assertions below evaluate True
-        assert (
-            self.box_game_register[admin].hosting_game.native
-        ), err.HOSTING_GAME_FLAG
+        assert self.box_game_register[admin].hosting_game.native, err.HOSTING_GAME_FLAG
         assert (
             Txn.sender == admin or Txn.sender == Global.creator_address
         ), err.INVALID_CALLER
