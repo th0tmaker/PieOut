@@ -19,6 +19,9 @@ import LeaderboardModal from '../modals/LeaderboardModal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import { algorand } from '../utils/network/getAlgorandClient'
 
+// Constants
+const COL_SPAN = 10
+
 // Create a reusable styled <td> component that will represent the table cell
 const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   const baseClasses = 'font-bold text-center bg-slate-800 border border-indigo-300 px-4 py-2'
@@ -92,7 +95,8 @@ const GameTable: React.FC = React.memo(() => {
 
   // States
   const [inputedGameId, setInputedGameId] = useState<string>('')
-  // Expected states for optimistic UI updates
+
+  // Expected states for UI updates
   const [expectedStates, setExpectedStates] = useState({
     join: false,
     play: false,
@@ -125,10 +129,10 @@ const GameTable: React.FC = React.memo(() => {
   // Memos
   const accState = useMemo(() => {
     const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
-    const isAdminSolePlayer = Number(gameStateData?.activePlayers) === 1 && isAuthorized
-    const gameIsEmpty = Number(gameStateData?.activePlayers) === 0 && Number(gameStateData?.prizePool) === 0
+    const isAdminSolePlayer = gameStateData?.activePlayers === 1 && activeAddress === gameStateData?.adminAddress
+    const gameIsEmpty = gameStateData?.activePlayers === 0 && gameStateData?.prizePool === 0n
     const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress && !isLoadingMethod
-    const canDeleteGame = isAuthorized && (isAdminSolePlayer || gameIsEmpty) && !isLoadingMethod
+    const canDeleteGame = isAuthorized && !isLoadingMethod && (gameIsEmpty || isAdminSolePlayer)
 
     return { isAuthorized, canResetGame, canDeleteGame, isAdminSolePlayer }
   }, [activeAddress, gameStateData, appCreator, isLoadingMethod])
@@ -144,15 +148,16 @@ const GameTable: React.FC = React.memo(() => {
       }
 
     // Get relevant data from game state box
-    const { expiryTs, stakingFinalized, prizePool } = gameStateData
+    const { quickPlayEnabled, expiryTs, stakingFinalized, activePlayers, prizePool, adminAddress } = gameStateData
     const TIMING_BUFFER_SECONDS = 10 // Add a 10 second buffer to compensate for blockchain delay
 
     // Define boolean conditions for when phase has expired and game is over
     const isExpired = currentTimestamp > Number(expiryTs) + TIMING_BUFFER_SECONDS
     const gameEnded = prizePool === 0n // Game is over when prize pool amount is 0
+    const canQuickPlay = quickPlayEnabled && !isExpired && activePlayers >= 2 && activeAddress === adminAddress
 
     return {
-      triggersEvent0: isExpired && !stakingFinalized && !gameEnded,
+      triggersEvent0: (isExpired && !stakingFinalized && !gameEnded) || (canQuickPlay && !stakingFinalized && !gameEnded),
       triggersEvent2: isExpired && stakingFinalized && !gameEnded,
       tooltipMessage0: gameEnded
         ? 'Unavailable. Game already ended.'
@@ -250,10 +255,17 @@ const GameTable: React.FC = React.memo(() => {
 
   // Handle reset game transaction method call
   const handleResetGameTxn = useCallback(async () => {
+    if (!gameStateData) return
     if (accState.canResetGame && !isLoadingMethod) {
       try {
         updateExpectedState('reset', true)
-        await handleMethod('resetGame', { gameId })
+        // Call the `resetGame` abimethod via the `methodHandler` object using the stored userHostedGameId
+        await handleMethod('resetGame', {
+          gameId: gameId,
+          changeQuickPlay: false,
+          changeMaxPlayers: false,
+          newMaxPlayers: BigInt(gameStateData.maxPlayers),
+        })
       } catch (error) {
         updateExpectedState('reset', false)
         throw error
@@ -312,7 +324,7 @@ const GameTable: React.FC = React.memo(() => {
 
   // Reset play state once prize pool reaches 0
   useEffect(() => {
-    if (expectedStates.play && gameStateData && Number(gameStateData.prizePool) === 0) {
+    if (expectedStates.play && gameStateData && gameStateData.prizePool === 0n) {
       updateExpectedState('play', false)
     }
   }, [expectedStates.play, gameStateData, updateExpectedState])
@@ -342,7 +354,7 @@ const GameTable: React.FC = React.memo(() => {
   // Reset "reset" state once reset conditions are met
   useEffect(() => {
     if (expectedStates.reset && gameStateData) {
-      const isResetComplete = Number(gameStateData.activePlayers) === 1 && !gameStateData.stakingFinalized
+      const isResetComplete = gameStateData.activePlayers === 1 && !gameStateData.stakingFinalized
       if (isResetComplete) {
         updateExpectedState('reset', false)
       }
@@ -355,7 +367,7 @@ const GameTable: React.FC = React.memo(() => {
       // Clear loading state when:
       // 1. Game becomes live (stakingFinalized = true) for normal multi-player cases
       // 2. Game ends (prizePool = 0) for sole admin cases where triggerId: 0n skips live phase
-      const gameEnded = Number(gameStateData.prizePool) === 0
+      const gameEnded = gameStateData.prizePool === 0n
       const gameBecameLive = gameStateData.stakingFinalized
 
       if (gameBecameLive || gameEnded) {
@@ -366,7 +378,7 @@ const GameTable: React.FC = React.memo(() => {
 
   // Reset "gameOver" state once prize pool reaches 0
   useEffect(() => {
-    if (expectedStates.gameOver && gameStateData && Number(gameStateData.prizePool) === 0) {
+    if (expectedStates.gameOver && gameStateData && gameStateData.prizePool === 0n) {
       updateExpectedState('gameOver', false)
     }
   }, [expectedStates.gameOver, gameStateData, updateExpectedState])
@@ -471,7 +483,7 @@ const GameTable: React.FC = React.memo(() => {
     const isPlayerInGame = gamePlayersData?.includes(activeAddress) || false
     const isAdmin = activeAddress === gameStateData.adminAddress
     const hasGameRegisterData = gameRegisterData !== undefined
-    const isGameOver = Number(gameStateData.prizePool) === 0
+    const isGameOver = gameStateData.prizePool === 0n
 
     // If game is over, display red text 'Over'
     if (isGameOver) return <span className="text-red-500">Over</span>
@@ -641,7 +653,7 @@ const GameTable: React.FC = React.memo(() => {
     if (gameId === 0n) {
       return (
         <tr>
-          <td colSpan={9} className="relative text-center py-4 px-2 text-white">
+          <td colSpan={COL_SPAN} className="relative text-center py-4 px-2 text-white">
             Invalid input. Game ID must not be zero.
           </td>
         </tr>
@@ -651,7 +663,7 @@ const GameTable: React.FC = React.memo(() => {
     if (gameId !== null && isGameDataLoading) {
       return (
         <tr>
-          <td colSpan={9} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
+          <td colSpan={COL_SPAN} className="text-center py-4 px-2 text-indigo-200 bg-slate-800">
             <LoadSpinner />
           </td>
         </tr>
@@ -661,7 +673,7 @@ const GameTable: React.FC = React.memo(() => {
     if (gameId != null && !isGameDataLoading && !gameStateData) {
       return (
         <tr>
-          <td colSpan={9} className="relative text-center py-4 px-2 text-white">
+          <td colSpan={COL_SPAN} className="relative text-center py-4 px-2 text-white">
             Game ID not found. Ensure Game ID is valid.
           </td>
         </tr>
@@ -696,6 +708,8 @@ const GameTable: React.FC = React.memo(() => {
           </TableCell>
 
           <TableCell className="text-cyan-300">{`${microAlgos(gameStateData.prizePool!).algo} Ⱥ`}</TableCell>
+
+          <TableCell className="text-cyan-300">{gameStateData.quickPlayEnabled! ? 'On' : 'Off'}</TableCell>
 
           <TableCell className="text-indigo-200">
             <div className="font-bold flex items-center justify-center gap-1">{renderPhaseContent()}</div>
@@ -751,7 +765,7 @@ const GameTable: React.FC = React.memo(() => {
     // If none of the above
     return (
       <tr>
-        <td colSpan={9} className="relative text-center py-4 px-2 text-white">
+        <td colSpan={COL_SPAN} className="relative text-center py-4 px-2 text-white">
           {activeAddress ? "Enter Game ID and click 'Input' to look up game state" : 'Wallet connection required.'}
         </td>
       </tr>
@@ -798,7 +812,7 @@ const GameTable: React.FC = React.memo(() => {
           </thead>
           <tbody>
             <tr>
-              <td colSpan={9} className="text-center py-4 px-2 text-white">
+              <td colSpan={COL_SPAN} className="text-center py-4 px-2 text-white">
                 Please connect your wallet in order to continue.
               </td>
             </tr>
@@ -838,11 +852,13 @@ const GameTable: React.FC = React.memo(() => {
       <table className="min-w-min border border-indigo-300 rounded-md">
         <thead className="bg-gray-100">
           <tr>
-            {['Game ID', 'Admin', 'Prize Pool', 'Phase', 'Commit', 'Trigger', 'Players', 'Leaderboard', 'Top Score'].map((header) => (
-              <th key={header} className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
-                {header}
-              </th>
-            ))}
+            {['Game ID', 'Admin', 'Prize Pool', 'Quick Play', 'Phase', 'Commit', 'Trigger', 'Players', 'Leaderboard', 'Top Score'].map(
+              (header) => (
+                <th key={header} className="text-center text-indigo-200 bg-slate-800 border border-indigo-300 px-4 py-2">
+                  {header}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
         <tbody>{renderTableBody()}</tbody>

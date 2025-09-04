@@ -207,6 +207,9 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertion below evaluates True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert Txn.sender in self.box_game_register, err.BOX_NOT_FOUND
+
+        assert not self.box_game_register[Txn.sender].hosting_game.native, err.HOSTING_GAME_FLAG
+
         assert (
             self.box_game_register[Txn.sender].commit_rand_round.native == 0
         ), err.NON_ZERO_COMMIT_RAND_ROUND
@@ -230,7 +233,8 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
 
         assert player in self.box_game_register, err.BOX_NOT_FOUND
-        assert player != Txn.sender, err.INVALID_CALLER
+
+        assert not self.box_game_register[player].hosting_game.native, err.HOSTING_GAME_FLAG
 
         assert (
             self.box_game_register[player].commit_rand_round.native == 0
@@ -239,6 +243,7 @@ class Pieout(ARC4Contract):
         assert (
             self.box_game_register[player].expiry_round.native < Global.round
         ), err.TIME_CONSTRAINT_VIOLATION
+
 
         # Delete game register box from the smart contract storage under player key
         del self.box_game_register[player]
@@ -547,7 +552,7 @@ class Pieout(ARC4Contract):
             game_state=game_state,
             game_register=game_register,
             player=Txn.sender,
-            seed=Txn.tx_id,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
+            seed=Txn.sender.bytes,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
         )
 
         # If game state first place score is higher than ath score
@@ -685,6 +690,9 @@ class Pieout(ARC4Contract):
     def reset_game(
         self,
         game_id: UInt64,
+        change_quick_play: bool,  # noqa: FBT001
+        change_max_players: bool,  # noqa: FBT001
+        new_max_players: UInt64,
         stake_pay: gtxn.PaymentTransaction,
     ) -> None:
         # Fail transaction unless the assertions below evaluate True
@@ -730,6 +738,24 @@ class Pieout(ARC4Contract):
         game_state.second_place_address = arc4.Address(Global.zero_address)
         game_state.third_place_address = arc4.Address(Global.zero_address)
 
+        # If caller sets change_quick_play bool as True
+        if change_quick_play:
+            # Flip the quick play bool value
+            game_state.quick_play_enabled = arc4.Bool(
+                not game_state.quick_play_enabled.native
+            )
+
+        # If caller sets change_max_players bool as True
+        if change_max_players:
+            # Fail transaction if new max players argument is outside permitted bounds
+            assert (
+                new_max_players >= cst.MAX_PLAYERS_BOT_BOUND
+                and new_max_players <= cst.MAX_PLAYERS_TOP_BOUND
+            ), err.INVALID_MAX_PLAYERS
+
+            # Update the old max players value with the new value
+            game_state.max_players = arc4.UInt8(new_max_players)
+
         # Copy the modified game state and store it as new value of box
         self.box_game_state[game_id] = game_state.copy()
 
@@ -743,6 +769,11 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
 
+        # NOTE ASSERT USER HAS BOX GAME REGISTER DATA, ELSE THEY CAN'T DELETE
+        # AND THEY SHOULDN'T BE ABLE TO UNREGISTER WHEN THEY ARE HOSTING GAME
+        # BUG IF USER CREATES GAME AND UNREGISTERS, THEY CAN NOT DELETE THE GAME
+        # AS THEIR HOSTING FLAG GOES FROM TRUE TO FALSE, AND HOSTING FLAG NEEDS TO BE TRUE TO DELETE
+
         # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[
             game_id
@@ -752,13 +783,11 @@ class Pieout(ARC4Contract):
         admin = self.box_game_state[game_id].admin_address.native
 
         # Fail transaction unless the assertions below evaluate True
-        assert self.box_game_register[admin].hosting_game.native, err.HOSTING_GAME_FLAG
         assert (
             Txn.sender == admin or Txn.sender == Global.creator_address
         ), err.INVALID_CALLER
 
         # Ensure game has zero active players OR only player left is the admin
-        # acc_in_game = False
         if game_state.active_players.native == 1:
             assert srt.check_acc_in_game(
                 game_id=game_id,
@@ -767,9 +796,6 @@ class Pieout(ARC4Contract):
                 player_count=UInt64(1),
                 clear_player=False,
             ), err.ADMIN_SOLE_PLAYER
-
-            # Fail transaction unless the assertion below evaluates True
-            # assert acc_in_game, err.ADMIN_SOLE_PLAYER
 
             # Issue prize pool payouts equal to admin stake
             srt.payout_itxn(

@@ -102,9 +102,15 @@ export const handleClaimTrophy = async (appClient: PieoutClient, appMethods: Pie
   return await safeCall(() => appMethods.claimTrophy(appClient.appId, sender), 'handleClaimTrophy', 'claimTrophy')
 }
 
-export const handleNewGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, maxPlayers: bigint) => {
+export const handleNewGame = async (
+  appClient: PieoutClient,
+  appMethods: PieoutMethods,
+  sender: string,
+  quickPlayEnabled: boolean,
+  maxPlayers: bigint,
+) => {
   if (!appClient || !appMethods || !sender || !maxPlayers) throw new Error('[handleNewGame] - Missing required parameters!')
-  return await safeCall(() => appMethods.newGame(appClient.appId, sender, maxPlayers), 'handleNewGame', 'newGame')
+  return await safeCall(() => appMethods.newGame(appClient.appId, sender, quickPlayEnabled, maxPlayers), 'handleNewGame', 'newGame')
 }
 
 export const handleJoinGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
@@ -117,9 +123,21 @@ export const handlePlayGame = async (appClient: PieoutClient, appMethods: Pieout
   return await safeCall(() => appMethods.playGame(appClient.appId, sender, gameId), 'handlePlayGame', 'playGame')
 }
 
-export const handleResetGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {
+export const handleResetGame = async (
+  appClient: PieoutClient,
+  appMethods: PieoutMethods,
+  sender: string,
+  gameId: bigint,
+  changeQuickPlay: boolean,
+  changeMaxPlayers: boolean,
+  newMaxPlayers: bigint,
+) => {
   if (!appClient || !appMethods || !sender || !gameId) throw new Error('[handleResetGame] - Missing required parameters!')
-  return await safeCall(() => appMethods.resetGame(appClient.appId, sender, gameId), 'handleResetGame', 'resetGame')
+  return await safeCall(
+    () => appMethods.resetGame(appClient.appId, sender, gameId, changeQuickPlay, changeMaxPlayers, newMaxPlayers),
+    'handleResetGame',
+    'resetGame',
+  )
 }
 
 export const handleDeleteGame = async (appClient: PieoutClient, appMethods: PieoutMethods, sender: string, gameId: bigint) => {

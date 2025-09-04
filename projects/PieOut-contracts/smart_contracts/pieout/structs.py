@@ -5,10 +5,7 @@ from algopy import arc4
 # Struct containing game state values
 class GameState(arc4.Struct):
     staking_finalized: arc4.Bool  # If True, game is live, else players can join
-
-    # NEW FEATURE BELOW:
     quick_play_enabled: arc4.Bool  # If True, admin can start live phase
-
     max_players: arc4.UInt8  # Max num of players per game instance
     active_players: arc4.UInt8  # Active num of players currently
     first_place_score: arc4.UInt8  # First place score per round
@@ -27,8 +24,8 @@ class GameState(arc4.Struct):
 
 # Struct containing game trophy values
 class GameTrophy(arc4.Struct):
-    ath_score: arc4.UInt8  # All-time highest score per app
     asset_id: arc4.UInt64  # Trophy asset ID
+    ath_score: arc4.UInt8  # All-time highest score
     ath_address: arc4.Address  # All-time highest scorer address
 
 

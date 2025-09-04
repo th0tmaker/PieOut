@@ -1,3 +1,4 @@
+//src/modals/HonorsModal.tsx
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { useWallet } from '@txnlab/use-wallet-react'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -14,7 +15,19 @@ import { lookupTrophyAssetBalances } from '../utils/network/getAccTrophyBalance'
 import { AppBaseBtn } from '../buttons/AppBaseBtn'
 import { GameTrophy } from '../contracts/Pieout'
 
-// Trophy data display component
+// Create a reusable UserStatusMsg component that notifies the user of their current app related status
+const UserStatusMsg = ({ isTrophyHolder, isCurrentlyOptedIn }: { isTrophyHolder: boolean; isCurrentlyOptedIn: boolean | undefined }) => (
+  <>
+    {isTrophyHolder && <p className="text-green-400 text-sm mb-2">You are the current asset holder.</p>}
+    {!isTrophyHolder && (
+      <p className={`mb-2 text-sm ${isCurrentlyOptedIn ? 'text-green-400' : 'text-red-400'}`}>
+        {isCurrentlyOptedIn ? 'You are opted in successfully.' : 'You are not opted in yet!'}
+      </p>
+    )}
+  </>
+)
+
+// Create a reusable TrophyData component that renders the trophy asset info on screen
 const TrophyData = ({ gameTrophyData, trophyHolderAddress }: { gameTrophyData: GameTrophy; trophyHolderAddress: string | undefined }) => (
   <div className="w-max mx-auto text-center">
     <hr className="border-t-[2px] border-yellow-300 opacity-80 mt-2" />
@@ -44,19 +57,7 @@ const TrophyData = ({ gameTrophyData, trophyHolderAddress }: { gameTrophyData: G
   </div>
 )
 
-// User status message component
-const UserStatusMsg = ({ isTrophyHolder, isCurrentlyOptedIn }: { isTrophyHolder: boolean; isCurrentlyOptedIn: boolean | undefined }) => (
-  <>
-    {isTrophyHolder && <p className="text-green-400 text-sm mb-2">You are the current asset holder.</p>}
-    {!isTrophyHolder && (
-      <p className={`mb-2 text-sm ${isCurrentlyOptedIn ? 'text-green-400' : 'text-red-400'}`}>
-        {isCurrentlyOptedIn ? 'You are opted in successfully.' : 'You are not opted in yet!'}
-      </p>
-    )}
-  </>
-)
-
-// Opt-in/out section component
+// Create a reusable OptSection component that renders the display and logic for opting in or opting out
 const OptSection = ({
   isProcessing,
   isTrophyHolder,
@@ -92,6 +93,7 @@ const OptSection = ({
   // If the user is the trophy holder, do not render any button (can't opt out while holding the trophy)
   return null
 }
+
 // Create a modal component that displays the application honors
 const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
   // Hooks
@@ -245,8 +247,10 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
               <br />● You must Opt-In
               <br />● You must be the ATH address
             </p>
-
+            {/* Display User Status Message */}
             <UserStatusMsg isTrophyHolder={isTrophyHolder} isCurrentlyOptedIn={isCurrentlyOptedIn} />
+
+            {/* Display Opt-In/Out Section */}
             <OptSection
               isProcessing={isProcessing}
               isTrophyHolder={isTrophyHolder}
@@ -256,7 +260,7 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
             />
           </div>
 
-          {/* Buttons */}
+          {/* Claim and Close Modal Buttons */}
           <div className="modal-action flex justify-center">
             <AppBaseBtn onClick={handleClaimTxn} disabled={isClaimDisabled || isTrophyHolder}>
               Claim
@@ -267,7 +271,7 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
           </div>
         </form>
       </dialog>
-
+      {/* Honors Modal About Portal */}
       {isHonorsBlurbOpen && <AboutPortal title="About Honors" text={HonorsAboutContent()} onClose={() => toggleModal('honorsBlurb')} />}
     </>
   )

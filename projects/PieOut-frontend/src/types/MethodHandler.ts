@@ -10,8 +10,12 @@ export type MethodHandlerProps = {
   activeAddress: string | null
   appMethods: PieoutMethods | undefined
   appClient: PieoutClient | undefined
+  quickPlayEnabled?: boolean | null
   maxPlayers?: bigint | null
   gameId?: bigint | null
+  changeQuickPlay?: boolean | null
+  changeMaxPlayers?: boolean | null
+  newMaxPlayers?: bigint | null
   triggerId?: bigint | null
   player?: string | null
   keySize?: bigint | number | null

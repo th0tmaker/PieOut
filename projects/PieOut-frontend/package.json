@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@algorandfoundation/algokit-subscriber": "^3.2.0",
-    "@algorandfoundation/algokit-utils": "^9.1.1",
+    "@algorandfoundation/algokit-utils": "^9.1.2",
     "@blockshake/defly-connect": "^1.2.1",
     "@perawallet/connect": "^1.4.1",
     "@txnlab/use-wallet": "^4.0.0",
@@ -51,16 +51,16 @@
     "react-dom": "^18.2.0",
     "tslib": "^2.6.2"
   },
-"scripts": {
-  "generate:app-clients": "algokit project link --all",
-  "dev": "npm run generate:app-clients && vite",
-  "build": "if [ \"$VERCEL\" = \"1\" ]; then tsc && vite build; else npm run generate:app-clients && tsc && vite build; fi",
-  "test": "jest --coverage --passWithNoTests",
-  "playwright:test": "playwright test",
-  "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-  "lint:fix": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
-  "preview": "vite preview"
-},
+  "scripts": {
+    "generate:app-clients": "algokit project link --all",
+    "dev": "npm run generate:app-clients && vite",
+    "build": "if [ \"$VERCEL\" = \"1\" ]; then tsc && vite build; else npm run generate:app-clients && tsc && vite build; fi",
+    "test": "jest --coverage --passWithNoTests",
+    "playwright:test": "playwright test",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+    "preview": "vite preview"
+  },
   "eslintConfig": {
     "extends": [
       "react-app/jest",

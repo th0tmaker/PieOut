@@ -247,6 +247,7 @@ export class PieoutMethods {
   async newGame(
     appId: bigint,
     sender: string,
+    quickPlayEnabled: boolean,
     maxPlayers: bigint,
     noteBoxSPay?: string | Uint8Array,
     noteBoxPPay?: string | Uint8Array,
@@ -298,7 +299,7 @@ export class PieoutMethods {
     await client.send.newGame({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
-      args: { maxPlayers: maxPlayers, boxSPay: boxSPay, boxPPay: boxPPay, stakePay: stakePay },
+      args: { quickPlayEnabled: quickPlayEnabled, maxPlayers: maxPlayers, boxSPay: boxSPay, boxPPay: boxPPay, stakePay: stakePay },
       note: noteNewGame,
     })
   }
@@ -453,7 +454,16 @@ export class PieoutMethods {
   }
 
   // Allow authorized user to reset an existing game instance within the application
-  async resetGame(appId: bigint, sender: string, gameId: bigint, noteStakePay?: string | Uint8Array, noteResetGame?: string | Uint8Array) {
+  async resetGame(
+    appId: bigint,
+    sender: string,
+    gameId: bigint,
+    changeQuickPlay: boolean,
+    changeMaxPlayers: boolean,
+    newMaxPlayers: bigint,
+    noteStakePay?: string | Uint8Array,
+    noteResetGame?: string | Uint8Array,
+  ) {
     // Use factory to get an instance of the application client by referencing the client unique ID
     const client = this.factory.getAppClientById({ appId })
 
@@ -470,7 +480,13 @@ export class PieoutMethods {
     await client.send.resetGame({
       sender: sender,
       signer: this.algorand.account.getSigner(sender),
-      args: { gameId: gameId, stakePay: stakePay },
+      args: {
+        gameId: gameId,
+        changeQuickPlay: changeQuickPlay,
+        changeMaxPlayers: changeMaxPlayers,
+        newMaxPlayers: newMaxPlayers,
+        stakePay: stakePay,
+      },
       note: noteResetGame,
     })
   }

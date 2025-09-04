@@ -18,4 +18,9 @@ export type GameDataCtxProps = {
   setTrophyHolderAddress: (data: string | undefined) => void
   isGameDataLoading: boolean
   setIsGameDataLoading: (loading: boolean) => void
+  userHostedGameId: bigint | null
+  setUserHostedGameId: (id: bigint | null) => void
+  userHostedGameStateData: GameState | undefined
+  setUserHostedGameStateData: (data: GameState | undefined) => void
+  getUserHostedGameStateData: () => Promise<void>
 }

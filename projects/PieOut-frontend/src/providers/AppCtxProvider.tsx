@@ -113,8 +113,8 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
         consoleLogger.info('[AppProvider] Hydrating app from storage...')
 
         // Get app client and creator via ID
-        // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
-        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
+        const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: BigInt(storedAppId) })
+        // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
         const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
         // Update app client and app creator states
@@ -181,8 +181,8 @@ export const AppCtxProvider: FC<React.PropsWithChildren> = ({ children }) => {
       // consoleLogger.info('[AppProvider] Generating new app...')
 
       // Get app client and creator via ID
-      // const client = await appMethodsRef.current.generate(activeAddress)
-      const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
+      const client = await appMethodsRef.current.generate(activeAddress)
+      // const client = algorand.client.getTypedAppClientById(PieoutClient, { appId: 744886519n })
       const creator = (await client.algorand.app.getById(client.appId)).creator.toString()
 
       // Update app client and app creator states

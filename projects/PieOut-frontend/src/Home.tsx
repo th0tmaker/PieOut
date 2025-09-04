@@ -1,6 +1,6 @@
 // src/components/Home.tsx
 import { useWallet } from '@txnlab/use-wallet-react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { CopyAddressBtn } from './buttons/CopyAddressBtn'
 import ConnectWallet from './components/ConnectWallet'
 import GameEventSub from './components/GameEventSub'
@@ -14,18 +14,19 @@ import HonorsModal from './modals/HonorsModal'
 import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
+import { useMethodHandler } from './hooks/useMethodHandler'
 
-// const ADMIN_BUTTONS = [
-//   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
-//   { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
-//   { key: 'deleteApp', label: 'Delete App', color: 'magenta', action: 'terminate' },
-// ] as const
+const ADMIN_BUTTONS = [
+  { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
+  { key: 'mintTrophy', label: 'Mint Trophy', color: 'green', action: 'mintTrophy' },
+  { key: 'deleteApp', label: 'Delete App', color: 'magenta', action: 'terminate' },
+] as const
 
-// const BUTTON_COLORS = {
-//   blue: 'bg-blue-500 hover:bg-blue-600',
-//   green: 'bg-green-500 hover:bg-green-600',
-//   magenta: 'bg-fuchsia-700 hover:bg-fuchsia-800',
-// } as const
+const BUTTON_COLORS = {
+  blue: 'bg-blue-500 hover:bg-blue-600',
+  green: 'bg-green-500 hover:bg-green-600',
+  magenta: 'bg-fuchsia-700 hover:bg-fuchsia-800',
+} as const
 
 const USER_BUTTONS = [
   { key: 'wallet', label: 'Wallet', modal: 'wallet' },
@@ -37,34 +38,34 @@ const USER_BUTTONS = [
 const Home: React.FC = () => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
-  const { appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
+  const { getAppClient, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
-  // const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
 
-  // const handleAction = useCallback(
-  //   (action: string) => {
-  //     const actions = {
-  //       createApp: () => getAppClient(),
-  //       mintTrophy: () => handleMethod('mintTrophy'),
-  //       terminate: () => handleMethod('terminate'),
-  //     }
-  //     actions[action as keyof typeof actions]?.()
-  //   },
-  //   [getAppClient, handleMethod],
-  // )
+  const handleAction = useCallback(
+    (action: string) => {
+      const actions = {
+        createApp: () => getAppClient(),
+        mintTrophy: () => handleMethod('mintTrophy'),
+        terminate: () => handleMethod('terminate'),
+      }
+      actions[action as keyof typeof actions]?.()
+    },
+    [getAppClient, handleMethod],
+  )
 
-  // const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
+  const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
 
-  // const getLoadingLabel = (key: string, label: string) => {
-  //   if (!isLoadingMethod) return label
-  //   return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
-  // }
+  const getLoadingLabel = (key: string, label: string) => {
+    if (!isLoadingMethod) return label
+    return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
+  }
 
   return (
     <div className="p-6 min-h-screen bg-slate-800">
       {/* Admin Buttons */}
-      {/* <div className="flex gap-2 mb-2">
+      <div className="flex gap-2 mb-2">
         {ADMIN_BUTTONS.map(({ key, label, color, action }) => (
           <button
             key={key}
@@ -78,7 +79,7 @@ const Home: React.FC = () => {
             {getLoadingLabel(key, label)}
           </button>
         ))}
-      </div> */}
+      </div>
 
       {/* User Buttons */}
       <div className="flex gap-2 mb-4">
