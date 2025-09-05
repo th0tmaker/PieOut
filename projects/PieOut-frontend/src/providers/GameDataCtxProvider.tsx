@@ -28,7 +28,7 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
   const [userHostedGameId, setUserHostedGameId] = useState<bigint | null>(null)
   const [userHostedGameStateData, setUserHostedGameStateData] = useState<GameState | undefined>(undefined)
 
-  const [isLoadingGameData, setIsLoadingGameData] = useState(false)
+  const [isGameDataLoading, setIsGameDataLoading] = useState(false)
 
   // Define a method that gets and updates the current game state of the user hosted game id
   const getUserHostedGameStateData = useCallback(async () => {
@@ -92,7 +92,7 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
     // If `gameId` is not null, reset all game box data when `gameId` changes and set loading state
     if (gameId != null) {
       // Set loading state when gameId changes
-      setIsLoadingGameData(true)
+      setIsGameDataLoading(true)
 
       // Clear previous game data to prevent showing stale data
       setGameTrophyData(undefined)
@@ -101,7 +101,7 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
       setGamePlayersData(undefined)
     } else {
       // No gameId selected, clear loading state
-      setIsLoadingGameData(false)
+      setIsGameDataLoading(false)
     }
   }, [gameId])
 
@@ -125,8 +125,8 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
     setAccsWithTrophyBalance,
     trophyHolderAddress,
     setTrophyHolderAddress,
-    isGameDataLoading: isLoadingGameData,
-    setIsGameDataLoading: setIsLoadingGameData,
+    isGameDataLoading,
+    setIsGameDataLoading,
   })
 
   // Memoize the context value so it only changes when its dependencies change
@@ -147,7 +147,7 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
       trophyHolderAddress,
       setTrophyHolderAddress,
       isGameDataLoading: hookLoadingState,
-      setIsGameDataLoading: setIsLoadingGameData,
+      setIsGameDataLoading,
       userHostedGameId,
       setUserHostedGameId,
       userHostedGameStateData,
@@ -170,7 +170,7 @@ export const GameDataCtxProvider: FC<React.PropsWithChildren> = ({ children }) =
       trophyHolderAddress,
       setTrophyHolderAddress,
       hookLoadingState,
-      setIsLoadingGameData,
+      setIsGameDataLoading,
       userHostedGameId,
       setUserHostedGameId,
       userHostedGameStateData,

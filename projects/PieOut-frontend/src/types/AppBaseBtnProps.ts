@@ -13,4 +13,5 @@ export type AppBaseBtnProps = {
   disabled?: boolean
   size?: ButtonSize
   textSize?: TextSize
+  title?: string
 }

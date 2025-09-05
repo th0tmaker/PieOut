@@ -180,7 +180,7 @@ const GameModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
     userHostedGameStateData,
     getUserHostedGameStateData,
   } = useGameDataCtx()
-  const { handle: handleMethod, isLoading: isMethodLoading } = useMethodHandler()
+  const { handle: handleMethod, isMethodLoading } = useMethodHandler()
   const { getModalProps, toggleModal } = useModal()
   const { openModal: isGameBlurbOpen } = getModalProps('gameBlurb')
 

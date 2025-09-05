@@ -13,7 +13,7 @@ import { ModalInterface } from '../interfaces/modal'
 import { ellipseAddress } from '../utils/ellipseAddress'
 import UnregisterModal from './UnregisterModal'
 
-// Profile data display component
+// Create a reusable ProfileData component that will display the profile game register data
 const ProfileData = ({
   registerData,
   activeAddress,
@@ -86,9 +86,9 @@ const UnregisterOtherSection = ({
   )
 }
 
-// Main modal component
+// Create a modal component that displays the user game register box data
 const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
-  // Hooks - ALL hooks must be called before any conditional returns
+  // Hooks
   const { activeAddress } = useWallet()
   const { gameRegisterData, gamePlayersData } = useGameDataCtx()
   const { handle: handleMethod } = useMethodHandler()
@@ -98,21 +98,24 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
   // States
   const [expectedRegState, setExpectedRegState] = useState<boolean | null>(null)
 
-  // Memos
+  // Computed values: Account States
   const accountStates = useMemo(() => {
     const isRegistered = !!gameRegisterData
     const isInActiveGame =
       gameRegisterData?.gameId !== undefined &&
       gameRegisterData.gameId !== 0n &&
       gamePlayersData?.some((player) => player === activeAddress)
+    const isHostingGame = gameRegisterData?.hostingGame === true
 
     return {
       isRegistered,
       isInActiveGame,
-      canUnregister: isRegistered && !isInActiveGame,
+      isHostingGame,
+      canUnregister: isRegistered && !isInActiveGame && !isHostingGame,
     }
   }, [gameRegisterData, gamePlayersData, activeAddress])
 
+  // Computed values: Processing State
   const processingStates = useMemo(() => {
     const isProcessing = expectedRegState !== null
     const isRegisterButtonDisabled = isProcessing || (accountStates.isRegistered && !accountStates.canUnregister)
@@ -123,44 +126,79 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
     }
   }, [expectedRegState, accountStates])
 
+  // Computed values: Set unregister button title element text
+  const setUnregisterTitleText = useMemo(() => {
+    if (accountStates.isHostingGame) {
+      return 'You must delete your game instance first in order to unregister'
+    }
+    if (accountStates.isInActiveGame) {
+      return 'Cannot unregister while in an active game'
+    }
+    return undefined
+  }, [accountStates.isHostingGame, accountStates.isInActiveGame])
+
   // Handlers
+  // Define a method that handles logic on register or unregister button click
   const handleRegisterAction = useCallback(
+    // Define two possible button actions, either 'register' or 'unregister'
     async (action: 'register' | 'unregister') => {
+      // Try block
       try {
+        // Set the expected registration state default to be 'register'
         setExpectedRegState(action === 'register')
+
+        // If action is 'register'
         if (action === 'register') {
-          consoleLogger.info('Register button clicked')
+          // Log
+          // consoleLogger.info('Register button clicked')
+
+          // Use methodHandler to call and await the smart cotnract `getBoxGameRegister` method
           await handleMethod('getBoxGameRegister')
+          // Else, action is equal to 'unregister'
         } else {
-          consoleLogger.info('Unregister button clicked')
+          // Log
+          // consoleLogger.info('Unregister button clicked')
+
+          // Use methodHandler to call and await the smart cotnract `delBoxGameRegisterForSelf` method
           await handleMethod('delBoxGameRegisterForSelf')
         }
+        // Catch error
       } catch (error) {
+        // Log
         consoleLogger.error(`${action} failed`, error)
+
+        // In case of error, set the expected registration state to null
         setExpectedRegState(null)
       }
     },
     [handleMethod],
   )
 
-  const handleUnregisterClick = useCallback(() => {
+  // Define a method that handles logic on the unregister other button click
+  const handleUnregisterOtherClick = useCallback(() => {
+    // On click, toggle unregister modal
     toggleModal('unregister')
   }, [toggleModal])
 
   // Effects
   useEffect(() => {
+    // If `expectedRegState` is null, return early
     if (expectedRegState === null) return
+
+    // Determine current registration state (true if registered, false if not)
     const isNowRegistered = !!gameRegisterData
+
+    // Clear `expectedRegState` if the actual state matches the expected one
     if (isNowRegistered === expectedRegState) {
       setExpectedRegState(null)
     }
   }, [gameRegisterData, expectedRegState])
 
-  // Conditions
+  // Get account and processing states and their computed values
   const { isRegistered } = accountStates
   const { isProcessing, isRegisterButtonDisabled } = processingStates
 
-  // Render
+  // Render JSX
   return (
     <>
       <dialog id="profile_modal" className={`modal ${openModal ? 'modal-open' : ''}`}>
@@ -172,7 +210,7 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
             </AppBaseBtn>
           </div>
 
-          {/* Help */}
+          {/* Help Message */}
           <div className="text-sm text-center text-white space-y-1">
             <p>Click title for more info</p>
           </div>
@@ -190,13 +228,17 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
             <UnregisterOtherSection
               isProcessing={isProcessing}
               isUnregisterOtherBtnDisabled={isProcessing}
-              handleUnregisterToggle={handleUnregisterClick}
+              handleUnregisterToggle={handleUnregisterOtherClick}
             />
           </div>
 
-          {/* Action Buttons */}
+          {/* Register/Unregister & Close Buttons */}
           <div className="modal-action flex justify-center">
-            <AppBaseBtn onClick={() => handleRegisterAction(isRegistered ? 'unregister' : 'register')} disabled={isRegisterButtonDisabled}>
+            <AppBaseBtn
+              onClick={() => handleRegisterAction(isRegistered ? 'unregister' : 'register')}
+              disabled={isRegisterButtonDisabled}
+              title={isRegistered && setUnregisterTitleText ? setUnregisterTitleText : undefined}
+            >
               {isRegistered ? 'Unregister' : 'Register'}
             </AppBaseBtn>
             <AppBaseBtn onClick={closeModal} disabled={isProcessing}>
@@ -205,6 +247,8 @@ const ProfileModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
           </div>
         </form>
       </dialog>
+
+      {/* Profile Modal About Portal */}
       <UnregisterModal {...getModalProps('unregister')} />
       {isProfileBlurbOpen && <AboutPortal title="About Profile" text={ProfileAboutContent()} onClose={() => toggleModal('profileBlurb')} />}
     </>

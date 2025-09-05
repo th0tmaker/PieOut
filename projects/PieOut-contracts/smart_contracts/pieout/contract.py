@@ -233,7 +233,6 @@ class Pieout(ARC4Contract):
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
 
         assert player in self.box_game_register, err.BOX_NOT_FOUND
-
         assert not self.box_game_register[player].hosting_game.native, err.HOSTING_GAME_FLAG
 
         assert (
@@ -768,11 +767,6 @@ class Pieout(ARC4Contract):
         # Fail transaction unless the assertions below evaluate True
         assert Global.group_size == 1, err.STANDALONE_TXN_ONLY
         assert game_id in self.box_game_state, err.GAME_ID_NOT_FOUND
-
-        # NOTE ASSERT USER HAS BOX GAME REGISTER DATA, ELSE THEY CAN'T DELETE
-        # AND THEY SHOULDN'T BE ABLE TO UNREGISTER WHEN THEY ARE HOSTING GAME
-        # BUG IF USER CREATES GAME AND UNREGISTERS, THEY CAN NOT DELETE THE GAME
-        # AS THEIR HOSTING FLAG GOES FROM TRUE TO FALSE, AND HOSTING FLAG NEEDS TO BE TRUE TO DELETE
 
         # Retrieve current game state data from its corresponding box using the game id parameter
         game_state = self.box_game_state[

@@ -46,6 +46,7 @@ export const AppBaseBtn = React.memo(
     variant = 'regular', // Button style variant ('regular' or 'text'), default='regular'
     size = 'md', // Button size ('sm', 'md', 'lg'), default='md'
     textSize = 'base', // Text size for the label, default='base'
+    title, // Optional tooltip text
   }: AppBaseBtnProps) => {
     // Hooks
     const { appClient } = useAppCtx()
@@ -68,6 +69,7 @@ export const AppBaseBtn = React.memo(
         type="button"
         onClick={onClick}
         disabled={isDisabled}
+        title={title}
         className={`${BASE_CLASSES} ${variantClass} ${sizeClass} ${textSizeClass} ${className}`}
       >
         {children}

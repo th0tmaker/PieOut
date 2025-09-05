@@ -15,6 +15,7 @@ import ProfileModal from './modals/ProfileModal'
 import { ellipseAddress } from './utils/ellipseAddress'
 import { algorand } from './utils/network/getAlgorandClient'
 import { useMethodHandler } from './hooks/useMethodHandler'
+import { useMethodLoadingCtx } from './hooks/useMethodLoadingCtx'
 
 const ADMIN_BUTTONS = [
   { key: 'createApp', label: 'Create App', color: 'blue', action: 'createApp' },
@@ -41,7 +42,8 @@ const Home: React.FC = () => {
   const { getAppClient, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
   const currentTimestamp = useCurrentTimestamp()
   const { lastRound } = useLastRound(algorand.client.algod)
-  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  const { handle: handleMethod } = useMethodHandler()
+  const { isMethodLoading } = useMethodLoadingCtx()
 
   const handleAction = useCallback(
     (action: string) => {
@@ -55,11 +57,11 @@ const Home: React.FC = () => {
     [getAppClient, handleMethod],
   )
 
-  const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isLoadingMethod
+  const isActionLoading = (key: string) => (key === 'mintTrophy' || key === 'deleteApp') && isMethodLoading
 
   const getLoadingLabel = (key: string, label: string) => {
-    if (!isLoadingMethod) return label
-    return key === 'mintTrophy' ? 'Minting...' : key === 'deleteApp' ? 'Deleting...' : label
+    if (!isMethodLoading) return label
+    return key === 'mintTrophy' ? 'Loading...' : key === 'deleteApp' ? 'Loading...' : label
   }
 
   return (
@@ -84,18 +86,20 @@ const Home: React.FC = () => {
       {/* User Buttons */}
       <div className="flex gap-2 mb-4">
         {USER_BUTTONS.map(({ key, label, modal }) => {
-          const isDisabled = key !== 'wallet' && !activeAddress
+          const walletRequired = key !== 'wallet' && !activeAddress
+          const buttonDisabled = walletRequired || isMethodLoading
+
           return (
             <button
               key={key}
               className={`text-base px-4 py-1 rounded font-semibold border-2 transition-colors duration-200 ${
-                isDisabled
+                buttonDisabled
                   ? 'bg-gray-700 text-gray-300 border-gray-500'
                   : 'bg-slate-800 text-yellow-300 border-yellow-400 hover:bg-slate-700 hover:border-lime-400 hover:text-lime-200'
               }`}
               onClick={() => toggleModal(modal)}
-              disabled={isDisabled}
-              title={isDisabled ? 'Wallet connection required!' : undefined}
+              disabled={buttonDisabled}
+              title={walletRequired ? 'Wallet connection required!' : undefined}
             >
               {label}
             </button>

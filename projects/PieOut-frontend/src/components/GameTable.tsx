@@ -81,7 +81,7 @@ const GameTable: React.FC = React.memo(() => {
   const { activeAddress } = useWallet()
   const { toggleModal, getModalProps } = useModal()
   const { appMethods, appClient, appCreator, isLoading: appIsLoading } = useAppCtx()
-  const { handle: handleMethod, isLoading: isLoadingMethod } = useMethodHandler()
+  const { handle: handleMethod, isMethodLoading } = useMethodHandler()
   const { lastRound } = useLastRound(algorand.client.algod)
   const currentTimestamp = useCurrentTimestamp()
   const { gameId, setGameId } = useGameIdCtx()
@@ -131,11 +131,11 @@ const GameTable: React.FC = React.memo(() => {
     const isAuthorized = activeAddress === gameStateData?.adminAddress || activeAddress === appCreator
     const isAdminSolePlayer = gameStateData?.activePlayers === 1 && activeAddress === gameStateData?.adminAddress
     const gameIsEmpty = gameStateData?.activePlayers === 0 && gameStateData?.prizePool === 0n
-    const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress && !isLoadingMethod
-    const canDeleteGame = isAuthorized && !isLoadingMethod && (gameIsEmpty || isAdminSolePlayer)
+    const canResetGame = gameStateData?.prizePool === 0n && activeAddress === gameStateData?.adminAddress && !isMethodLoading
+    const canDeleteGame = isAuthorized && !isMethodLoading && (gameIsEmpty || isAdminSolePlayer)
 
     return { isAuthorized, canResetGame, canDeleteGame, isAdminSolePlayer }
-  }, [activeAddress, gameStateData, appCreator, isLoadingMethod])
+  }, [activeAddress, gameStateData, appCreator, isMethodLoading])
 
   const eventTriggerConditions = useMemo(() => {
     // If no game state data found, return early
@@ -256,7 +256,7 @@ const GameTable: React.FC = React.memo(() => {
   // Handle reset game transaction method call
   const handleResetGameTxn = useCallback(async () => {
     if (!gameStateData) return
-    if (accState.canResetGame && !isLoadingMethod) {
+    if (accState.canResetGame && !isMethodLoading) {
       try {
         updateExpectedState('reset', true)
         // Call the `resetGame` abimethod via the `methodHandler` object using the stored userHostedGameId
@@ -271,15 +271,15 @@ const GameTable: React.FC = React.memo(() => {
         throw error
       }
     }
-  }, [accState.canResetGame, isLoadingMethod, handleMethod, gameId, updateExpectedState])
+  }, [accState.canResetGame, isMethodLoading, handleMethod, gameId, updateExpectedState])
 
   // Handle delete game transaction method call
   const handleDeleteGameTxn = useCallback(async () => {
-    if (accState.canDeleteGame && !isLoadingMethod) {
+    if (accState.canDeleteGame && !isMethodLoading) {
       await handleMethod('deleteGame', { gameId })
       setGameId(null)
     }
-  }, [accState.canDeleteGame, isLoadingMethod, handleMethod, gameId, setGameId])
+  }, [accState.canDeleteGame, isMethodLoading, handleMethod, gameId, setGameId])
 
   // Handle trigger game event transaction method call for event 0
   const handleTriggerGameLive = useCallback(async () => {
@@ -399,7 +399,7 @@ const GameTable: React.FC = React.memo(() => {
 
     // Determine boolean conditions for loading states of buttons
     const isResetLoading = expectedStates.reset
-    const isDeleteLoading = isLoadingMethod && !isResetLoading
+    const isDeleteLoading = isMethodLoading && !isResetLoading
 
     return (
       <div
@@ -428,7 +428,7 @@ const GameTable: React.FC = React.memo(() => {
         </ul>
       </div>
     )
-  }, [openDropdowns.adminActions, accState, expectedStates.reset, isLoadingMethod, handleResetGameTxn, handleDeleteGameTxn])
+  }, [openDropdowns.adminActions, accState, expectedStates.reset, isMethodLoading, handleResetGameTxn, handleDeleteGameTxn])
 
   // Render the trigger table cell dropdown item
   const renderTriggerDropdown = useCallback(() => {
@@ -508,7 +508,7 @@ const GameTable: React.FC = React.memo(() => {
         wasCommitRandRoundReached(lastRound, gameRegisterData.commitRandRound)
 
       // Boolean conditions determining if the play button click should display the loading animation
-      const isPlayLoading = isLoadingMethod || expectedStates.play || expectedStates.set || expectedStates.waitingForCommitRound
+      const isPlayLoading = isMethodLoading || expectedStates.play || expectedStates.set || expectedStates.waitingForCommitRound
 
       // Define the tooltip message based on what condition is met
       const playTooltipMessage = !hasGameRegisterData
@@ -548,7 +548,7 @@ const GameTable: React.FC = React.memo(() => {
         !gameStateData.stakingFinalized && !isPlayerInGame && hasGameRegisterData && currentTimestamp <= Number(gameStateData.expiryTs)
 
       // Boolean conditions determining if the join button click should display the loading animation
-      const isJoinLoading = isLoadingMethod || expectedStates.join
+      const isJoinLoading = isMethodLoading || expectedStates.join
 
       // Define the tooltip message based on what condition is met
       const joinTooltipMessage = !hasGameRegisterData
@@ -589,7 +589,7 @@ const GameTable: React.FC = React.memo(() => {
     handleJoinGameTxn,
     handlePlayGameTxn,
     expectedStates,
-    isLoadingMethod,
+    isMethodLoading,
     gameId,
   ])
 
@@ -610,7 +610,7 @@ const GameTable: React.FC = React.memo(() => {
       currentTimestamp <= Number(gameStateData.expiryTs)
 
     // Boolean conditions determining if the set button click should display the loading animation
-    const isSetLoading = isLoadingMethod || expectedStates.set
+    const isSetLoading = isMethodLoading || expectedStates.set
 
     // Define the tooltip message based on what condition is met
     const tooltipMessage = !gameStateData.stakingFinalized
@@ -643,7 +643,7 @@ const GameTable: React.FC = React.memo(() => {
     activeAddress,
     handleSetCommitGameTxn,
     expectedStates.set,
-    isLoadingMethod,
+    isMethodLoading,
     currentTimestamp,
   ])
 

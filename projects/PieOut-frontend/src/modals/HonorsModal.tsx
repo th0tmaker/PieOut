@@ -14,6 +14,7 @@ import { ellipseAddress } from '../utils/ellipseAddress'
 import { lookupTrophyAssetBalances } from '../utils/network/getAccTrophyBalance'
 import { AppBaseBtn } from '../buttons/AppBaseBtn'
 import { GameTrophy } from '../contracts/Pieout'
+import { useMethodLoadingCtx } from '../hooks/useMethodLoadingCtx'
 
 // Create a reusable UserStatusMsg component that notifies the user of their current app related status
 const UserStatusMsg = ({ isTrophyHolder, isCurrentlyOptedIn }: { isTrophyHolder: boolean; isCurrentlyOptedIn: boolean | undefined }) => (
@@ -99,7 +100,8 @@ const HonorsModal = React.memo(({ openModal, closeModal }: ModalInterface) => {
   // Hooks
   const { activeAddress } = useWallet()
   const { appClient } = useAppCtx()
-  const { handle: handleMethod, isLoading: isMethodLoading } = useMethodHandler()
+  const { handle: handleMethod } = useMethodHandler()
+  const { isMethodLoading } = useMethodLoadingCtx()
   const { gameTrophyData, trophyHolderAddress, accsWithTrophyBalance, setAccsWithTrophyBalance, isGameDataLoading } = useGameDataCtx()
 
   // Modal

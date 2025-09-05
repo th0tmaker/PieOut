@@ -5,6 +5,7 @@ import { AppCtxProvider } from './providers/AppCtxProvider'
 import { AppSubscriberCtxProvider } from './providers/AppSubscriberCtxProvider'
 import { GameDataCtxProvider } from './providers/GameDataCtxProvider'
 import { GameIdCtxProvider } from './providers/GameIdCtxProvider'
+import { MethodLoadingCtxProvider } from './providers/MethodLoadingCtxProvider'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
 let supportedWallets: SupportedWallet[]
@@ -55,13 +56,15 @@ export default function App() {
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
         <AppCtxProvider>
-          <GameIdCtxProvider>
-            <AppSubscriberCtxProvider>
-              <GameDataCtxProvider>
-                <Home />
-              </GameDataCtxProvider>
-            </AppSubscriberCtxProvider>
-          </GameIdCtxProvider>
+          <MethodLoadingCtxProvider>
+            <GameIdCtxProvider>
+              <AppSubscriberCtxProvider>
+                <GameDataCtxProvider>
+                  <Home />
+                </GameDataCtxProvider>
+              </AppSubscriberCtxProvider>
+            </GameIdCtxProvider>
+          </MethodLoadingCtxProvider>
         </AppCtxProvider>
       </WalletProvider>
     </SnackbarProvider>

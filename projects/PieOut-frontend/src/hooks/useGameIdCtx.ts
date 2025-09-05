@@ -2,7 +2,7 @@
 import { useContext } from 'react'
 import { GameIdCtx } from '../contexts/GameId'
 
-// Create hook that uses the Game ID Context
+// Create a hook that uses the Game ID Context
 export const useGameIdCtx = () => {
   const ctx = useContext(GameIdCtx)
   if (!ctx) throw new Error('useGameIdCtx must be used within a GameIdProvider')
