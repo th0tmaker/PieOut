@@ -82,12 +82,11 @@ const Home: React.FC = () => {
           </button>
         ))}
       </div>
-
       {/* User Buttons */}
       <div className="flex gap-2 mb-4">
         {USER_BUTTONS.map(({ key, label, modal }) => {
-          const walletRequired = key !== 'wallet' && !activeAddress
-          const buttonDisabled = walletRequired || isMethodLoading
+          // Disable all buttons if a method is loading
+          const buttonDisabled = isMethodLoading || (key !== 'wallet' && (!activeAddress || !appClient))
 
           return (
             <button
@@ -99,14 +98,13 @@ const Home: React.FC = () => {
               }`}
               onClick={() => toggleModal(modal)}
               disabled={buttonDisabled}
-              title={walletRequired ? 'Wallet connection required!' : undefined}
+              title={!isMethodLoading && key !== 'wallet' && (!activeAddress || !appClient) ? 'Wallet connection required!' : undefined}
             >
               {label}
             </button>
           )
         })}
       </div>
-
       {/* App Information */}
       {appClient && (
         <div className="text-indigo-200 font-bold my-2 space-y-1">
@@ -137,7 +135,6 @@ const Home: React.FC = () => {
           </div>
         </div>
       )}
-
       {/* Game Components */}
       {activeAddress && appClient && !appIsLoading && (
         <div>
@@ -146,7 +143,6 @@ const Home: React.FC = () => {
           <GameEventSub />
         </div>
       )}
-
       {/* Modals */}
       <ConnectWallet {...getModalProps('wallet')} />
       <ProfileModal {...getModalProps('profile')} />
