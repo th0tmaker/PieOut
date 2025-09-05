@@ -538,12 +538,12 @@ class Pieout(ARC4Contract):
         ), err.COMMIT_RAND_ROUND_NOT_REACHED
 
         # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
-        # seed = arc4.abi_call[Bytes](
-        #     "must_get(uint64,byte[])byte[]",
-        #     self.box_game_register[Txn.sender].commit_rand_round.native,
-        #     Txn.sender.bytes,
-        #     app_id=600011887,  # TestNet VRF Beacon Application ID
-        # )[0]
+        seed = arc4.abi_call[Bytes](
+            "must_get(uint64,byte[])byte[]",
+            self.box_game_register[Txn.sender].commit_rand_round.native,
+            Txn.sender.bytes,
+            app_id=600011887,  # TestNet VRF Beacon Application ID
+        )[0]
 
         # Calculate player score and assign placement if their score qualifies
         srt.calc_score_get_place(
@@ -551,7 +551,7 @@ class Pieout(ARC4Contract):
             game_state=game_state,
             game_register=game_register,
             player=Txn.sender,
-            seed=Txn.sender.bytes,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
+            seed=seed,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
         )
 
         # If game state first place score is higher than ath score

@@ -4,15 +4,15 @@
 // smart_contracts.pieout.contract.Pieout.__algopy_entrypoint_with_init() -> uint64:
 main:
     intcblock 0 1 2 32 1000000 1800 150000 29700 6364136223846793005 1442695040888963407 4294967295 80500 65535 TMPL_GEN_UNIX TMPL_DELETABLE
-    bytecblock "r_" 0x00 "t_" "p_" "s_" 0x151f7c75 0x0000000000000000 0x0000000000000000000000000000000000000000000000000000000000000000 "game_id" 0xdbdf4f77 0x1a789ed0 0x0020 0x068101
+    bytecblock "r_" 0x00 "t_" "p_" "s_" 0x151f7c75 0x0000000000000000 0x0000000000000000000000000000000000000000000000000000000000000000 "game_id" 0x0020 0xdbdf4f77 0x1a789ed0 0x068101
     // smart_contracts/pieout/contract.py:31-32
     // # Smart contract class
     // class Pieout(ARC4Contract):
     txn NumAppArgs
     bz main_after_if_else@26
     pushbytess 0x6333cd9d 0xb66d2f56 0x1d236a37 0x04b716e1 0xbbfa8e01 0xb16aa971 0x5be219f0 0xb2460ef6 0x3ae74f74 0x1fa065e9 0xf6c91251 0xc1da1bb6 0x12978417 0x71af966e 0xdc349707 // method "calc_single_box_cost(uint8,uint16)uint64", method "read_gen_unix()uint64", method "does_box_game_trophy_exist()bool", method "does_box_game_register_exist(account)bool", method "does_box_game_state_exist(uint64)bool", method "read_box_game_players(uint64)address[]", method "generate()void", method "mint_trophy(pay,pay)void", method "claim_trophy()void", method "get_box_game_register(pay)void", method "del_box_game_register_for_self()void", method "del_box_game_register_for_other(account)void", method "new_game(bool,uint64,pay,pay,pay)void", method "join_game(uint64,pay)void", method "set_game_commit(uint64)void"
-    bytec 9 // method "up_ref_budget_for_play_game(uint64)void"
-    bytec 10 // method "play_game(uint64)void"
+    bytec 10 // method "up_ref_budget_for_play_game(uint64)void"
+    bytec 11 // method "play_game(uint64)void"
     pushbytess 0x9eee9c18 0x710ebb8f 0x1898a02e 0x5ff16da4 // method "trigger_game_event(uint64,uint8)void", method "reset_game(uint64,bool,bool,uint64,pay)void", method "delete_game(uint64)void", method "terminate()void"
     txna ApplicationArgs 0
     match main_calc_single_box_cost_route@5 main_read_gen_unix_route@6 main_does_box_game_trophy_exist_route@7 main_does_box_game_register_exist_route@8 main_does_box_game_state_exist_route@9 main_read_box_game_players_route@10 main_generate_route@11 main_mint_trophy_route@12 main_claim_trophy_route@13 main_get_box_game_register_route@14 main_del_box_game_register_for_self_route@15 main_del_box_game_register_for_other_route@16 main_new_game_route@17 main_join_game_route@18 main_set_game_commit_route@19 main_up_ref_budget_for_play_game_route@20 main_play_game_route@21 main_trigger_game_event_route@22 main_reset_game_route@23 main_delete_game_route@24 main_terminate_route@25
@@ -2617,7 +2617,7 @@ new_game_bool_merge@4:
     concat
     // smart_contracts/pieout/contract.py:321
     // box_p_start_pos=arc4.UInt16(cst.ADDRESS_SIZE),
-    bytec 11 // 0x0020
+    bytec 9 // 0x0020
     // smart_contracts/pieout/contract.py:311-329
     // # Create a game state box with unique game ID as key and assign its default starting values
     // self.box_game_state[self.game_id] = stc.GameState(
@@ -3232,7 +3232,7 @@ up_ref_budget_for_play_game:
     // assert second_txn.app_args(0) == arc4.arc4_signature(
     //     "play_game(uint64)void"
     // ), err.INVALID_METHOD_SELECTOR
-    bytec 10 // method "play_game(uint64)void"
+    bytec 11 // method "play_game(uint64)void"
     ==
     assert // Transaction at this group index must have exact required method selector.
     // smart_contracts/pieout/contract.py:459-460
@@ -3290,11 +3290,11 @@ play_game:
     pushbytes ""
     dupn 6
 
-play_game_while_top@11:
+play_game_while_top@41:
     pushint 19610 // 19610
     global OpcodeBudget
     >
-    bz play_game_after_while@16
+    bz play_game_after_while@46
     itxn_begin
     pushint 6 // appl
     itxn_field TypeEnum
@@ -3307,9 +3307,9 @@ play_game_while_top@11:
     intc_0 // 0
     itxn_field Fee
     itxn_submit
-    b play_game_while_top@11
+    b play_game_while_top@41
 
-play_game_after_while@16:
+play_game_after_while@46:
     // smart_contracts/pieout/contract.py:485-486
     // # Get the first transaction in the group
     // first_txn = gtxn.ApplicationCallTransaction(group_index=0)
@@ -3392,7 +3392,7 @@ play_game_after_while@16:
     // assert first_txn.app_args(0) == arc4.arc4_signature(
     //     "up_ref_budget_for_play_game(uint64)void"
     // ), err.INVALID_METHOD_SELECTOR
-    bytec 9 // method "up_ref_budget_for_play_game(uint64)void"
+    bytec 10 // method "up_ref_budget_for_play_game(uint64)void"
     ==
     assert // Transaction at this group index must have exact required method selector.
     // smart_contracts/pieout/contract.py:485-486
@@ -3576,18 +3576,69 @@ play_game_after_while@16:
     //     Global.round >= self.box_game_register[Txn.sender].commit_rand_round.native
     // ), err.COMMIT_RAND_ROUND_NOT_REACHED
     assert // Randomness commit round not reached yet.
+    // smart_contracts/pieout/contract.py:540-546
+    // # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+    // seed = arc4.abi_call[Bytes](
+    //     "must_get(uint64,byte[])byte[]",
+    //     self.box_game_register[Txn.sender].commit_rand_round.native,
+    //     Txn.sender.bytes,
+    //     app_id=600011887,  # TestNet VRF Beacon Application ID
+    // )[0]
+    itxn_begin
+    // smart_contracts/pieout/contract.py:543
+    // self.box_game_register[Txn.sender].commit_rand_round.native,
+    bytec_0 // "r_"
+    txn Sender
+    concat
+    box_get
+    assert // check self.box_game_register entry exists
+    pushint 10 // 10
+    extract_uint64
+    itob
+    // smart_contracts/pieout/contract.py:544
+    // Txn.sender.bytes,
+    bytec 9 // 0x0020
+    txn Sender
+    concat
+    // smart_contracts/pieout/contract.py:545
+    // app_id=600011887,  # TestNet VRF Beacon Application ID
+    pushint 600011887 // 600011887
+    itxn_field ApplicationID
+    // smart_contracts/pieout/contract.py:540-546
+    // # Call the Randomness Beacon smart contract that computes the VRF and outputs a randomness value
+    // seed = arc4.abi_call[Bytes](
+    //     "must_get(uint64,byte[])byte[]",
+    //     self.box_game_register[Txn.sender].commit_rand_round.native,
+    //     Txn.sender.bytes,
+    //     app_id=600011887,  # TestNet VRF Beacon Application ID
+    // )[0]
+    pushbytes 0x47c20c23 // method "must_get(uint64,byte[])byte[]"
+    itxn_field ApplicationArgs
+    swap
+    itxn_field ApplicationArgs
+    itxn_field ApplicationArgs
+    pushint 6 // appl
+    itxn_field TypeEnum
+    intc_0 // 0
+    itxn_field Fee
+    itxn_submit
+    itxn LastLog
+    dup
+    extract 0 4
+    bytec 5 // 0x151f7c75
+    ==
+    assert // application log value is not the result of an ABI return
+    dup
+    extract 6 0
     // smart_contracts/pieout/contract.py:553
     // player=Txn.sender,
     txn Sender
     frame_bury 7
-    // smart_contracts/pieout/contract.py:554
-    // seed=Txn.sender.bytes,  # NOTE: IMPORANT: Use VRF output as seed outside LocalNet env
-    txn Sender
     // smart_contracts/pieout/subroutines.py:143-144
     // # Initialize the PCG pseudo-random generator state using 8 bytes from the given seed
     // state = pcg16_init(seed=op.extract(seed, 16, 8))
-    dup
-    extract 16 8
+    swap
+    extract 22 8
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:21
     // assert seed.length == 8
     len
@@ -3656,7 +3707,7 @@ play_game_after_while@16:
     frame_bury 13
     frame_bury 15
 
-play_game_for_header@20:
+play_game_for_header@13:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:223
     // for i in urange(length):  # noqa: B007
     frame_dig 13
@@ -3666,9 +3717,9 @@ play_game_for_header@20:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:223
     // for i in urange(length):  # noqa: B007
     <
-    bz play_game_after_for@25
+    bz play_game_after_for@18
 
-play_game_while_top@22:
+play_game_while_top@15:
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:269
     // _high_mul, low_mul = op.mulw(state, PCG_MULTIPLIER)
     frame_dig 15
@@ -3733,7 +3784,7 @@ play_game_while_top@22:
     // if candidate >= threshold:
     frame_dig 16
     >=
-    bz play_game_after_if_else@24
+    bz play_game_after_if_else@17
     // .venv/Lib/site-packages/lib_pcg/pcg32.py:228
     // op.itob((candidate % absolute_bound) + lower_bound),
     frame_dig 12
@@ -3768,13 +3819,13 @@ play_game_while_top@22:
     +
     frame_bury 13
     frame_bury 15
-    b play_game_for_header@20
+    b play_game_for_header@13
 
-play_game_after_if_else@24:
+play_game_after_if_else@17:
     frame_bury 15
-    b play_game_while_top@22
+    b play_game_while_top@15
 
-play_game_after_for@25:
+play_game_after_for@18:
     // smart_contracts/pieout/subroutines.py:154-155
     // # Initialize the player's score
     // score = UInt64(0)
@@ -3789,14 +3840,14 @@ play_game_after_for@25:
     intc_2 // 2
     frame_bury 13
 
-play_game_for_header@27:
+play_game_for_header@20:
     // smart_contracts/pieout/subroutines.py:157-158
     // # Iterate through the sequence as a byte array starting at byte index 2 (skip array header bytes)
     // for i in urange(2, sequence.bytes.length, 2):
     frame_dig 13
     frame_dig 17
     <
-    bz play_game_after_for@30
+    bz play_game_after_for@23
     // smart_contracts/pieout/subroutines.py:159-160
     // # Extract a 16-bit unsigned integer from the byte sequence
     // roll = op.extract_uint16(sequence.bytes[2:], i)
@@ -3820,7 +3871,7 @@ play_game_for_header@27:
     // if roll <= cst.ELIM_THRESHOLD:
     pushint 10992 // 10992
     <=
-    bnz play_game_after_for@30
+    bnz play_game_after_for@23
     // smart_contracts/pieout/subroutines.py:166-167
     // # Increment score for each roll above the threshold
     // score += 1
@@ -3835,9 +3886,9 @@ play_game_for_header@27:
     intc_2 // 2
     +
     frame_bury 13
-    b play_game_for_header@27
+    b play_game_for_header@20
 
-play_game_after_for@30:
+play_game_after_for@23:
     // smart_contracts/pieout/subroutines.py:174
     // arc4.UInt8(score),
     frame_dig 14
@@ -3881,7 +3932,7 @@ play_game_after_for@30:
     dup
     frame_bury 6
     frame_bury 5
-    bz play_game_after_if_else@32
+    bz play_game_after_if_else@25
     // smart_contracts/pieout/subroutines.py:179
     // game_state.top_score = arc4.UInt8(score)  # Update top score
     frame_dig 4
@@ -3895,7 +3946,7 @@ play_game_after_for@30:
     frame_bury 6
     frame_bury 5
 
-play_game_after_if_else@32:
+play_game_after_if_else@25:
     frame_dig 5
     frame_bury 4
     // smart_contracts/pieout/subroutines.py:182-183
@@ -3909,7 +3960,7 @@ play_game_after_if_else@32:
     <
     swap
     frame_bury 3
-    bz play_game_after_if_else@34
+    bz play_game_after_if_else@27
     // smart_contracts/pieout/subroutines.py:184
     // game_register.best_score = arc4.UInt8(score)  # Update personal top score
     frame_dig 2
@@ -3917,7 +3968,7 @@ play_game_after_if_else@32:
     replace2 1
     frame_bury 3
 
-play_game_after_if_else@34:
+play_game_after_if_else@27:
     frame_dig 3
     frame_bury 2
     // smart_contracts/pieout/subroutines.py:188-189
@@ -3931,7 +3982,7 @@ play_game_after_if_else@34:
     // # First Place
     // game_state.first_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.first_place_score.native
-    bnz play_game_if_body@36
+    bnz play_game_if_body@29
     // smart_contracts/pieout/subroutines.py:190
     // or score > game_state.first_place_score.native
     frame_dig 4
@@ -3943,9 +3994,9 @@ play_game_after_if_else@34:
     // # First Place
     // game_state.first_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.first_place_score.native
-    bz play_game_else_body@37
+    bz play_game_else_body@30
 
-play_game_if_body@36:
+play_game_if_body@29:
     // smart_contracts/pieout/subroutines.py:192-193
     // # Assign: Second -> Third
     // game_state.third_place_score = game_state.second_place_score
@@ -3980,7 +4031,7 @@ play_game_if_body@36:
     replace2 57
     frame_bury 4
 
-play_game_after_if_else@45:
+play_game_after_if_else@38:
     // smart_contracts/pieout/contract.py:557-558
     // # If game state first place score is higher than ath score
     // if game_state.first_place_score > self.box_game_trophy.value.ath_score:
@@ -3993,7 +4044,7 @@ play_game_after_if_else@45:
     assert // check self.box_game_trophy exists
     extract 8 1 // on error: Index access is out of bounds
     b>
-    bz play_game_after_if_else@7
+    bz play_game_after_if_else@8
     // smart_contracts/pieout/contract.py:559-560
     // # Update ath score, game state first place score is the ath score
     // self.box_game_trophy.value.ath_score = game_state.first_place_score
@@ -4011,7 +4062,7 @@ play_game_after_if_else@45:
     extract 9 32 // on error: Index access is out of bounds
     global ZeroAddress
     !=
-    bz play_game_after_if_else@6
+    bz play_game_after_if_else@7
     // smart_contracts/pieout/contract.py:566
     // self.box_game_trophy.value.ath_address.native,
     bytec_2 // "t_"
@@ -4036,11 +4087,11 @@ play_game_after_if_else@45:
     // smart_contracts/pieout/contract.py:570-571
     // # If asset exists and its balance is 1, perform clawback via asset transfer inner transaction
     // if asset_exists and asset_balance == 1:
-    bz play_game_after_if_else@6
+    bz play_game_after_if_else@7
     frame_dig 11
     intc_1 // 1
     ==
-    bz play_game_after_if_else@6
+    bz play_game_after_if_else@7
     // smart_contracts/pieout/contract.py:573
     // asset_id=self.box_game_trophy.value.asset_id.native,
     bytec_2 // "t_"
@@ -4094,7 +4145,7 @@ play_game_after_if_else@45:
     // ).submit()
     itxn_submit
 
-play_game_after_if_else@6:
+play_game_after_if_else@7:
     // smart_contracts/pieout/contract.py:581-582
     // # Update ath address, transaction sender is the new ath address
     // self.box_game_trophy.value.ath_address = arc4.Address(Txn.sender)
@@ -4107,7 +4158,7 @@ play_game_after_if_else@6:
     swap
     box_put
 
-play_game_after_if_else@7:
+play_game_after_if_else@8:
     // smart_contracts/pieout/contract.py:584-585
     // # Decrement number of active players by 1
     // game_state.active_players = arc4.UInt8(game_state.active_players.native - 1)
@@ -4187,7 +4238,7 @@ play_game_after_if_else@7:
     box_put
     retsub
 
-play_game_else_body@37:
+play_game_else_body@30:
     // smart_contracts/pieout/subroutines.py:202-203
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
@@ -4199,7 +4250,7 @@ play_game_else_body@37:
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.second_place_score.native
-    bnz play_game_if_body@39
+    bnz play_game_if_body@32
     // smart_contracts/pieout/subroutines.py:204
     // or score > game_state.second_place_score.native
     frame_dig 4
@@ -4211,9 +4262,9 @@ play_game_else_body@37:
     // # Second Place
     // game_state.second_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.second_place_score.native
-    bz play_game_else_body@40
+    bz play_game_else_body@33
 
-play_game_if_body@39:
+play_game_if_body@32:
     // smart_contracts/pieout/subroutines.py:206-207
     // # Assign: Second -> Third
     // game_state.third_place_score = game_state.second_place_score
@@ -4237,12 +4288,12 @@ play_game_if_body@39:
     replace2 89
     frame_bury 6
 
-play_game_after_if_else@44:
+play_game_after_if_else@37:
     frame_dig 6
     frame_bury 4
-    b play_game_after_if_else@45
+    b play_game_after_if_else@38
 
-play_game_else_body@40:
+play_game_else_body@33:
     // smart_contracts/pieout/subroutines.py:213-214
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
@@ -4254,7 +4305,7 @@ play_game_else_body@40:
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.third_place_score.native
-    bnz play_game_if_body@42
+    bnz play_game_if_body@35
     // smart_contracts/pieout/subroutines.py:215
     // or score > game_state.third_place_score.native
     frame_dig 4
@@ -4266,9 +4317,9 @@ play_game_else_body@40:
     // # Third Place
     // game_state.third_place_address == arc4.Address(Global.zero_address)
     // or score > game_state.third_place_score.native
-    bz play_game_after_if_else@44
+    bz play_game_after_if_else@37
 
-play_game_if_body@42:
+play_game_if_body@35:
     // smart_contracts/pieout/subroutines.py:217-218
     // # Assign: Score -> Third
     // game_state.third_place_score = arc4.UInt8(score)
@@ -4280,7 +4331,7 @@ play_game_if_body@42:
     frame_dig 7
     replace2 121
     frame_bury 6
-    b play_game_after_if_else@44
+    b play_game_after_if_else@37
 
 
 // smart_contracts.pieout.contract.Pieout.trigger_game_event(game_id: uint64, trigger_id: bytes) -> void:
@@ -4700,7 +4751,7 @@ reset_game:
     replace2 5
     // smart_contracts/pieout/contract.py:729
     // game_state.box_p_start_pos = arc4.UInt16(cst.ADDRESS_SIZE)
-    bytec 11 // 0x0020
+    bytec 9 // 0x0020
     replace2 7
     // smart_contracts/pieout/contract.py:731
     // Global.latest_timestamp + cst.PHASE_EXPIRY_INTERVAL
